@@ -1,0 +1,70 @@
+{
+  "configurations" : [
+    {
+      "id" : "2BAD2D16-ADD6-47E5-8721-51BAD2DEE9EC",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:RickMorty.xcodeproj",
+      "identifier" : "26DC4F1230406A8C00AA6CF6",
+      "name" : "RickMorty"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:RickMorty.xcodeproj",
+        "identifier" : "26DC4F1F30406A8E00AA6CF6",
+        "name" : "RickMortyTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:RickMorty.xcodeproj",
+        "identifier" : "26DC4F2930406A8E00AA6CF6",
+        "name" : "RickMortyUITests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:..\/Characters",
+        "identifier" : "CharactersTests",
+        "name" : "CharactersTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:..\/Episodes",
+        "identifier" : "EpisodesTests",
+        "name" : "EpisodesTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:..\/Locations",
+        "identifier" : "LocationsTests",
+        "name" : "LocationsTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:..\/DesignSystem",
+        "identifier" : "DesignSystemTests",
+        "name" : "DesignSystemTests"
+      }
+    }
+  ],
+  "version" : 1
+}

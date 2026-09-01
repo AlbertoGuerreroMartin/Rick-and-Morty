@@ -1,6 +1,6 @@
 import Testing
 @testable import Characters
 
-@Test func charactersViewInitializes() async throws {
+@Test @MainActor func charactersViewInitializes() async throws {
     _ = CharactersView()
 }
