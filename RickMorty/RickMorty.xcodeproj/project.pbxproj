@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3C41E2892D605D21EBE6C646 /* Networking in Frameworks */ = {isa = PBXBuildFile; productRef = 27E1394B1ADE841D81911487 /* Networking */; };
 		99CB6D30E09D342F8571BA24 /* DesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = BCA91DA770FDEEC44934280E /* DesignSystem */; };
 		26C675EC3041B3EB007FE2C0 /* Episodes in Frameworks */ = {isa = PBXBuildFile; productRef = 26C675EB3041B3EB007FE2C0 /* Episodes */; };
 		9251AE4D8DD23ED1CD4AD745 /* Characters in Frameworks */ = {isa = PBXBuildFile; productRef = 8073D94672928FEBD2C76876 /* Characters */; };
@@ -63,6 +64,7 @@
 				9251AE4D8DD23ED1CD4AD745 /* Characters in Frameworks */,
 				D17EA892F16B5565CC0E59EB /* Locations in Frameworks */,
 				99CB6D30E09D342F8571BA24 /* DesignSystem in Frameworks */,
+				3C41E2892D605D21EBE6C646 /* Networking in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -135,6 +137,7 @@
 				8073D94672928FEBD2C76876 /* Characters */,
 				3E0870939F9BDEB97CE3CC94 /* Locations */,
 				BCA91DA770FDEEC44934280E /* DesignSystem */,
+				27E1394B1ADE841D81911487 /* Networking */,
 			);
 			productName = RickMorty;
 			productReference = 26DC4F1330406A8C00AA6CF6 /* RickMorty.app */;
@@ -223,6 +226,7 @@
 				37DBB7676482A9B0EDA3405A /* XCLocalSwiftPackageReference "../Locations" */,
 				4A1F2C8B60E37D9051AB33C1 /* XCLocalSwiftPackageReference "../Episodes" */,
 				8923AC848D9063B7F8E85BC1 /* XCLocalSwiftPackageReference "../DesignSystem" */,
+				F668DBC5FB98904A7499AE9C /* XCLocalSwiftPackageReference "../Networking" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 26DC4F1430406A8C00AA6CF6 /* Products */;
@@ -615,6 +619,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		F668DBC5FB98904A7499AE9C /* XCLocalSwiftPackageReference "../Networking" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../Networking;
+		};
 		8923AC848D9063B7F8E85BC1 /* XCLocalSwiftPackageReference "../DesignSystem" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../DesignSystem;
@@ -634,6 +642,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		27E1394B1ADE841D81911487 /* Networking */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Networking;
+		};
 		BCA91DA770FDEEC44934280E /* DesignSystem */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = DesignSystem;

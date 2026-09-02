@@ -16,4 +16,10 @@
    <FileRef
       location = "group:DesignSystem">
    </FileRef>
+   <FileRef
+      location = "group:Networking">
+   </FileRef>
+   <FileRef
+      location = "group:Utils">
+   </FileRef>
 </Workspace>

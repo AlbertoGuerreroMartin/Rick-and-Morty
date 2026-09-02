@@ -64,6 +64,14 @@
         "identifier" : "DesignSystemTests",
         "name" : "DesignSystemTests"
       }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:..\/Networking",
+        "identifier" : "NetworkingTests",
+        "name" : "NetworkingTests"
+      }
     }
   ],
   "version" : 1
