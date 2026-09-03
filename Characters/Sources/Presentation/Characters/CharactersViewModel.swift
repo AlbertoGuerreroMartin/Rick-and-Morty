@@ -13,24 +13,23 @@ class CharactersViewModel: CharactersListSectionViewModelContract {
         $loadingPublished.eraseToAnyPublisher()
     }
 
-    var charactersPublisher: AnyPublisher<[Character]?, Never> {
+    var charactersPublisher: AnyPublisher<[CharacterModel]?, Never> {
         $charactersPublished.eraseToAnyPublisher()
     }
     
+    let charactersUseCase: CharactersUseCaseContract
+    
+    init(charactersUseCase: CharactersUseCaseContract) {
+        self.charactersUseCase = charactersUseCase
+    }
+    
     @Published var loadingPublished = false
-    @Published var charactersPublished: [Character]?
+    @Published var charactersPublished: [CharacterModel]?
     
     @MainActor
     func loadData() async {
         loadingPublished = true
-        
-        // TODO: Move to upper layers
-        let query = CharactersQuery()
-        self.charactersPublished = try? await GraphQLClient.rickAndMorty.execute(query)
-            .result.results?.compactMap {
-                guard let name = $0?.name else { return nil }
-                return Character(name: name)
-        }
+        self.charactersPublished = try? await charactersUseCase.fetchCharacters()
         loadingPublished = false
     }
 }

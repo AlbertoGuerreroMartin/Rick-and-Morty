@@ -13,5 +13,5 @@ struct Character {
 
 protocol CharactersListSectionViewModelContract {
     var loadingPublisher: AnyPublisher<Bool, Never> { get }
-    var charactersPublisher: AnyPublisher<[Character]?, Never> { get }
+    var charactersPublisher: AnyPublisher<[CharacterModel]?, Never> { get }
 }

@@ -11,7 +11,11 @@ import SwiftUI
 @MainActor
 public class CharactersFactory {
     public static func build() -> some View {
-        let viewModel = CharactersViewModel()
+        // TODO: Design a Dependency Injection system
+        let remoteDataSource = CharactersRemoteDataSource()
+        let repository = CharactersRepository(remoteDataSource: remoteDataSource)
+        let useCase = CharactersUseCase(repository: repository)
+        let viewModel = CharactersViewModel(charactersUseCase: useCase)
         let charactersListSection = buildCharactersListSection(viewModel: viewModel)
         return CharactersScreen(viewModel: viewModel,
                                 charactersListSection: charactersListSection)

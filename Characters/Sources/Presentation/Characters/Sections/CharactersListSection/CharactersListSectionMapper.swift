@@ -9,7 +9,7 @@ import Combine
 import Core
 
 enum CharactersListRenderModel {
-    case visible([Character])
+    case visible([CharacterModel])
     case hidden
 }
 
@@ -21,7 +21,7 @@ class CharactersListSectionMapper: CharactersListSectionMapperContract {
     
     struct DataModel {
         let isLoading: Bool
-        let characters: [Character]?
+        let characters: [CharacterModel]?
     }
     
     let viewModel: ViewModel

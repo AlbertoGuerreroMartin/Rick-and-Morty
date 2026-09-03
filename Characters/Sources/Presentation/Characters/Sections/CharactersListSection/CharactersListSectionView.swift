@@ -35,7 +35,7 @@ struct CharactersListSectionView: View {
     }
     
     @ViewBuilder
-    func charactersList(characters: [Character]) -> some View {
+    func charactersList(characters: [CharacterModel]) -> some View {
         List(characters, id: \.name) { character in
             Text(character.name)
         }
