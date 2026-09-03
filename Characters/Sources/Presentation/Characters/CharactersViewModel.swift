@@ -8,7 +8,8 @@
 import Combine
 import Networking
 
-class CharactersViewModel: CharactersListSectionViewModelContract {
+@MainActor
+final class CharactersViewModel: CharactersListSectionViewModelContract {
     var loadingPublisher: AnyPublisher<Bool, Never> {
         $loadingPublished.eraseToAnyPublisher()
     }
@@ -25,11 +26,30 @@ class CharactersViewModel: CharactersListSectionViewModelContract {
     
     @Published var loadingPublished = false
     @Published var charactersPublished: [CharacterModel]?
-    
-    @MainActor
+
+    private var hasLoaded = false
+    private var isFetching = false
+
     func loadData() async {
+        // `.task` is bound to the view's appear/disappear lifetime, so it fires
+        // again on every return to the tab. Only the first one does any work.
+        guard !hasLoaded, !isFetching else { return }
+
+        isFetching = true
         loadingPublished = true
-        self.charactersPublished = try? await charactersUseCase.fetchCharacters()
-        loadingPublished = false
+        defer { isFetching = false }
+
+        do {
+            charactersPublished = try await charactersUseCase.fetchCharacters()
+            hasLoaded = true
+            loadingPublished = false
+        } catch {
+            // A cancelled fetch (leaving the tab mid-load) keeps the loading
+            // state untouched so the next appear retries, instead of falling
+            // through to an empty list.
+            guard !Task.isCancelled else { return }
+            charactersPublished = []
+            loadingPublished = false
+        }
     }
 }

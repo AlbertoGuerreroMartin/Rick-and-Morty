@@ -7,22 +7,29 @@
 
 import SwiftUI
 
-// TODO: Handle actors properly
 @MainActor
-public class CharactersFactory {
-    public static func build() -> some View {
-        // TODO: Design a Dependency Injection system
-        let remoteDataSource = CharactersRemoteDataSource()
+public enum CharactersFactory {
+    /// Returns a screen *description*, not a built graph: the closures below are
+    /// only invoked once per screen identity (see `CharactersScreen`), so the
+    /// parent re-evaluating its body no longer rebuilds — and throws away — the
+    /// view model.
+    public static func build(dependencies: any CharactersDependencies) -> some View {
+        CharactersScreen(
+            makeGraph: { makeGraph(dependencies: dependencies) },
+            makeSection: { graph in
+                CharactersListSectionView(mapper: graph.listMapper)
+            }
+        )
+    }
+
+    /// The feature's composition root: every layer is wired here by constructor
+    /// injection, from the infrastructure the app provides down to the screen.
+    static func makeGraph(dependencies: any CharactersDependencies) -> CharactersScreenGraph {
+        let remoteDataSource = CharactersRemoteDataSource(client: dependencies.graphQLClient)
         let repository = CharactersRepository(remoteDataSource: remoteDataSource)
         let useCase = CharactersUseCase(repository: repository)
         let viewModel = CharactersViewModel(charactersUseCase: useCase)
-        let charactersListSection = buildCharactersListSection(viewModel: viewModel)
-        return CharactersScreen(viewModel: viewModel,
-                                charactersListSection: charactersListSection)
-    }
-    
-    static func buildCharactersListSection(viewModel: any CharactersListSectionViewModelContract) -> CharactersListSectionView {
-        let mapper = CharactersListSectionMapper(viewModel: viewModel)
-        return CharactersListSectionView(mapper: mapper)
+        let listMapper = CharactersListSectionMapper(viewModel: viewModel)
+        return CharactersScreenGraph(viewModel: viewModel, listMapper: listMapper)
     }
 }

@@ -13,10 +13,16 @@ protocol CharactersRemoteDataSourceContract: Sendable {
 }
 
 final class CharactersRemoteDataSource: CharactersRemoteDataSourceContract {
+    private let client: GraphQLClient
+
+    init(client: GraphQLClient) {
+        self.client = client
+    }
+
     func fetchCharacters() async throws -> [CharacterModel] {
         // TODO: Move to upper layers
         let query = CharactersQuery()
-        return try await GraphQLClient.rickAndMorty.execute(query)
+        return try await client.execute(query)
             .result.results?.compactMap {
                 // TODO: move to custom entity mapper on Data layer, and parse properly
                 guard let character = $0 else { return nil }

@@ -15,7 +15,8 @@ enum CharactersListRenderModel {
 
 protocol CharactersListSectionMapperContract: SectionMapperContract {}
 
-class CharactersListSectionMapper: CharactersListSectionMapperContract {
+@MainActor
+final class CharactersListSectionMapper: CharactersListSectionMapperContract {
     typealias ViewModel = CharactersListSectionViewModelContract
     typealias RenderModel = CharactersListRenderModel
     
