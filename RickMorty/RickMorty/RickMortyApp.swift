@@ -16,7 +16,7 @@ struct RickMortyApp: App {
         WindowGroup {
             TabView {
                 Tab("Characters", systemImage: "person") {
-                    CharactersView()
+                    CharactersFactory.build()
                 }
 
                 Tab("Episodes", systemImage: "list.bullet") {

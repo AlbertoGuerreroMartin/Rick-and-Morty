@@ -13,9 +13,17 @@ let package = Package(
             targets: ["Characters"]
         ),
     ],
+    dependencies: [
+        .package(path: "../Networking"),
+        .package(path: "../Utils"),
+    ],
     targets: [
         .target(
-            name: "Characters"
+            name: "Characters",
+            dependencies: [
+                .product(name: "Networking", package: "Networking"),
+                .product(name: "Utils", package: "Utils"),
+            ]
         ),
         .testTarget(
             name: "CharactersTests",
