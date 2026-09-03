@@ -6,30 +6,42 @@
 //
 
 import Combine
+import Core
 
 enum CharactersListRenderModel {
     case visible([Character])
     case hidden
 }
 
-class CharactersListSectionMapper {
+protocol CharactersListSectionMapperContract: SectionMapperContract {}
+
+class CharactersListSectionMapper: CharactersListSectionMapperContract {
+    typealias ViewModel = CharactersListSectionViewModelContract
     typealias RenderModel = CharactersListRenderModel
     
-    let viewModel: CharactersListSectionViewModelContract
+    struct DataModel {
+        let isLoading: Bool
+        let characters: [Character]?
+    }
     
-    init(viewModel: CharactersListSectionViewModelContract) {
+    let viewModel: ViewModel
+    
+    init(viewModel: ViewModel) {
         self.viewModel = viewModel
     }
     
-    func map() -> AnyPublisher<RenderModel, Never> {
+    func dataPublisher(_ viewModel: ViewModel) -> AnyPublisher<DataModel, Never> {
         viewModel.loadingPublisher
             .combineLatest(viewModel.charactersPublisher)
-            .map {
-                guard !$0 else {
-                    return .hidden
-                }
-                
-                return .visible($1 ?? [])
-            }.eraseToAnyPublisher()
+            .map { DataModel(isLoading: $0, characters: $1) }
+            .eraseToAnyPublisher()
+    }
+    
+    func mapToRenderModel(_ data: DataModel) -> CharactersListRenderModel {
+        guard !data.isLoading else {
+            return .hidden
+        }
+        
+        return .visible(data.characters ?? [])
     }
 }

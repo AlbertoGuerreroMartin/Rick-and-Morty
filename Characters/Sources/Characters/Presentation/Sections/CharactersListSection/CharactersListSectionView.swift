@@ -14,7 +14,7 @@ struct CharactersListSectionView: View {
     @State var renderModel: CharactersListRenderModel = .hidden
     
     init(mapper: CharactersListSectionMapper) {
-        self.renderModelPublisher = mapper.map()
+        self.renderModelPublisher = mapper.renderModelPublisher()
     }
     
     var body: some View {
