@@ -1,6 +1,6 @@
 //
 //  DocumentMacroTests.swift
-//  Utils
+//  Core
 //
 //  Created by Alberto Guerrero Martin on 01/09/2026.
 //
@@ -10,7 +10,7 @@ import SwiftSyntaxMacros
 import SwiftSyntaxMacrosGenericTestSupport
 import Testing
 
-@testable import UtilsMacros
+@testable import Macros
 
 private let macros: [String: MacroSpec] = ["Document": MacroSpec(type: DocumentMacro.self)]
 

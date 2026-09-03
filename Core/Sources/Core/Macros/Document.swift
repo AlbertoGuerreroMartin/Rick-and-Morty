@@ -1,6 +1,6 @@
 //
 //  Document.swift
-//  Utils
+//  Core
 //
 //  Created by Alberto Guerrero Martin on 01/09/2026.
 //
@@ -35,4 +35,4 @@
 /// The generated member is `internal`, and no protocol conformance is added:
 /// declare `: GraphQLDocumentConvertible` yourself where you need it.
 @attached(member, names: named(document))
-public macro Document() = #externalMacro(module: "UtilsMacros", type: "DocumentMacro")
+public macro Document() = #externalMacro(module: "Macros", type: "DocumentMacro")

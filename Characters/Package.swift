@@ -15,14 +15,14 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../Networking"),
-        .package(path: "../Utils"),
+        .package(path: "../Core"),
     ],
     targets: [
         .target(
             name: "Characters",
             dependencies: [
                 .product(name: "Networking", package: "Networking"),
-                .product(name: "Utils", package: "Utils"),
+                .product(name: "Core", package: "Core"),
             ]
         ),
         .testTarget(

@@ -7,7 +7,7 @@
 
 import Foundation
 import Networking
-import Utils
+import Core
 
 @Document
 struct CharacterDetailEntity: GraphQLDocumentConvertible, Decodable, Identifiable, Hashable {

@@ -20,6 +20,6 @@
       location = "group:Networking">
    </FileRef>
    <FileRef
-      location = "group:Utils">
+      location = "group:Core">
    </FileRef>
 </Workspace>

@@ -4,18 +4,18 @@ import CompilerPluginSupport
 import PackageDescription
 
 let package = Package(
-    name: "Utils",
+    name: "Core",
     platforms: [
         .iOS("18.6"),
         // The macro plugin and its tests are compiled for the *host*, so this
         // package — unlike every other one in the workspace — has to build on
-        // macOS as well. Nothing in `Utils` is iOS-only, so this costs nothing.
+        // macOS as well. Nothing in `Core` is iOS-only, so this costs nothing.
         .macOS("15.0"),
     ],
     products: [
         .library(
-            name: "Utils",
-            targets: ["Utils"]
+            name: "Core",
+            targets: ["Core"]
         ),
     ],
     dependencies: [
@@ -24,22 +24,22 @@ let package = Package(
     ],
     targets: [
         // The compiler plugin. It cannot be a product, which is why the macro
-        // *declaration* lives in the `Utils` library target instead.
+        // *declaration* lives in the `Core` library target instead.
         .macro(
-            name: "UtilsMacros",
+            name: "Macros",
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
             ]
         ),
         .target(
-            name: "Utils",
-            dependencies: ["UtilsMacros"]
+            name: "Core",
+            dependencies: ["Macros"]
         ),
         .testTarget(
-            name: "UtilsTests",
+            name: "CoreTests",
             dependencies: [
-                "UtilsMacros",
+                "Macros",
                 .product(name: "SwiftSyntaxMacrosGenericTestSupport", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
             ]

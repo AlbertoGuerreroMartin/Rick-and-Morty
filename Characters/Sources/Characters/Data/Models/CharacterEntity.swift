@@ -8,7 +8,7 @@
 import Foundation
 import Networking
 import SwiftUI
-import Utils
+import Core
 
 @Document
 struct CharacterEntity: GraphQLDocumentConvertible, Decodable, Identifiable, Hashable {
