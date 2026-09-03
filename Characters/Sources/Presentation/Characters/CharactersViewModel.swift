@@ -31,15 +31,6 @@ class CharactersViewModel: CharactersListSectionViewModelContract {
                 guard let name = $0?.name else { return nil }
                 return Character(name: name)
         }
-//        try? await Task.sleep(nanoseconds: 3_000_000_000)
-//        self.charactersPublished = [
-//            .init(name: "Character 1"),
-//            .init(name: "Character 2"),
-//            .init(name: "Character 3"),
-//            .init(name: "Character 4"),
-//            .init(name: "Character 5"),
-//            .init(name: "Character 6")
-//        ]
         loadingPublished = false
     }
 }
