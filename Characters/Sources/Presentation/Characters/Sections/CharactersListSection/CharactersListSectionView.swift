@@ -70,8 +70,10 @@ struct CharactersListSectionView: View {
         List {
             ForEach(characters, id: \.id) { character in
                 characterRow(character: character)
+                    .accessibilityElement(children: .combine)
             }
             footerRow(footer: footer, loadedCount: characters.count)
+                .accessibilityElement(children: .combine)
         }
     }
 
