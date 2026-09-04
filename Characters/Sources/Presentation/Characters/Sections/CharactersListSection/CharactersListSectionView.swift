@@ -6,9 +6,28 @@
 //
 
 import Combine
+import DesignSystem
 import SwiftUI
 
 struct CharactersListSectionView: View {
+    /// The avatar's rendered edge, in points.
+    private static let avatarSize: CGFloat = 56
+
+    /// The screen's pixels per point. Read from the SwiftUI environment rather
+    /// than `UITraitCollection.current`: UIKit only populates the latter while
+    /// it is calling into UIKit code (layout, drawing), so inside a SwiftUI body
+    /// it can be the default trait collection whose scale is 0 — and a 0px
+    /// decode target would turn every avatar into a 1px smear.
+    @Environment(\.displayScale) private var displayScale
+
+    /// The avatar edge in *pixels*, which is what the downsampler decodes to.
+    /// Decoding at point size would be soft on every device shipped this decade;
+    /// decoding at the source's own size would hold a full-resolution bitmap per
+    /// row.
+    private var avatarPixelSize: CGFloat {
+        Self.avatarSize * displayScale
+    }
+
     private let renderModelPublisher: AnyPublisher<CharactersListRenderModel, Never>
     
     @State var renderModel: CharactersListRenderModel = .hidden
@@ -44,12 +63,16 @@ struct CharactersListSectionView: View {
     @ViewBuilder
     func characterRow(character: CharacterModel) -> some View {
         HStack(spacing: 12) {
-            AsyncImage(url: character.image) { image in
+            // `CachedAsyncImage` rather than `AsyncImage`: it keeps the decoded
+            // bitmap and the downloaded bytes, so a row scrolling back into view
+            // draws immediately instead of flashing a placeholder and
+            // re-decoding — and a relaunch costs no requests at all.
+            CachedAsyncImage(url: character.image, maxPixelSize: avatarPixelSize) { image in
                 image.resizable().scaledToFill()
             } placeholder: {
                 Rectangle().fill(.quaternary)
             }
-            .frame(width: 56, height: 56)
+            .frame(width: Self.avatarSize, height: Self.avatarSize)
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {

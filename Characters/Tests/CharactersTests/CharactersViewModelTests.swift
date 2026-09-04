@@ -5,6 +5,7 @@
 //  Created by Alberto Guerrero Martin on 03/09/2026.
 //
 
+import Foundation
 import Testing
 @testable import Characters
 
@@ -13,8 +14,12 @@ import Testing
 @MainActor
 struct CharactersViewModelTests {
     @Test func loadDataPublishesCharactersFromUseCase() async {
-        let rick = CharacterModel(id: "1", name: "Rick Sanchez", status: "Alive",
-                                  species: "Human", image: nil, origin: nil, location: nil)
+        let rick = CharacterModel(id: "1",
+                                  name: "Rick Sanchez",
+                                  status: .alive,
+                                  species: "Human",
+                                  image: URL(string: "https://example.com/rick.jpeg")!,
+                                  location: CharacterLocation(name: "Citadel of Ricks", dimension: nil))
         let viewModel = CharactersViewModel(charactersUseCase: StubCharactersUseCase(result: .success([rick])))
 
         await viewModel.loadData()

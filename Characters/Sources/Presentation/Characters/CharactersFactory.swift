@@ -26,9 +26,11 @@ public enum CharactersFactory {
     /// injection, from the infrastructure the app provides down to the screen.
     static func makeGraph(dependencies: any CharactersDependencies) -> CharactersScreenGraph {
         let entityMapper = CharacterEntityMapper()
-        let remoteDataSource = CharactersRemoteDataSource(client: dependencies.graphQLClient,
-                                                          mapper: entityMapper)
-        let repository = CharactersRepository(remoteDataSource: remoteDataSource)
+        let remoteDataSource = CharactersRemoteDataSource(client: dependencies.graphQLClient)
+        let localDataSource = CharactersLocalDataSource(cacheStore: dependencies.cacheStore)
+        let repository = CharactersRepository(remoteDataSource: remoteDataSource,
+                                              localDataSource: localDataSource,
+                                              mapper: entityMapper)
         let useCase = CharactersUseCase(repository: repository)
         let viewModel = CharactersViewModel(charactersUseCase: useCase)
         let listMapper = CharactersListSectionMapper(viewModel: viewModel)

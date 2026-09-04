@@ -10,7 +10,7 @@ import Networking
 import Core
 
 @Document
-struct CharacterDetailEntity: GraphQLDocumentConvertible, Decodable, Identifiable, Hashable {
+struct CharacterDetailEntity: GraphQLDocumentConvertible, Codable, Sendable, Identifiable, Hashable {
     let id: String
     let name: String
     let status: String
@@ -24,14 +24,14 @@ struct CharacterDetailEntity: GraphQLDocumentConvertible, Decodable, Identifiabl
 }
 
 @Document
-struct CharacterDetailPlace: GraphQLDocumentConvertible, Decodable, Hashable {
+struct CharacterDetailPlace: GraphQLDocumentConvertible, Codable, Sendable, Hashable {
     let id: String?
     let name: String?
     let dimension: String?
 }
 
 @Document
-struct CharacterDetailEpisode: GraphQLDocumentConvertible, Decodable, Identifiable, Hashable {
+struct CharacterDetailEpisode: GraphQLDocumentConvertible, Codable, Sendable, Identifiable, Hashable {
     let id: String
     let name: String
     let air_date: String?

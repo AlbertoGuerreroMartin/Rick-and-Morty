@@ -72,6 +72,14 @@
         "identifier" : "NetworkingTests",
         "name" : "NetworkingTests"
       }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:..\/Storage",
+        "identifier" : "StorageTests",
+        "name" : "StorageTests"
+      }
     }
   ],
   "version" : 1

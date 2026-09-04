@@ -1,4 +1,5 @@
 import Foundation
+import Storage
 import Testing
 import UIKit
 @testable import DesignSystem
@@ -71,11 +72,13 @@ struct ImageLoaderTests {
         let small = try await loader.image(for: url, maxPixelSize: 64)
         let large = try await loader.image(for: url, maxPixelSize: 256)
 
-        #expect(small.cgImage?.width == 64)
-        #expect(large.cgImage?.width == 256)
         // Reusing the 64px bitmap for the 256px request would ship a blurry
         // image, so the second request must genuinely re-decode.
-        #expect(StubURLProtocol.requestCount(for: url) == 2)
+        #expect(small.cgImage?.width == 64)
+        #expect(large.cgImage?.width == 256)
+        // Re-decode, not re-download: the encoded bytes are on disk after the
+        // first request, and both sizes are decoded from that same file.
+        #expect(StubURLProtocol.requestCount(for: url) == 1)
     }
 
     @Test("clearing memory drops decoded images")
@@ -126,16 +129,60 @@ struct ImageLoaderTests {
         #expect(image.cgImage != nil)
     }
 
+    @Test("a fresh loader over the same directory needs no network at all")
+    func servesFromDiskAcrossLoaderInstances() async throws {
+        let url = URL(string: "https://example.com/persisted.png")!
+        StubURLProtocol.stub(url, with: .init(data: makePNG(sideLength: 256)))
+        let directory = TemporaryDirectory()
+        defer { directory.remove() }
+
+        let first = makeLoader(diskCache: makeDiskCache(root: directory.url))
+        _ = try await first.image(for: url, maxPixelSize: 64)
+        let downloads = StubURLProtocol.requestCount(for: url)
+
+        // A second loader over the same directory is what a relaunch looks like:
+        // empty memory cache, the bytes still on disk.
+        let second = makeLoader(diskCache: makeDiskCache(root: directory.url))
+        let image = try await second.image(for: url, maxPixelSize: 64)
+
+        #expect(image.cgImage?.width == 64)
+        #expect(StubURLProtocol.requestCount(for: url) == downloads)
+    }
+
+    @Test("a disk cache that fails outright still lets the network path work")
+    func survivesDiskCacheFailure() async throws {
+        let url = URL(string: "https://example.com/nodisk.png")!
+        StubURLProtocol.stub(url, with: .init(data: makePNG(sideLength: 256)))
+        // A full disk, a revoked container, a corrupt directory: the image still
+        // has to arrive. The cache is an optimisation, not a dependency.
+        let loader = makeLoader(diskCache: FailingImageDiskCache())
+
+        let image = try await loader.image(for: url, maxPixelSize: 64)
+
+        #expect(image.cgImage?.width == 64)
+    }
+
     // MARK: - Helpers
 
-    private func makeLoader() -> ImageLoader {
+    /// - Parameter diskCache: defaults to a cache rooted in a directory of this
+    ///   test's own. The loader's production disk cache is a real, shared path
+    ///   under `Library/Caches`, and suites pointed at it would see each other's
+    ///   files and pass or fail depending on execution order.
+    private func makeLoader(diskCache: (any ImageDiskCacheContract)? = nil) -> ImageLoader {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [StubURLProtocol.self]
-        // No URL-level caching here: these tests are about the decoded-image
-        // layer, and a URLCache hit would mask a missing memory-cache hit.
+        // No URL-level caching here: these tests are about the loader's own
+        // layers, and a URLCache hit would mask a missing one of those.
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-        return ImageLoader(session: URLSession(configuration: configuration))
+        return ImageLoader(
+            session: URLSession(configuration: configuration),
+            diskCache: diskCache ?? makeDiskCache(root: TemporaryDirectory().url)
+        )
+    }
+
+    private func makeDiskCache(root: URL) -> ImageDiskCache {
+        ImageDiskCache(diskStore: FileDiskStore(root: root))
     }
 
     private func makePNG(sideLength: CGFloat) -> Data {

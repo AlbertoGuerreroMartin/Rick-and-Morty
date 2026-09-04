@@ -6,6 +6,7 @@
 //
 
 import Networking
+import Storage
 
 /// What the Characters feature needs from the outside world.
 ///
@@ -16,4 +17,10 @@ import Networking
 /// runtime registry.
 public protocol CharactersDependencies: Sendable {
     var graphQLClient: GraphQLClient { get }
+
+    /// Shared with every other feature on purpose: the store namespaces its
+    /// entries, so one instance backing the whole app means one directory, one
+    /// expiry sweep and one place to reason about disk usage — rather than each
+    /// feature growing its own cache with its own lifetime rules.
+    var cacheStore: any CacheStoreContract { get }
 }

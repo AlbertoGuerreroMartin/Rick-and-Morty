@@ -4,8 +4,8 @@ import Foundation
 ///
 /// Two caches sit behind an image request and they hold different things:
 /// `memoryCostLimit` bounds *decoded* images (already downsampled bitmaps, the
-/// expensive thing to recreate), while the `urlCache*` capacities bound the
-/// *encoded* bytes so a cold launch can skip the network entirely.
+/// expensive thing to recreate), while `diskCapacity` bounds the *encoded* bytes
+/// kept by ``ImageDiskCache`` so a cold launch can skip the network entirely.
 public struct ImageLoaderConfiguration: Sendable {
     /// Approximate ceiling, in bytes, for decoded images held in memory.
     ///
@@ -13,31 +13,19 @@ public struct ImageLoaderConfiguration: Sendable {
     /// before the limit is reached, so it is a budget rather than a guarantee.
     public var memoryCostLimit: Int
 
-    /// In-memory capacity, in bytes, of the loader's private `URLCache`.
-    public var urlCacheMemoryCapacity: Int
-
-    /// On-disk capacity, in bytes, of the loader's private `URLCache`.
-    public var urlCacheDiskCapacity: Int
-
-    /// Cache policy applied to every image request.
+    /// Ceiling, in bytes, for encoded image bytes on disk.
     ///
-    /// Defaults to ``URLRequest/CachePolicy/returnCacheDataElseLoad`` because
-    /// image URLs are normally immutable — a given URL keeps serving the same
-    /// bytes forever — which makes revalidation pure latency. Switch to
-    /// `.useProtocolCachePolicy` if your image URLs are ever reused for new
-    /// content and you need `Cache-Control` to be honoured.
-    public var requestCachePolicy: URLRequest.CachePolicy
+    /// A safety net rather than a working limit — see ``ImageDiskCache``. There
+    /// is no expiry to pair it with: image URLs are immutable, so an entry is
+    /// only ever evicted because of size, never because of age.
+    public var diskCapacity: Int
 
     public init(
         memoryCostLimit: Int = 64 * 1_024 * 1_024,
-        urlCacheMemoryCapacity: Int = 32 * 1_024 * 1_024,
-        urlCacheDiskCapacity: Int = 256 * 1_024 * 1_024,
-        requestCachePolicy: URLRequest.CachePolicy = .returnCacheDataElseLoad
+        diskCapacity: Int = 128 * 1_024 * 1_024
     ) {
         self.memoryCostLimit = memoryCostLimit
-        self.urlCacheMemoryCapacity = urlCacheMemoryCapacity
-        self.urlCacheDiskCapacity = urlCacheDiskCapacity
-        self.requestCachePolicy = requestCachePolicy
+        self.diskCapacity = diskCapacity
     }
 
     public static let `default` = ImageLoaderConfiguration()

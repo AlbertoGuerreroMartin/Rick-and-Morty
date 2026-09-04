@@ -13,13 +13,22 @@ let package = Package(
             targets: ["DesignSystem"]
         ),
     ],
+    dependencies: [
+        .package(path: "../Storage"),
+    ],
     targets: [
         .target(
-            name: "DesignSystem"
+            name: "DesignSystem",
+            dependencies: [
+                .product(name: "Storage", package: "Storage"),
+            ]
         ),
         .testTarget(
             name: "DesignSystemTests",
-            dependencies: ["DesignSystem"]
+            dependencies: [
+                "DesignSystem",
+                .product(name: "Storage", package: "Storage"),
+            ]
         ),
     ],
     swiftLanguageModes: [.v6]

@@ -7,38 +7,29 @@
 
 import Networking
 
+/// The network half of the data layer. It speaks *entities*, not domain models.
+///
+/// Mapping used to live here, which meant the only thing the repository could
+/// hand to the cache was an already-mapped domain model. Returning the entity
+/// instead is what lets the repository store the raw server shape and map on
+/// every read — from the network and from disk alike — through one code path.
 protocol CharactersRemoteDataSourceContract: Sendable {
-    func fetchCharacters() async throws -> [CharacterModel]
-    func fetchCharacterDetail(characterId: String) async throws -> CharacterDetailModel
+    func fetchCharactersPage(_ query: CharactersQuery) async throws -> CharactersPageEntity
+    func fetchCharacterDetail(_ query: CharacterDetailQuery) async throws -> CharacterDetailEntity
 }
 
 final class CharactersRemoteDataSource: CharactersRemoteDataSourceContract {
     private let client: GraphQLClient
-    private let mapper: CharacterEntityMapperContract
 
-    init(client: GraphQLClient,
-         mapper: CharacterEntityMapperContract) {
+    init(client: GraphQLClient) {
         self.client = client
-        self.mapper = mapper
     }
-    
-    func fetchCharacters() async throws -> [CharacterModel] {
-        let query = CharactersQuery()
-        return try await client.execute(query)
-            .result.results.compactMap {
-                do {
-                    return try mapper.map($0)
-                } catch {
-                    // Log error without stopping the whole parsing process.
-                    print("[ERROR] \(error.localizedDescription)")
-                    return nil
-                }
-            }
+
+    func fetchCharactersPage(_ query: CharactersQuery) async throws -> CharactersPageEntity {
+        try await client.execute(query).result
     }
-    
-    func fetchCharacterDetail(characterId: String) async throws -> CharacterDetailModel {
-        CharacterDetailModel(id: "", name: "", status: nil, species: nil, image: nil, origin: nil, location: nil, episode: [])
+
+    func fetchCharacterDetail(_ query: CharacterDetailQuery) async throws -> CharacterDetailEntity {
+        try await client.execute(query).result
     }
-    
-    
 }

@@ -25,4 +25,16 @@ import Foundation
 public struct GraphQLRootPayload<Result: Decodable>: Decodable {
     /// The value of the aliased root field.
     public let result: Result
+
+    public init(result: Result) {
+        self.result = result
+    }
 }
+
+// Conditional, for the same reason as `GraphQLPageResponse`: only the payloads
+// that actually get written to a cache need to be encodable, and requiring it of
+// every `Response` would ripple out to every query in the app.
+
+extension GraphQLRootPayload: Encodable where Result: Encodable {}
+
+extension GraphQLRootPayload: Sendable where Result: Sendable {}

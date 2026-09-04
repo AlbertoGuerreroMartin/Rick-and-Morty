@@ -1,4 +1,5 @@
 import Foundation
+import Storage
 import UIKit
 
 public enum ImageLoadingError: Error, Equatable {
@@ -10,18 +11,22 @@ public enum ImageLoadingError: Error, Equatable {
 
 /// Loads, downsamples, and caches remote images.
 ///
-/// Three things separate this from `AsyncImage`, and all three matter in a list
-/// that renders one image per row:
+/// Three caches, in the order a request consults them:
 ///
-/// 1. **Decoded images are cached.** `AsyncImage` leans on `URLCache`, which
-///    stores compressed *bytes*; every time a recycled row scrolls back it
-///    re-decodes from scratch and shows a placeholder while it does. Here the
-///    decoded bitmap is kept, and ``cachedImage(for:maxPixelSize:)`` answers
-///    synchronously so the row can draw on its first frame.
-/// 2. **Concurrent requests for the same image are coalesced.** Ten rows
-///    showing the same avatar produce one download, not ten.
-/// 3. **Images are downsampled at decode time**, so a large source never
-///    materialises as a full-resolution bitmap just to fill a small frame.
+/// 1. **Memory — decoded bitmaps.** `AsyncImage` keeps none, so every time a
+///    recycled row scrolls back it re-decodes from scratch and shows a
+///    placeholder while it does. Here the decoded bitmap is kept, and
+///    ``cachedImage(for:maxPixelSize:)`` answers synchronously so the row can
+///    draw on its first frame.
+/// 2. **Disk — the original encoded bytes** (``ImageDiskCache``). Survives
+///    relaunch, so a cold start costs a decode rather than a round trip.
+/// 3. **The network**, once, even when ten rows ask at the same moment:
+///    concurrent requests for the same image are coalesced.
+///
+/// Images are downsampled at decode time throughout, so a large source never
+/// materialises as a full-resolution bitmap just to fill a small frame — and a
+/// disk hit is decoded through exactly the same path as a fresh download, so the
+/// two cannot drift apart.
 ///
 /// Use ``shared`` unless you need an isolated cache — the whole benefit comes
 /// from feature modules pooling one instance.
@@ -33,37 +38,44 @@ public actor ImageLoader {
     private nonisolated let memory: ImageMemoryCache
 
     private let session: URLSession
-    private let cachePolicy: URLRequest.CachePolicy
+    private let diskCache: any ImageDiskCacheContract
     private var inFlight: [ImageKey: Task<UIImage, Error>] = [:]
 
     public init(configuration: ImageLoaderConfiguration = .default) {
         let sessionConfiguration = URLSessionConfiguration.default
-        // A private URLCache rather than URLCache.shared: the shared one is far
-        // too small for images by default, and resizing it would change caching
-        // behaviour for every other request the app makes.
-        sessionConfiguration.urlCache = URLCache(
-            memoryCapacity: configuration.urlCacheMemoryCapacity,
-            diskCapacity: configuration.urlCacheDiskCapacity,
-            directory: nil
-        )
-        sessionConfiguration.requestCachePolicy = configuration.requestCachePolicy
+        // No `URLCache` at all, and a policy that ignores it. `ImageDiskCache`
+        // already holds the encoded bytes; leaving URLCache on would store a
+        // second copy of every image, doubling the disk cost for nothing and
+        // splitting the eviction policy across two layers that cannot see each
+        // other.
+        sessionConfiguration.urlCache = nil
+        sessionConfiguration.requestCachePolicy = .reloadIgnoringLocalCacheData
+
         self.init(
             session: URLSession(configuration: sessionConfiguration),
+            diskCache: ImageDiskCache(
+                diskStore: FileDiskStore(),
+                capacity: configuration.diskCapacity
+            ),
             configuration: configuration
         )
     }
 
-    /// Session-injecting initializer, for tests that stub the network.
-    init(session: URLSession, configuration: ImageLoaderConfiguration = .default) {
+    /// Injecting initializer, for tests that stub the network and want a disk
+    /// cache of their own rather than the shared one under `Library/Caches`.
+    init(session: URLSession,
+         diskCache: any ImageDiskCacheContract,
+         configuration: ImageLoaderConfiguration = .default) {
         self.session = session
-        self.cachePolicy = configuration.requestCachePolicy
+        self.diskCache = diskCache
         self.memory = ImageMemoryCache(costLimit: configuration.memoryCostLimit)
     }
 
     /// The decoded image if it is already in memory, or `nil`.
     ///
     /// Cheap and synchronous by design — call it from `View.init` to decide
-    /// whether a placeholder is needed at all.
+    /// whether a placeholder is needed at all. It deliberately does *not* look
+    /// at the disk: that would be I/O on the main thread.
     ///
     /// - Parameter maxPixelSize: longest-edge size, **in pixels**, that the
     ///   image was requested at. It is part of the cache identity, so it has to
@@ -92,8 +104,8 @@ public actor ImageLoader {
         return image
     }
 
-    /// Drops every decoded image. The `URLCache` layer is untouched, so
-    /// repopulating it costs a decode rather than a round trip.
+    /// Drops every decoded image. The disk layer is untouched, so repopulating
+    /// it costs a decode rather than a round trip.
     public nonisolated func clearMemoryCache() {
         memory.removeAll()
     }
@@ -102,19 +114,29 @@ public actor ImageLoader {
         if let existing = inFlight[key] { return existing }
 
         let session = session
-        let cachePolicy = cachePolicy
+        let diskCache = diskCache
         // Detached on purpose: a plain `Task` would inherit this actor's
         // isolation and run the synchronous decode on the actor's executor,
         // serialising every decode behind the loader.
         let task = Task.detached(priority: .utility) {
-            var request = URLRequest(url: key.url)
-            request.cachePolicy = cachePolicy
+            let maxPixelSize = CGFloat(key.maxPixelSize)
 
-            let (data, response) = try await session.data(for: request)
+            // A disk entry that cannot be read *or* cannot be decoded falls
+            // through to the network rather than failing the request: a corrupt
+            // or truncated file must cost a download, not a broken image.
+            if let stored = try? await diskCache.data(for: key.url),
+               let image = try? ImageDownsampler.decode(stored, maxPixelSize: maxPixelSize) {
+                return image
+            }
+
+            let (data, response) = try await session.data(for: URLRequest(url: key.url))
             if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
                 throw ImageLoadingError.unacceptableStatusCode(http.statusCode)
             }
-            return try ImageDownsampler.decode(data, maxPixelSize: CGFloat(key.maxPixelSize))
+            // Written before the decode, and best-effort: a failing disk should
+            // slow the app down, never stop it from showing an image it holds.
+            try? await diskCache.store(data, for: key.url)
+            return try ImageDownsampler.decode(data, maxPixelSize: maxPixelSize)
         }
 
         inFlight[key] = task

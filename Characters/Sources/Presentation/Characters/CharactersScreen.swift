@@ -32,8 +32,7 @@ struct CharactersScreen<Content: View>: View {
 #Preview {
     CharactersScreen(
         makeGraph: {
-            let repository = CharactersRepository(remoteDataSource: PreviewCharactersRemoteDataSource())
-            let useCase = CharactersUseCase(repository: repository)
+            let useCase = CharactersUseCase(repository: PreviewCharactersRepository())
             let viewModel = CharactersViewModel(charactersUseCase: useCase)
             return CharactersScreenGraph(viewModel: viewModel,
                                          listMapper: CharactersListSectionMapper(viewModel: viewModel))
@@ -44,9 +43,12 @@ struct CharactersScreen<Content: View>: View {
     )
 }
 
-private struct PreviewCharactersRemoteDataSource: CharactersRemoteDataSourceContract {
-    func fetchCharacters() async throws -> [CharacterModel] {
-        ["Rick Sanchez", "Morty Smith", "Summer Smith"].enumerated().map { index, name in
+/// Stubbed at the repository seam rather than the data-source one: the preview
+/// wants canned domain models, and standing in for the repository skips the
+/// cache, the network and the mapper in one substitution.
+private struct PreviewCharactersRepository: CharactersRepositoryContract {
+    func fetchCharacters(page: Int) async throws -> CharactersPage {
+        let characters = ["Rick Sanchez", "Morty Smith", "Summer Smith"].enumerated().map { index, name in
             CharacterModel(id: "\(index)",
                            name: name,
                            status: .alive,
@@ -54,16 +56,6 @@ private struct PreviewCharactersRemoteDataSource: CharactersRemoteDataSourceCont
                            image: URL(string: "https://rickandmortyapi.com/api/character/avatar/21.jpeg")!,
                            location: CharacterLocation(name: "C-137", dimension: nil))
         }
-    }
-
-    func fetchCharacterDetail(characterId: String) async throws -> CharacterDetailModel {
-        CharacterDetailModel(id: characterId,
-                             name: "Rick Sanchez",
-                             status: nil,
-                             species: nil,
-                             image: nil,
-                             origin: nil,
-                             location: nil,
-                             episode: [])
+        return CharactersPage(characters: characters, nextPage: nil)
     }
 }

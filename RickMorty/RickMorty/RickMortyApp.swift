@@ -15,7 +15,11 @@ struct RickMortyApp: App {
     /// Built once for the app's lifetime; features receive it and build their
     /// own layers from it. See `AppContainer`.
     private let container = AppContainer()
-    
+
+    init() {
+        container.sweepExpiredCache()
+    }
+
     var body: some Scene {
         WindowGroup {
             TabView {

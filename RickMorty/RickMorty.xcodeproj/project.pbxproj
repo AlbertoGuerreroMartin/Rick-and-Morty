@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9C8DF7BF6851F75C5411FFD3 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = B5B44D7EBF8304E84F2D54A0 /* Storage */; };
 		26C675EC3041B3EB007FE2C0 /* Episodes in Frameworks */ = {isa = PBXBuildFile; productRef = 26C675EB3041B3EB007FE2C0 /* Episodes */; };
 		3C41E2892D605D21EBE6C646 /* Networking in Frameworks */ = {isa = PBXBuildFile; productRef = 27E1394B1ADE841D81911487 /* Networking */; };
 		9251AE4D8DD23ED1CD4AD745 /* Characters in Frameworks */ = {isa = PBXBuildFile; productRef = 8073D94672928FEBD2C76876 /* Characters */; };
@@ -65,6 +66,7 @@
 				D17EA892F16B5565CC0E59EB /* Locations in Frameworks */,
 				99CB6D30E09D342F8571BA24 /* DesignSystem in Frameworks */,
 				3C41E2892D605D21EBE6C646 /* Networking in Frameworks */,
+				9C8DF7BF6851F75C5411FFD3 /* Storage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -138,6 +140,7 @@
 				3E0870939F9BDEB97CE3CC94 /* Locations */,
 				BCA91DA770FDEEC44934280E /* DesignSystem */,
 				27E1394B1ADE841D81911487 /* Networking */,
+				B5B44D7EBF8304E84F2D54A0 /* Storage */,
 			);
 			productName = RickMorty;
 			productReference = 26DC4F1330406A8C00AA6CF6 /* RickMorty.app */;
@@ -227,6 +230,7 @@
 				4A1F2C8B60E37D9051AB33C1 /* XCLocalSwiftPackageReference "../Episodes" */,
 				8923AC848D9063B7F8E85BC1 /* XCLocalSwiftPackageReference "../DesignSystem" */,
 				F668DBC5FB98904A7499AE9C /* XCLocalSwiftPackageReference "../Networking" */,
+				47D4CB09E777FD2B521E7BD8 /* XCLocalSwiftPackageReference "../Storage" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 26DC4F1430406A8C00AA6CF6 /* Products */;
@@ -619,6 +623,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		47D4CB09E777FD2B521E7BD8 /* XCLocalSwiftPackageReference "../Storage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../Storage;
+		};
 		37DBB7676482A9B0EDA3405A /* XCLocalSwiftPackageReference "../Locations" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../Locations;
@@ -642,6 +650,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		B5B44D7EBF8304E84F2D54A0 /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Storage;
+		};
 		26C675EB3041B3EB007FE2C0 /* Episodes */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Episodes;

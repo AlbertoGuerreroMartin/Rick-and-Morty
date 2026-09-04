@@ -19,6 +19,9 @@ final class CharactersUseCase: CharactersUseCaseContract {
     }
     
     func fetchCharacters() async throws -> [CharacterModel] {
-        try await repository.fetchCharacters()
+        // The list screen shows the first page only; paginating the UI is out of
+        // scope. The cache is keyed per page already, so adding it later changes
+        // this line and nothing below it.
+        try await repository.fetchCharacters(page: 1).characters
     }
 }

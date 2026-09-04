@@ -25,15 +25,34 @@ public struct GraphQLClient: Sendable {
     let session: URLSession
 
     /// - Parameter session: injectable so a caller can supply its own
-    ///   configuration — or a stubbed `URLProtocol` — instead of `.shared`.
-    public init(endpoint: URL, session: URLSession = .shared) {
+    ///   configuration — or a stubbed `URLProtocol` — instead of the default
+    ///   uncached session.
+    public init(endpoint: URL, session: URLSession = GraphQLClient.uncachedSession) {
         self.endpoint = endpoint
         self.session = session
     }
 
+    /// A session with no `URLCache` at all.
+    ///
+    /// `URLSession.shared` would store every response in the system cache even
+    /// though the request policy below never reads from it: a request's cache
+    /// policy governs *lookups*, while *storage* is decided by the session's
+    /// cache. Caching is a repository decision, made through `Storage` with a
+    /// lifetime the app controls; a second copy in the system cache would be
+    /// invisible to that policy. So the session has no cache to write to.
+    public static let uncachedSession: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.urlCache = nil
+        configuration.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        return URLSession(configuration: configuration)
+    }()
+
     public func execute<Query: GraphQLQuery>(_ query: Query) async throws -> Query.Response {
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
+        // Never answer from a cache, even on an injected session that has one:
+        // whether a response is reused is the repository's call, not URLCache's.
+        request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         // The document is static (one per operation type); the variables are the

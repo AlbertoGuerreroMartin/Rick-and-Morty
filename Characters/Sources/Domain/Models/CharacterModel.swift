@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct CharacterModel {
+struct CharacterModel: Sendable, Hashable {
     let id: String
     let name: String
     let status: CharacterStatus
@@ -16,7 +16,7 @@ struct CharacterModel {
     let location: CharacterLocation
 }
 
-enum CharacterStatus: String {
+enum CharacterStatus: String, Sendable {
     case alive
     case dead
     case unknown
@@ -40,7 +40,7 @@ enum CharacterStatus: String {
     }
 }
 
-struct CharacterLocation {
+struct CharacterLocation: Sendable, Hashable {
     let name: String
     let dimension: String?
 }
