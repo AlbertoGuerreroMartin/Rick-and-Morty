@@ -71,6 +71,32 @@ final class CharactersViewModel: CharactersListSectionViewModelContract {
         }
     }
 
+    /// Wipes the feature's cache and reloads the list from page 1.
+    ///
+    /// A debug affordance: the purge alone is invisible, so the reload is what
+    /// makes it observable — the next request has to leave the device, and the
+    /// API logger shows it doing so. A page still in flight is cancelled and
+    /// awaited first, so its rows cannot land on top of the fresh first page.
+    /// A failed purge is logged and the reload still happens; there is nothing
+    /// useful to show a developer beyond the console line.
+    func purgeCache() async {
+        if let task = nextPageTask {
+            task.cancel()
+            await task.value
+        }
+
+        do {
+            try await charactersUseCase.purgeCache()
+        } catch {
+            print("[ERROR] Could not purge the characters cache: \(error.localizedDescription)")
+        }
+
+        hasLoaded = false
+        charactersPublished = nil
+        paginationPublished = .end
+        await loadData()
+    }
+
     /// Loads the page the pagination state is pointing at, if any.
     ///
     /// The awaited work lives in a `Task` the *view model* owns, and the caller

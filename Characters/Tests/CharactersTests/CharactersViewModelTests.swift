@@ -142,6 +142,43 @@ struct CharactersViewModelTests {
     }
 }
 
+/// The purge is a debug affordance, but the reload that follows it is real
+/// behaviour with a real race: rows appended by an in-flight page must never
+/// land on top of the fresh first page.
+extension CharactersViewModelTests {
+    @Test func purgeCachePurgesAndReloadsFromTheFirstPage() async {
+        let useCase = StubCharactersUseCase(pages: [
+            1: .success(.page(1, nextPage: 2)),
+            2: .success(.page(2, nextPage: 3))
+        ])
+        let viewModel = CharactersViewModel(charactersUseCase: useCase)
+        await viewModel.loadData()
+        await viewModel.loadNextPage()
+
+        #expect(viewModel.charactersPublished?.count == 4)
+
+        await viewModel.purgeCache()
+
+        #expect(useCase.purgeCallCount == 1)
+        #expect(useCase.callCount(for: 1) == 2)
+        #expect(viewModel.charactersPublished?.map(\.id) == ["1-0", "1-1"])
+        #expect(viewModel.paginationPublished == .idle(nextPage: 2))
+        #expect(viewModel.loadingPublished == false)
+    }
+
+    @Test func purgeCacheStillReloadsWhenThePurgeFails() async {
+        let useCase = StubCharactersUseCase(pages: [1: .success(.page(1, nextPage: nil))],
+                                            purgeError: StubError())
+        let viewModel = CharactersViewModel(charactersUseCase: useCase)
+        await viewModel.loadData()
+
+        await viewModel.purgeCache()
+
+        #expect(useCase.callCount(for: 1) == 2)
+        #expect(viewModel.charactersPublished?.map(\.id) == ["1-0", "1-1"])
+    }
+}
+
 private struct StubError: Error {}
 
 private extension CharactersPage {
@@ -168,9 +205,21 @@ private final class StubCharactersUseCase: CharactersUseCaseContract, @unchecked
     private let lock = NSLock()
     private var pages: [Int: Result<CharactersPage, StubError>]
     private var calls: [Int] = []
+    private var purgeCount = 0
+    private let purgeError: StubError?
 
-    init(pages: [Int: Result<CharactersPage, StubError>]) {
+    init(pages: [Int: Result<CharactersPage, StubError>], purgeError: StubError? = nil) {
         self.pages = pages
+        self.purgeError = purgeError
+    }
+
+    var purgeCallCount: Int {
+        lock.withLock { purgeCount }
+    }
+
+    func purgeCache() async throws {
+        lock.withLock { purgeCount += 1 }
+        if let purgeError { throw purgeError }
     }
 
     func setResult(_ result: Result<CharactersPage, StubError>, for page: Int) {

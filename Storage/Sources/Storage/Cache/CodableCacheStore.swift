@@ -126,6 +126,15 @@ public actor CodableCacheStore: CacheStoreContract {
         try await diskStore.remove(key)
     }
 
+    public func removeAll(in namespace: String) async throws {
+        // Keys are known here, unlike in the sweep below, so the memory layer
+        // can be trimmed to exactly the namespace rather than dropped wholesale.
+        for key in memory.keys where key.namespace == namespace {
+            forget(key)
+        }
+        try await diskStore.removeAll(in: namespace)
+    }
+
     public func removeExpired() async throws {
         let now = now()
         for namespace in try await diskStore.namespaces() {

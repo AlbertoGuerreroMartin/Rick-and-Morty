@@ -46,6 +46,11 @@ public protocol CacheStoreContract: Sendable {
 
     func remove(_ key: CacheKey) async throws
 
+    /// Drops every entry in `namespace`, fresh or not. A missing namespace is a
+    /// no-op. This is a feature wiping its own cache — it never crosses into
+    /// another namespace, so nothing a caller does here can touch the images.
+    func removeAll(in namespace: String) async throws
+
     /// Deletes every entry whose lifetime has run out, across all namespaces.
     /// Cheap enough to run at launch: it reads only each file's date header.
     /// Files it cannot recognise as its own are left untouched — the underlying

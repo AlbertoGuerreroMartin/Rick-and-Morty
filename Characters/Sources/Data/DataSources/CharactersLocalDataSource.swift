@@ -21,6 +21,8 @@ protocol CharactersLocalDataSourceContract: Sendable {
     func store(_ page: CharactersPageEntity, for query: CharactersQuery) async throws
     func characterDetail(for query: CharacterDetailQuery) async throws -> CacheEntry<CharacterDetailEntity>?
     func store(_ detail: CharacterDetailEntity, for query: CharacterDetailQuery) async throws
+    /// Drops everything this feature has cached, pages and details alike.
+    func removeAll() async throws
 }
 
 final class CharactersLocalDataSource: CharactersLocalDataSourceContract {
@@ -61,6 +63,12 @@ final class CharactersLocalDataSource: CharactersLocalDataSourceContract {
 
     func store(_ detail: CharacterDetailEntity, for query: CharacterDetailQuery) async throws {
         try await storeValue(detail, for: query)
+    }
+
+    /// The namespace is what makes this one call rather than a walk over every
+    /// query the feature has ever made.
+    func removeAll() async throws {
+        try await cacheStore.removeAll(in: Self.namespace)
     }
 
     // MARK: - Generic plumbing

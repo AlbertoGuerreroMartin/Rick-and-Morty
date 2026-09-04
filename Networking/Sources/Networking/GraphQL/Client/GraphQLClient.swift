@@ -17,19 +17,31 @@ import Foundation
 public struct GraphQLClient: Sendable {
 
     /// The public Rick and Morty endpoint. https://rickandmortyapi.com/documentation
-    public static let rickAndMorty = GraphQLClient(
-        endpoint: URL(string: "https://rickandmortyapi.com/graphql")!
-    )
+    public static func rickAndMorty(logger: any APILogSinkContract = NoOpAPILogger()) -> GraphQLClient {
+        GraphQLClient(
+            endpoint: URL(string: "https://rickandmortyapi.com/graphql")!,
+            logger: logger
+        )
+    }
 
     let endpoint: URL
     let session: URLSession
+    let logger: any APILogSinkContract
 
-    /// - Parameter session: injectable so a caller can supply its own
-    ///   configuration — or a stubbed `URLProtocol` — instead of the default
-    ///   uncached session.
-    public init(endpoint: URL, session: URLSession = GraphQLClient.uncachedSession) {
+    /// - Parameters:
+    ///   - session: injectable so a caller can supply its own configuration —
+    ///     or a stubbed `URLProtocol` — instead of the default uncached session.
+    ///   - logger: receives a `.request` event before each call leaves and a
+    ///     `.response` event when it ends. Defaults to discarding them; the app
+    ///     passes an `APILogStore` with a console logger attached.
+    public init(
+        endpoint: URL,
+        session: URLSession = GraphQLClient.uncachedSession,
+        logger: any APILogSinkContract = NoOpAPILogger()
+    ) {
         self.endpoint = endpoint
         self.session = session
+        self.logger = logger
     }
 
     /// A session with no `URLCache` at all.
@@ -63,15 +75,50 @@ public struct GraphQLClient: Sendable {
             RequestBody(query: query.document, variables: query)
         )
 
+        // Logged *before* any of the checks below, and unconditionally: a 500,
+        // a GraphQL `errors` array and a body that does not decode are all
+        // things the log exists to show, so the response record is written the
+        // moment bytes arrive, not after the client has decided what it thinks.
+        let requestRecord = APIRequestRecord(
+            method: request.httpMethod ?? "POST",
+            url: endpoint,
+            headers: request.allHTTPHeaderFields ?? [:],
+            body: request.httpBody
+        )
+        logger.log(.request(requestRecord))
+
         let payload: Data
         let response: URLResponse
         do {
             (payload, response) = try await session.data(for: request)
         } catch let error as URLError {
+            logger.log(.response(APIResponseRecord(
+                id: requestRecord.id,
+                method: requestRecord.method,
+                url: endpoint,
+                outcome: .transportError(description: error.localizedDescription),
+                headers: [:],
+                body: nil,
+                duration: Date().timeIntervalSince(requestRecord.timestamp)
+            )))
             throw GraphQLClientError.transport(error)
         }
 
-        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+        let http = response as? HTTPURLResponse
+        let statusCode = http?.statusCode ?? 200
+        logger.log(.response(APIResponseRecord(
+            id: requestRecord.id,
+            method: requestRecord.method,
+            url: endpoint,
+            outcome: (200..<300).contains(statusCode)
+                ? .success(statusCode: statusCode)
+                : .failure(statusCode: statusCode),
+            headers: http?.stringHeaders ?? [:],
+            body: payload,
+            duration: Date().timeIntervalSince(requestRecord.timestamp)
+        )))
+
+        if let http, !(200..<300).contains(http.statusCode) {
             throw GraphQLClientError.httpStatus(http.statusCode)
         }
 
@@ -98,5 +145,16 @@ public struct GraphQLClient: Sendable {
     private struct RequestBody<Variables: Encodable>: Encodable {
         let query: String
         let variables: Variables
+    }
+}
+
+private extension HTTPURLResponse {
+    /// `allHeaderFields` is `[AnyHashable: Any]` for historical reasons; on the
+    /// wire both sides are always strings, so this is a lossless narrowing.
+    var stringHeaders: [String: String] {
+        allHeaderFields.reduce(into: [:]) { headers, pair in
+            guard let name = pair.key as? String else { return }
+            headers[name] = "\(pair.value)"
+        }
     }
 }

@@ -92,6 +92,25 @@ struct CharactersLocalDataSourceTests {
         #expect(try await dataSource.characterDetail(for: CharacterDetailQuery(id: "1")) == nil)
     }
 
+    @Test("removeAll forgets every page and detail")
+    func removeAllForgetsEverything() async throws {
+        let directory = TemporaryDirectory()
+        defer { directory.remove() }
+        let dataSource = makeDataSource(root: directory.url)
+        let page = CharactersQuery(page: 1)
+        let detail = CharacterDetailQuery(id: "1")
+        try await dataSource.store(.make(names: ["Rick Sanchez"]), for: page)
+        try await dataSource.store(CharacterDetailEntity(id: "1", name: "Rick Sanchez", status: "Alive",
+                                                         species: "Human", type: "", gender: "Male",
+                                                         origin: nil, location: nil, image: nil, episode: []),
+                                   for: detail)
+
+        try await dataSource.removeAll()
+
+        #expect(try await dataSource.charactersPage(for: page) == nil)
+        #expect(try await dataSource.characterDetail(for: detail) == nil)
+    }
+
     private func makeDataSource(root: URL) -> CharactersLocalDataSource {
         CharactersLocalDataSource(cacheStore: CodableCacheStore(diskStore: FileDiskStore(root: root)))
     }

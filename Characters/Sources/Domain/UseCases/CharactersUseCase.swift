@@ -9,6 +9,7 @@ import Foundation
 
 protocol CharactersUseCaseContract: Sendable {
     func fetchCharacters(page: Int) async throws -> CharactersPage
+    func purgeCache() async throws
 }
 
 final class CharactersUseCase: CharactersUseCaseContract {
@@ -20,5 +21,9 @@ final class CharactersUseCase: CharactersUseCaseContract {
 
     func fetchCharacters(page: Int) async throws -> CharactersPage {
         try await repository.fetchCharacters(page: page)
+    }
+
+    func purgeCache() async throws {
+        try await repository.purgeCache()
     }
 }

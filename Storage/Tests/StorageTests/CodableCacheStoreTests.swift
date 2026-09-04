@@ -157,6 +157,25 @@ struct CodableCacheStoreTests {
         #expect(await disk.readCount == 1)
     }
 
+    @Test("removing a namespace drops its entries, memory copies included, and nothing else")
+    func removeAllInNamespaceIsScoped() async throws {
+        let disk = SpyDiskStore()
+        let store = CodableCacheStore(diskStore: disk)
+        let characters = CacheKey(namespace: "characters", identifier: "1")
+        let episodes = CacheKey(namespace: "episodes", identifier: "1")
+        try await store.store(Character(id: "1", name: "Rick"), for: characters, lifetime: 60)
+        try await store.store(Character(id: "1", name: "Pilot"), for: episodes, lifetime: 60)
+        // Warm the memory layer, so the assertion below proves the memory copy
+        // went too and not just the file.
+        _ = try await store.entry(for: characters, as: Character.self)
+
+        try await store.removeAll(in: "characters")
+
+        #expect(try await store.entry(for: characters, as: Character.self) == nil)
+        #expect(try await disk.data(for: characters) == nil)
+        #expect(try await store.entry(for: episodes, as: Character.self)?.value.name == "Pilot")
+    }
+
     @Test("storing a value invalidates the memory copy of the previous one")
     func storeInvalidatesMemory() async throws {
         let directory = TemporaryDirectory()

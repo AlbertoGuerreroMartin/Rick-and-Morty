@@ -22,6 +22,21 @@ struct CharactersScreen<Content: View>: View {
         NavigationStack {
             makeSection(graph.value)
                 .navigationTitle("Characters")
+                .toolbar {
+                    // Debug only, and compiled out rather than hidden: a purge
+                    // button has no business shipping, and `#if` is the one
+                    // guard a release build cannot get wrong.
+                    #if DEBUG
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            Task { await graph.value.viewModel.purgeCache() }
+                        } label: {
+                            Label("Purge cache", systemImage: "trash")
+                        }
+                        .accessibilityIdentifier("characters.purgeCache")
+                    }
+                    #endif
+                }
         }
         .task {
             await graph.value.viewModel.loadData()
@@ -69,4 +84,6 @@ private struct PreviewCharactersRepository: CharactersRepositoryContract {
         return CharactersPage(characters: characters,
                               nextPage: page < Self.pageCount ? page + 1 : nil)
     }
+
+    func purgeCache() async throws {}
 }

@@ -126,6 +126,28 @@ struct CharactersRepositoryTests {
         #expect(try await repository.fetchCharacters(page: 1).characters.map(\.name) == ["Rick Sanchez"])
     }
 
+    @Test("purging the cache wipes the local data source")
+    func purgeCacheWipesTheLocalDataSource() async throws {
+        let local = FakeCharactersLocalDataSource()
+        let repository = makeRepository(remote: FakeCharactersRemoteDataSource(result: .failure(TestError())),
+                                        local: local)
+
+        try await repository.purgeCache()
+
+        #expect(await local.removeAllCallCount == 1)
+    }
+
+    @Test("a purge that fails on disk is reported, not swallowed")
+    func purgeCacheRethrows() async {
+        let local = FakeCharactersLocalDataSource(writeError: TestError())
+        let repository = makeRepository(remote: FakeCharactersRemoteDataSource(result: .failure(TestError())),
+                                        local: local)
+
+        await #expect(throws: TestError.self) {
+            try await repository.purgeCache()
+        }
+    }
+
     private func makeRepository(remote: FakeCharactersRemoteDataSource,
                                 local: FakeCharactersLocalDataSource) -> CharactersRepository {
         CharactersRepository(remoteDataSource: remote,
@@ -161,6 +183,7 @@ actor FakeCharactersLocalDataSource: CharactersLocalDataSourceContract {
     private let readError: (any Error)?
     private let writeError: (any Error)?
     private(set) var storedPages: [CharactersPageEntity] = []
+    private(set) var removeAllCallCount = 0
 
     init(entry: CacheEntry<CharactersPageEntity>? = nil,
          readError: (any Error)? = nil,
@@ -187,6 +210,11 @@ actor FakeCharactersLocalDataSource: CharactersLocalDataSourceContract {
 
     func store(_ detail: CharacterDetailEntity, for query: CharacterDetailQuery) async throws {
         if let writeError { throw writeError }
+    }
+
+    func removeAll() async throws {
+        if let writeError { throw writeError }
+        removeAllCallCount += 1
     }
 }
 

@@ -9,6 +9,8 @@ import Foundation
 
 protocol CharactersRepositoryContract: Sendable {
     func fetchCharacters(page: Int) async throws -> CharactersPage
+    /// Forgets every cached page and detail. The next fetch goes to the network.
+    func purgeCache() async throws
 }
 
 /// Decides, per request, whether the answer comes from disk or from the network.
@@ -69,6 +71,10 @@ final class CharactersRepository: CharactersRepositoryContract {
             guard let cached else { throw error }
             return map(cached.value)
         }
+    }
+
+    func purgeCache() async throws {
+        try await localDataSource.removeAll()
     }
 
     /// Mapping happens here, on every read, from disk and network alike — which

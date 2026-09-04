@@ -6,6 +6,7 @@
 //
 
 import Characters
+import Foundation
 import Networking
 import Storage
 
@@ -20,7 +21,22 @@ import Storage
 /// Screen-scoped objects (view models, use cases, repositories) are *not* held
 /// here: each feature builds them per screen and SwiftUI owns their lifetime.
 struct AppContainer: Sendable {
-    let graphQLClient = GraphQLClient.rickAndMorty
+    /// Every API request and response goes through here. The store keeps the
+    /// history for a future developer-tools screen; the console logger is a
+    /// sink on it, attached only in debug builds so release output stays quiet.
+    let apiLogStore: APILogStore
+    let graphQLClient: GraphQLClient
+
+    init() {
+        #if DEBUG
+        apiLogStore = APILogStore(sinks: [
+            ConsoleAPILogger(subsystem: Bundle.main.bundleIdentifier ?? "RickMorty")
+        ])
+        #else
+        apiLogStore = APILogStore()
+        #endif
+        graphQLClient = GraphQLClient.rickAndMorty(logger: apiLogStore)
+    }
 
     /// One store for the whole app, app-lifetime like the client. Features get
     /// their own directory through the key's namespace, so sharing the instance
