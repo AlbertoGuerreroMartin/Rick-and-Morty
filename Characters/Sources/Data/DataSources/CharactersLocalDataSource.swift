@@ -32,7 +32,7 @@ final class CharactersLocalDataSource: CharactersLocalDataSourceContract {
     /// The number is a trade between two costs, and both point the same way here
     /// — a stale name is invisible to the user, while a refetch on every launch
     /// spends one of a small budget of requests before the API starts answering
-    /// 419.
+    /// 429.
     static let lifetime: TimeInterval = 24 * 60 * 60
 
     /// One directory on disk for everything this feature caches, so the whole

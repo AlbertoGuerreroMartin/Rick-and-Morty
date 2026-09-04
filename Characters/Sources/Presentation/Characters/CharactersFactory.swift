@@ -17,7 +17,7 @@ public enum CharactersFactory {
         CharactersScreen(
             makeGraph: { makeGraph(dependencies: dependencies) },
             makeSection: { graph in
-                CharactersListSectionView(mapper: graph.listMapper)
+                CharactersListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
             }
         )
     }

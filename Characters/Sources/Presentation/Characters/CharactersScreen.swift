@@ -38,7 +38,7 @@ struct CharactersScreen<Content: View>: View {
                                          listMapper: CharactersListSectionMapper(viewModel: viewModel))
         },
         makeSection: { graph in
-            CharactersListSectionView(mapper: graph.listMapper)
+            CharactersListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
         }
     )
 }
@@ -46,16 +46,27 @@ struct CharactersScreen<Content: View>: View {
 /// Stubbed at the repository seam rather than the data-source one: the preview
 /// wants canned domain models, and standing in for the repository skips the
 /// cache, the network and the mapper in one substitution.
+///
+/// It serves three pages rather than one so the footer, the append and the end
+/// of the list are all reachable in the canvas without a network.
 private struct PreviewCharactersRepository: CharactersRepositoryContract {
+    private static let pageCount = 3
+    private static let names = ["Rick Sanchez", "Morty Smith", "Summer Smith",
+                                "Beth Smith", "Jerry Smith", "Birdperson"]
+
     func fetchCharacters(page: Int) async throws -> CharactersPage {
-        let characters = ["Rick Sanchez", "Morty Smith", "Summer Smith"].enumerated().map { index, name in
-            CharacterModel(id: "\(index)",
-                           name: name,
-                           status: .alive,
-                           species: "Human",
-                           image: URL(string: "https://rickandmortyapi.com/api/character/avatar/21.jpeg")!,
-                           location: CharacterLocation(name: "C-137", dimension: nil))
+        let characters = Self.names.enumerated().map { index, name in
+            // Ids have to be unique *across* pages: `List` keys rows on them, so
+            // a repeated id would collapse page two into page one.
+            let number = (page - 1) * Self.names.count + index + 1
+            return CharacterModel(id: "\(number)",
+                                  name: "\(name) (page \(page))",
+                                  status: .alive,
+                                  species: "Human",
+                                  image: URL(string: "https://rickandmortyapi.com/api/character/avatar/\(number).jpeg")!,
+                                  location: CharacterLocation(name: "C-137", dimension: nil))
         }
-        return CharactersPage(characters: characters, nextPage: nil)
+        return CharactersPage(characters: characters,
+                              nextPage: page < Self.pageCount ? page + 1 : nil)
     }
 }

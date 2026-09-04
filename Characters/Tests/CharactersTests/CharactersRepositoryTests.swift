@@ -44,7 +44,7 @@ struct CharactersRepositoryTests {
 
     @Test("a failed refresh falls back to the stale entry")
     func staleEntrySurvivesAFailedFetch() async throws {
-        // This is the 419 case: the API throttles, and the user still gets the
+        // This is the 429 case: the API throttles, and the user still gets the
         // list they were looking at yesterday instead of an error screen.
         let local = FakeCharactersLocalDataSource(entry: .expired(page: .make(names: ["Yesterday"])))
         let remote = FakeCharactersRemoteDataSource(result: .failure(TestError()))

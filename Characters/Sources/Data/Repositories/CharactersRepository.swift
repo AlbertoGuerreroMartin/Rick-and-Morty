@@ -14,7 +14,7 @@ protocol CharactersRepositoryContract: Sendable {
 /// Decides, per request, whether the answer comes from disk or from the network.
 ///
 /// The reason this coordination exists at all is the API's rate limit: rickandmortyapi
-/// answers **419** once a client has made too many requests in a short window,
+/// answers **429** once a client has made too many requests in a short window,
 /// and a list screen that refetches on every appearance walks into that quickly
 /// — during development most of all, where the same screen is opened dozens of
 /// times a minute. Cached pages turn all of those into zero requests.
