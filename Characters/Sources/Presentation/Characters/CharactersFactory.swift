@@ -25,7 +25,9 @@ public enum CharactersFactory {
     /// The feature's composition root: every layer is wired here by constructor
     /// injection, from the infrastructure the app provides down to the screen.
     static func makeGraph(dependencies: any CharactersDependencies) -> CharactersScreenGraph {
-        let remoteDataSource = CharactersRemoteDataSource(client: dependencies.graphQLClient)
+        let entityMapper = CharacterEntityMapper()
+        let remoteDataSource = CharactersRemoteDataSource(client: dependencies.graphQLClient,
+                                                          mapper: entityMapper)
         let repository = CharactersRepository(remoteDataSource: remoteDataSource)
         let useCase = CharactersUseCase(repository: repository)
         let viewModel = CharactersViewModel(charactersUseCase: useCase)

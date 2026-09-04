@@ -14,26 +14,26 @@ protocol CharactersRemoteDataSourceContract: Sendable {
 
 final class CharactersRemoteDataSource: CharactersRemoteDataSourceContract {
     private let client: GraphQLClient
+    private let mapper: CharacterEntityMapperContract
 
-    init(client: GraphQLClient) {
+    init(client: GraphQLClient,
+         mapper: CharacterEntityMapperContract) {
         self.client = client
+        self.mapper = mapper
     }
-
+    
     func fetchCharacters() async throws -> [CharacterModel] {
-        // TODO: Move to upper layers
         let query = CharactersQuery()
         return try await client.execute(query)
-            .result.results?.compactMap {
-                // TODO: move to custom entity mapper on Data layer, and parse properly
-                guard let character = $0 else { return nil }
-                return CharacterModel(id: character.id,
-                                      name: character.name,
-                                      status: character.status.rawValue,
-                                      species: character.species,
-                                      image: character.image,
-                                      origin: character.origin?.dimension,
-                                      location: character.location?.dimension)
-        } ?? []
+            .result.results.compactMap {
+                do {
+                    return try mapper.map($0)
+                } catch {
+                    // Log error without stopping the whole parsing process.
+                    print("[ERROR] \(error.localizedDescription)")
+                    return nil
+                }
+            }
     }
     
     func fetchCharacterDetail(characterId: String) async throws -> CharacterDetailModel {

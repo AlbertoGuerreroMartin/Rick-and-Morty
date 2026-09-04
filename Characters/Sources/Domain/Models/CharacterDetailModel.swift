@@ -11,7 +11,7 @@ import Foundation
 struct CharacterDetailModel {
     let id: String
     let name: String
-    let status: Status?
+    let status: CharacterStatus?
     let species: String?
     let image: URL?
     let origin: String?

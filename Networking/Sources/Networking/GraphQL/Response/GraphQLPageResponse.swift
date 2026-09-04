@@ -9,7 +9,7 @@ import Foundation
 
 public struct GraphQLPageResponse<ResponseEntity: Decodable>: Decodable {
     public let info: GraphQLPageInfo
-    public let results: [ResponseEntity?]?
+    public let results: [ResponseEntity]
 }
 
 public struct GraphQLPageInfo: Decodable {

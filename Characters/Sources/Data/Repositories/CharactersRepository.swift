@@ -7,6 +7,10 @@
 
 import Foundation
 
+protocol CharactersRepositoryContract: Sendable {
+    func fetchCharacters() async throws -> [CharacterModel]
+}
+
 final class CharactersRepository: CharactersRepositoryContract {
     private let remoteDataSource: CharactersRemoteDataSourceContract
     
