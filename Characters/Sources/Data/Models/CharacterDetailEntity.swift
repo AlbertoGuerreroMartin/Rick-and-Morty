@@ -13,7 +13,7 @@ import Core
 struct CharacterDetailEntity: GraphQLDocumentConvertible, Decodable, Identifiable, Hashable {
     let id: String
     let name: String
-    let status: Status
+    let status: String
     let species: String
     let type: String
     let gender: String
@@ -49,7 +49,7 @@ extension CharacterDetailEntity: CustomDebugStringConvertible {
         CharacterDetailEntity
           id:       \(id)
           name:     \(name)
-          status:     \(status.rawValue)
+          status:     \(status)
           species:  \(species)
           type:     \(type)
           gender:  \(gender)

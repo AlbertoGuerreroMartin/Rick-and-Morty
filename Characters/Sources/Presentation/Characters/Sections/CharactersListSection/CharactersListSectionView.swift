@@ -36,8 +36,41 @@ struct CharactersListSectionView: View {
     
     @ViewBuilder
     func charactersList(characters: [CharacterModel]) -> some View {
-        List(characters, id: \.name) { character in
-            Text(character.name)
+        List(characters, id: \.id) { character in
+            characterRow(character: character)
         }
+    }
+    
+    @ViewBuilder
+    func characterRow(character: CharacterModel) -> some View {
+        HStack(spacing: 12) {
+            AsyncImage(url: character.image) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                Rectangle().fill(.quaternary)
+            }
+            .frame(width: 56, height: 56)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(character.name)
+                    .font(.headline)
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(character.status.color)
+                        .frame(width: 7, height: 7)
+                    Text("\(character.status.rawValue.capitalized) · \(character.species)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                let dimension = character.location.dimension.flatMap { "(\($0))" } ?? ""
+                Text("\(character.location.name) \(dimension)")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.vertical, 4)
+
     }
 }

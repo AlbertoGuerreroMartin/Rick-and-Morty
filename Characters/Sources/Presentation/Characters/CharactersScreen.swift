@@ -49,11 +49,10 @@ private struct PreviewCharactersRemoteDataSource: CharactersRemoteDataSourceCont
         ["Rick Sanchez", "Morty Smith", "Summer Smith"].enumerated().map { index, name in
             CharacterModel(id: "\(index)",
                            name: name,
-                           status: "Alive",
+                           status: .alive,
                            species: "Human",
-                           image: nil,
-                           origin: nil,
-                           location: nil)
+                           image: URL(string: "https://rickandmortyapi.com/api/character/avatar/21.jpeg")!,
+                           location: CharacterLocation(name: "C-137", dimension: nil))
         }
     }
 
