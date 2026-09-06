@@ -24,6 +24,27 @@ public enum GraphQLField {
             return name
         }
         guard depth > 1 else { return nil }
-        return "\(name) { \(nested.document(depth: depth - 1)) }"
+        return selection(name, nested.document(depth: depth - 1))
+    }
+
+    /// An object field with its selection set laid out one field per line:
+    ///
+    /// ```
+    /// origin {
+    ///   name
+    ///   dimension
+    /// }
+    /// ```
+    ///
+    /// GraphQL ignores whitespace, so this is purely for the humans reading the
+    /// document — in the API log above all. Every builder that nests a
+    /// selection goes through here, so indentation compounds correctly however
+    /// deep the schema is walked.
+    public static func selection(_ name: String, _ body: String) -> String {
+        let indented = body
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map { "  \($0)" }
+            .joined(separator: "\n")
+        return "\(name) {\n\(indented)\n}"
     }
 }

@@ -135,8 +135,9 @@ public struct APILogFormatter: Sendable {
             .map { "    \($0.key): \($0.value)" }
     }
 
-    /// A GraphQL request body as `query:` with the document verbatim and
-    /// `variables:` as indented JSON. Anything else is printed raw, on the
+    /// A GraphQL request body as `query:` with the document verbatim — the
+    /// builders already lay it out one field per line, see
+    /// `GraphQLField.selection` — and `variables:` as indented JSON. Anything else is printed raw, on the
     /// `[Body]:` line, so a body that is not what the client sends still shows.
     private func requestBodyLines(_ body: Data?) -> [String] {
         guard let body,

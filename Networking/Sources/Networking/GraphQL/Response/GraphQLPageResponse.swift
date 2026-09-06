@@ -65,9 +65,9 @@ extension GraphQLPageResponse: GraphQLDocumentConvertible where ResponseEntity: 
     ///   schema the caller asked to walk, so spending budget on it would silently
     ///   shrink every paginated selection set by one level.
     public static func document(depth: Int) -> String {
-        """
-        info { \(GraphQLPageInfo.document(depth: depth)) }
-        results { \(ResponseEntity.document(depth: depth)) }
-        """
+        [
+            GraphQLField.selection("info", GraphQLPageInfo.document(depth: depth)),
+            GraphQLField.selection("results", ResponseEntity.document(depth: depth)),
+        ].joined(separator: "\n")
     }
 }

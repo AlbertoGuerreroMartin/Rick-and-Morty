@@ -29,7 +29,7 @@
 /// expands into a nested selection set, bounded by `depth`:
 ///
 /// ```swift
-/// CharacterEntity.document  // "id\nname\norigin { name dimension }"
+/// CharacterEntity.document  // "id\nname\norigin {\n  name\n  dimension\n}"
 /// ```
 ///
 /// The generated member is `internal`, and no protocol conformance is added:
