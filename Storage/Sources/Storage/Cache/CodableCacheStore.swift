@@ -41,6 +41,7 @@ public actor CodableCacheStore: CacheStoreContract {
     private let now: @Sendable () -> Date
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
+    private let logger: any CacheLogSinkContract
 
     /// Encoded envelopes, not decoded values: the payload type is only known at
     /// the call site, so caching decoded values would need one heterogeneous box
@@ -57,18 +58,22 @@ public actor CodableCacheStore: CacheStoreContract {
     ///   - now: injectable clock. Expiry is the one behaviour here that cannot be
     ///     tested without waiting for real time, so it is a dependency.
     ///   - memoryCountLimit: how many encoded envelopes to keep in memory.
+    ///   - logger: told the outcome of every read. Defaults to a no-op so
+    ///     nothing but the composition root has to know logging exists.
     public init(
         diskStore: any DiskStoreContract,
         now: @escaping @Sendable () -> Date = Date.init,
         encoder: JSONEncoder = JSONEncoder(),
         decoder: JSONDecoder = JSONDecoder(),
-        memoryCountLimit: Int = 64
+        memoryCountLimit: Int = 64,
+        logger: any CacheLogSinkContract = NoOpCacheLogger()
     ) {
         self.diskStore = diskStore
         self.now = now
         self.encoder = encoder
         self.decoder = decoder
         self.memoryCountLimit = max(0, memoryCountLimit)
+        self.logger = logger
     }
 
     // MARK: - CacheStoreContract
@@ -78,12 +83,21 @@ public actor CodableCacheStore: CacheStoreContract {
         as type: Value.Type
     ) async throws -> CacheEntry<Value>? {
         let data: Data
+        // The layer is captured here rather than derived later because it is
+        // only knowable at this point: `remember` puts a disk read into memory,
+        // so by the time the envelope is decoded both layers hold the bytes.
+        let layer: CacheLogEvent.Layer
         if let cached = memory[key] {
             data = cached
+            layer = .memory
         } else {
-            guard let stored = try await diskStore.data(for: key) else { return nil }
+            guard let stored = try await diskStore.data(for: key) else {
+                logger.log(CacheLogEvent(key: key, outcome: .miss))
+                return nil
+            }
             remember(stored, for: key)
             data = stored
+            layer = .disk
         }
 
         guard let envelope = try? decoder.decode(Envelope<Value>.self, from: data) else {
@@ -92,16 +106,24 @@ public actor CodableCacheStore: CacheStoreContract {
             // refused to load — because last week's JSON no longer decodes would
             // be a cache turning itself into a bug. Drop it and re-fetch.
             try? await remove(key)
+            // Logged as a miss too, for the same reason: what the caller got is
+            // nothing, and the read that follows will be a real fetch. The line
+            // above it in the log — a store, then a miss on the same key — is
+            // what identifies it as a shape change rather than an empty cache.
+            logger.log(CacheLogEvent(key: key, outcome: .miss))
             return nil
         }
+
+        // Evaluated on read rather than stored: a value written before the
+        // app was backgrounded for a day must come back expired.
+        let isExpired = now() >= envelope.expiresAt
+        logger.log(CacheLogEvent(key: key, outcome: .hit(layer: layer, isExpired: isExpired)))
 
         return CacheEntry(
             value: envelope.value,
             storedAt: envelope.storedAt,
             expiresAt: envelope.expiresAt,
-            // Evaluated on read rather than stored: a value written before the
-            // app was backgrounded for a day must come back expired.
-            isExpired: now() >= envelope.expiresAt
+            isExpired: isExpired
         )
     }
 

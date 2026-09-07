@@ -12,8 +12,6 @@ protocol EpisodesRepositoryContract: Sendable {
     /// the screen has no pagination: see the walk below for why fetching
     /// everything is the cheaper option here.
     func fetchEpisodes() async throws -> [EpisodeModel]
-    /// Forgets every cached page. The next fetch goes to the network.
-    func purgeCache() async throws
 }
 
 /// Decides, per page, whether the answer comes from disk or from the network —
@@ -85,10 +83,6 @@ final class EpisodesRepository: EpisodesRepositoryContract {
         }
 
         return episodes
-    }
-
-    func purgeCache() async throws {
-        try await localDataSource.removeAll()
     }
 
     /// One page, through the four-step policy. See the type's documentation.

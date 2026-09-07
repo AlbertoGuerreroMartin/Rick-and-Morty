@@ -15,12 +15,17 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../Storage"),
+        // Image downloads are logged through Networking's records rather than a
+        // parallel set of their own: they are HTTP requests, and one inspector
+        // showing both is the whole point.
+        .package(path: "../Networking"),
     ],
     targets: [
         .target(
             name: "DesignSystem",
             dependencies: [
                 .product(name: "Storage", package: "Storage"),
+                .product(name: "Networking", package: "Networking"),
             ]
         ),
         .testTarget(
@@ -28,6 +33,7 @@ let package = Package(
             dependencies: [
                 "DesignSystem",
                 .product(name: "Storage", package: "Storage"),
+                .product(name: "Networking", package: "Networking"),
             ]
         ),
     ],

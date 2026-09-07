@@ -12,6 +12,11 @@ import Storage
 public protocol ImageDiskCacheContract: Sendable {
     func data(for url: URL) async throws -> Data?
     func store(_ data: Data, for url: URL) async throws
+    /// Drops every cached image. Nothing in the app calls this on its own —
+    /// entries never go stale, so there is no correctness reason to — but a
+    /// developer tearing down a caching bug needs a cold start on demand, and
+    /// deleting the container is a heavier way to get one.
+    func removeAll() async throws
 }
 
 /// Persists downloaded image *bytes* so a relaunch costs no requests.
@@ -57,6 +62,13 @@ public actor ImageDiskCache: ImageDiskCacheContract {
     public func store(_ data: Data, for url: URL) async throws {
         await sweepIfNeeded()
         try await diskStore.store(data, for: key(for: url))
+    }
+
+    /// One namespace, so this is one directory removal rather than a walk over
+    /// URLs the cache never recorded — the file names are hashes and cannot be
+    /// turned back into the URLs that produced them.
+    public func removeAll() async throws {
+        try await diskStore.removeAll(in: Self.namespace)
     }
 
     /// Trims the namespace back under 75% of the cap, oldest first.

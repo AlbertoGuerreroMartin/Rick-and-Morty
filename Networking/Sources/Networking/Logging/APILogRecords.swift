@@ -1,5 +1,19 @@
 import Foundation
 
+/// What kind of traffic a record describes.
+///
+/// The records themselves are identical for both — a method, a URL, headers and
+/// bytes — so image loading reuses them rather than growing a parallel type
+/// hierarchy with its own store, its own stream and its own formatter. The kind
+/// is the one bit a reader needs to tell the two apart: the console prints a
+/// different header, and the developer-tools inspector filters on it.
+public enum APILogKind: String, Sendable, Equatable {
+    /// A GraphQL call made by `GraphQLClient`.
+    case api
+    /// An image download made by the design system's loader.
+    case image
+}
+
 /// One HTTP request as it left the client.
 ///
 /// Plain values on purpose: no `URLRequest`, no `URLResponse`. The records are
@@ -10,6 +24,10 @@ import Foundation
 public struct APIRequestRecord: Sendable, Identifiable, Equatable {
     public let id: UUID
     public let timestamp: Date
+    /// Defaults to `.api` so every existing call site keeps compiling: the
+    /// GraphQL client, which is the only thing that logged before images did,
+    /// never has to name it.
+    public let kind: APILogKind
     public let method: String
     public let url: URL
     /// Header name to value, unsorted. Formatters sort for stable output.
@@ -19,6 +37,7 @@ public struct APIRequestRecord: Sendable, Identifiable, Equatable {
     public init(
         id: UUID = UUID(),
         timestamp: Date = Date(),
+        kind: APILogKind = .api,
         method: String,
         url: URL,
         headers: [String: String],
@@ -26,6 +45,7 @@ public struct APIRequestRecord: Sendable, Identifiable, Equatable {
     ) {
         self.id = id
         self.timestamp = timestamp
+        self.kind = kind
         self.method = method
         self.url = url
         self.headers = headers
@@ -53,6 +73,8 @@ public struct APIResponseRecord: Sendable, Identifiable, Equatable {
     /// Same value as the request's `id`.
     public let id: UUID
     public let timestamp: Date
+    /// Matches the request's kind. Defaults to `.api` for the same reason.
+    public let kind: APILogKind
     public let method: String
     public let url: URL
     public let outcome: Outcome
@@ -64,6 +86,7 @@ public struct APIResponseRecord: Sendable, Identifiable, Equatable {
     public init(
         id: UUID,
         timestamp: Date = Date(),
+        kind: APILogKind = .api,
         method: String,
         url: URL,
         outcome: Outcome,
@@ -73,6 +96,7 @@ public struct APIResponseRecord: Sendable, Identifiable, Equatable {
     ) {
         self.id = id
         self.timestamp = timestamp
+        self.kind = kind
         self.method = method
         self.url = url
         self.outcome = outcome

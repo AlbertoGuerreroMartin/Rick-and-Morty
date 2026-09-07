@@ -126,28 +126,6 @@ struct CharactersRepositoryTests {
         #expect(try await repository.fetchCharacters(filter: .empty, page: 1).characters.map(\.name) == ["Rick Sanchez"])
     }
 
-    @Test("purging the cache wipes the local data source")
-    func purgeCacheWipesTheLocalDataSource() async throws {
-        let local = FakeCharactersLocalDataSource()
-        let repository = makeRepository(remote: FakeCharactersRemoteDataSource(result: .failure(TestError())),
-                                        local: local)
-
-        try await repository.purgeCache()
-
-        #expect(await local.removeAllCallCount == 1)
-    }
-
-    @Test("a purge that fails on disk is reported, not swallowed")
-    func purgeCacheRethrows() async {
-        let local = FakeCharactersLocalDataSource(writeError: TestError())
-        let repository = makeRepository(remote: FakeCharactersRemoteDataSource(result: .failure(TestError())),
-                                        local: local)
-
-        await #expect(throws: TestError.self) {
-            try await repository.purgeCache()
-        }
-    }
-
     /// The filter has to reach the query, or every constraint the user sets is
     /// silently dropped and the list quietly lies about what it is showing.
     @Test("every filter field reaches the query")

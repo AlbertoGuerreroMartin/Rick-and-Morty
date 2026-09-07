@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0AFD73D0C3089C97C3A6C55B /* DevTools in Frameworks */ = {isa = PBXBuildFile; productRef = 77123240906A941889D325F5 /* DevTools */; };
 		9C8DF7BF6851F75C5411FFD3 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = B5B44D7EBF8304E84F2D54A0 /* Storage */; };
 		26C675EC3041B3EB007FE2C0 /* Episodes in Frameworks */ = {isa = PBXBuildFile; productRef = 26C675EB3041B3EB007FE2C0 /* Episodes */; };
 		3C41E2892D605D21EBE6C646 /* Networking in Frameworks */ = {isa = PBXBuildFile; productRef = 27E1394B1ADE841D81911487 /* Networking */; };
@@ -67,6 +68,7 @@
 				99CB6D30E09D342F8571BA24 /* DesignSystem in Frameworks */,
 				3C41E2892D605D21EBE6C646 /* Networking in Frameworks */,
 				9C8DF7BF6851F75C5411FFD3 /* Storage in Frameworks */,
+				0AFD73D0C3089C97C3A6C55B /* DevTools in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -141,6 +143,7 @@
 				BCA91DA770FDEEC44934280E /* DesignSystem */,
 				27E1394B1ADE841D81911487 /* Networking */,
 				B5B44D7EBF8304E84F2D54A0 /* Storage */,
+				77123240906A941889D325F5 /* DevTools */,
 			);
 			productName = RickMorty;
 			productReference = 26DC4F1330406A8C00AA6CF6 /* RickMorty.app */;
@@ -231,6 +234,7 @@
 				8923AC848D9063B7F8E85BC1 /* XCLocalSwiftPackageReference "../DesignSystem" */,
 				F668DBC5FB98904A7499AE9C /* XCLocalSwiftPackageReference "../Networking" */,
 				47D4CB09E777FD2B521E7BD8 /* XCLocalSwiftPackageReference "../Storage" */,
+				1EDEC318EFB52CDD13120177 /* XCLocalSwiftPackageReference "../DevTools" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 26DC4F1430406A8C00AA6CF6 /* Products */;
@@ -623,6 +627,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		1EDEC318EFB52CDD13120177 /* XCLocalSwiftPackageReference "../DevTools" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../DevTools;
+		};
 		47D4CB09E777FD2B521E7BD8 /* XCLocalSwiftPackageReference "../Storage" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../Storage;
@@ -650,6 +658,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		77123240906A941889D325F5 /* DevTools */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DevTools;
+		};
 		B5B44D7EBF8304E84F2D54A0 /* Storage */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Storage;

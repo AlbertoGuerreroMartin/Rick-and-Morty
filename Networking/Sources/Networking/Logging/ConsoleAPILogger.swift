@@ -96,7 +96,7 @@ public struct APILogFormatter: Sendable {
 
     public func string(for record: APIRequestRecord) -> String {
         var lines = [
-            "♦️ \(time(record.timestamp)) > [PENDING] API Request: [\(record.method)] \(record.url.absoluteString)",
+            "♦️ \(time(record.timestamp)) > [PENDING] \(header(record.kind)): [\(record.method)] \(record.url.absoluteString)",
             "[Method]: \(record.method)",
         ]
         lines.append(contentsOf: headerLines(record.headers))
@@ -106,7 +106,7 @@ public struct APILogFormatter: Sendable {
 
     public func string(for record: APIResponseRecord) -> String {
         var lines = [
-            "♦️ \(time(record.timestamp)) > [Done] API Request: [\(record.method)] \(record.url.absoluteString)",
+            "♦️ \(time(record.timestamp)) > [Done] \(header(record.kind)): [\(record.method)] \(record.url.absoluteString)",
         ]
         switch record.outcome {
         case .success(let statusCode):
@@ -127,6 +127,19 @@ public struct APILogFormatter: Sendable {
 
     private func time(_ date: Date) -> String {
         timeFormatter.string(from: date)
+    }
+
+    /// The only thing that changes between an API call and an image download.
+    /// It is on the header line rather than a separate field because that line
+    /// is what a console filter matches on: "Image Request" alone narrows the
+    /// output to the image traffic, which is the reason the kind exists.
+    private func header(_ kind: APILogKind) -> String {
+        switch kind {
+        case .api:
+            return "API Request"
+        case .image:
+            return "Image Request"
+        }
     }
 
     private func headerLines(_ headers: [String: String]) -> [String] {

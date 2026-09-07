@@ -148,36 +148,35 @@ struct EpisodesViewModelTests {
         #expect(viewModel.searchQueryPublished.text == "pilot")
     }
 
-    // MARK: - Purge
+    // MARK: - Reload after a cache clear
 
-    @Test("purgeCache purges and reloads")
-    func purgeCachePurgesAndReloads() async {
+    /// What the screen runs when the developer tools announce a cleared cache:
+    /// the catalogue is fetched again and replaces what was on screen.
+    @Test("reloadFromScratch fetches the catalogue again")
+    func reloadFromScratchFetchesAgain() async {
         let useCase = StubEpisodesUseCase(result: .success(.catalogue))
         let viewModel = EpisodesViewModel(episodesUseCase: useCase)
         await viewModel.loadData()
 
-        await viewModel.purgeCache()
+        await viewModel.reloadFromScratch()
 
-        #expect(useCase.purgeCallCount == 1)
         #expect(useCase.fetchCallCount == 2)
         #expect(viewModel.episodesPublished?.count == 3)
         #expect(viewModel.loadingPublished == false)
     }
 
-    /// There is nothing useful to show a developer beyond the console line, and
-    /// refusing to reload would leave the button looking broken rather than
-    /// merely ineffective.
-    @Test("purgeCache still reloads when the purge fails")
-    func purgeCacheStillReloadsWhenThePurgeFails() async {
-        let useCase = StubEpisodesUseCase(result: .success(.catalogue), purgeError: StubError())
+    /// The search is a local filter over whatever is loaded, so it survives the
+    /// reload the same way it survives a retry.
+    @Test("reloadFromScratch keeps the search text")
+    func reloadFromScratchKeepsTheSearch() async {
+        let useCase = StubEpisodesUseCase(result: .success(.catalogue))
         let viewModel = EpisodesViewModel(episodesUseCase: useCase)
         await viewModel.loadData()
+        viewModel.updateSearchText("pilot")
 
-        await viewModel.purgeCache()
+        await viewModel.reloadFromScratch()
 
-        #expect(useCase.purgeCallCount == 1)
-        #expect(useCase.fetchCallCount == 2)
-        #expect(viewModel.episodesPublished?.count == 3)
+        #expect(viewModel.searchQueryPublished.text == "pilot")
     }
 
     // MARK: - The generation counter
@@ -250,7 +249,6 @@ private final class StubEpisodesUseCase: EpisodesUseCaseContract, @unchecked Sen
     private let lock = NSLock()
     private var result: Result<[EpisodeModel], StubError>
     private var fetchCount = 0
-    private var purgeCount = 0
     /// Fetches that stay suspended until the test releases them, identified by
     /// their ordinal — the view model's requests are otherwise indistinguishable
     /// from one another, and holding *one* of them is the whole point.
@@ -258,15 +256,12 @@ private final class StubEpisodesUseCase: EpisodesUseCaseContract, @unchecked Sen
     /// *late* answer does, and a fetch that unblocked itself on cancel would
     /// race the assertions.
     private var heldCalls: Set<Int> = []
-    private let purgeError: StubError?
 
-    init(result: Result<[EpisodeModel], StubError>, purgeError: StubError? = nil) {
+    init(result: Result<[EpisodeModel], StubError>) {
         self.result = result
-        self.purgeError = purgeError
     }
 
     var fetchCallCount: Int { lock.withLock { fetchCount } }
-    var purgeCallCount: Int { lock.withLock { purgeCount } }
 
     func setResult(_ result: Result<[EpisodeModel], StubError>) {
         lock.withLock { self.result = result }
@@ -305,10 +300,5 @@ private final class StubEpisodesUseCase: EpisodesUseCaseContract, @unchecked Sen
         // starts.
         await Task.yield()
         return try snapshot.get()
-    }
-
-    func purgeCache() async throws {
-        lock.withLock { purgeCount += 1 }
-        if let purgeError { throw purgeError }
     }
 }

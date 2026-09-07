@@ -212,28 +212,6 @@ struct EpisodesRepositoryTests {
         #expect(try await repository.fetchEpisodes().map(\.code) == ["S01E01"])
     }
 
-    // MARK: - Purge
-
-    @Test("purging the cache wipes the local data source")
-    func purgeCacheWipesTheLocalDataSource() async throws {
-        let local = FakeEpisodesLocalDataSource()
-        let repository = makeRepository(remote: FakeEpisodesRemoteDataSource(pages: [:]), local: local)
-
-        try await repository.purgeCache()
-
-        #expect(await local.removeAllCallCount == 1)
-    }
-
-    @Test("a purge that fails on disk is reported, not swallowed")
-    func purgeCacheRethrows() async {
-        let local = FakeEpisodesLocalDataSource(writeError: TestError())
-        let repository = makeRepository(remote: FakeEpisodesRemoteDataSource(pages: [:]), local: local)
-
-        await #expect(throws: TestError.self) {
-            try await repository.purgeCache()
-        }
-    }
-
     private func makeRepository(remote: FakeEpisodesRemoteDataSource,
                                 local: FakeEpisodesLocalDataSource) -> EpisodesRepository {
         EpisodesRepository(remoteDataSource: remote,

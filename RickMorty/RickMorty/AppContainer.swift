@@ -6,10 +6,15 @@
 //
 
 import Characters
+import DesignSystem
 import Episodes
 import Foundation
 import Networking
 import Storage
+
+#if DEBUG
+import DevTools
+#endif
 
 /// The app's composition root.
 ///
@@ -26,24 +31,41 @@ struct AppContainer: Sendable {
     /// history for a future developer-tools screen; the console logger is a
     /// sink on it, attached only in debug builds so release output stays quiet.
     let apiLogStore: APILogStore
+    /// Every cache read goes through here. A second store rather than a channel
+    /// on `apiLogStore`, because the two live in packages that cannot see each
+    /// other — and because the console wants them in separate categories, see
+    /// `ConsoleCacheLogger`.
+    let cacheLogStore: CacheLogStore
     let graphQLClient: GraphQLClient
-
-    init() {
-        #if DEBUG
-        apiLogStore = APILogStore(sinks: [
-            ConsoleAPILogger(subsystem: Bundle.main.bundleIdentifier ?? "RickMorty")
-        ])
-        #else
-        apiLogStore = APILogStore()
-        #endif
-        graphQLClient = GraphQLClient.rickAndMorty(logger: apiLogStore)
-    }
 
     /// One store for the whole app, app-lifetime like the client. Features get
     /// their own directory through the key's namespace, so sharing the instance
     /// costs them no isolation and buys a single expiry sweep and a single place
     /// to reason about what is on disk.
-    let cacheStore: any CacheStoreContract = CodableCacheStore(diskStore: FileDiskStore())
+    let cacheStore: any CacheStoreContract
+
+    init() {
+        let subsystem = Bundle.main.bundleIdentifier ?? "RickMorty"
+        #if DEBUG
+        apiLogStore = APILogStore(sinks: [ConsoleAPILogger(subsystem: subsystem)])
+        cacheLogStore = CacheLogStore(sinks: [ConsoleCacheLogger(subsystem: subsystem)])
+        #else
+        // The stores stay, the console sinks do not: a release build keeps the
+        // in-memory history (which nothing reads without the debug screen) and
+        // prints nothing.
+        apiLogStore = APILogStore()
+        cacheLogStore = CacheLogStore()
+        #endif
+        graphQLClient = GraphQLClient.rickAndMorty(logger: apiLogStore)
+        // Built here rather than as a property initializer because it needs the
+        // log store, which is only ready inside `init`.
+        cacheStore = CodableCacheStore(diskStore: FileDiskStore(), logger: cacheLogStore)
+        // The loader is a shared static that exists before this container does,
+        // so it is configured rather than constructed. Synchronous on purpose:
+        // the first images are requested as soon as the first screen appears,
+        // and an `await` here would let them load unlogged.
+        ImageLoader.shared.setLoggers(network: apiLogStore, cache: cacheLogStore)
+    }
 
     /// Drops entries whose lifetime has run out.
     ///
@@ -62,3 +84,21 @@ struct AppContainer: Sendable {
 extension AppContainer: CharactersDependencies {}
 
 extension AppContainer: EpisodesDependencies {}
+
+#if DEBUG
+extension AppContainer {
+    /// What the developer-tools screen offers to clear.
+    ///
+    /// The list lives here because the container is the only place that knows
+    /// every feature. Each feature keeps its cache namespace private and exposes
+    /// a `purgeCache` on its factory instead, so adding a cache to the screen is
+    /// one line here and no change at all in `DevTools`.
+    var devToolsCaches: [DevToolsCache] {
+        [
+            .images(),
+            DevToolsCache(name: "Characters") { try await CharactersFactory.purgeCache(dependencies: self) },
+            DevToolsCache(name: "Episodes") { try await EpisodesFactory.purgeCache(dependencies: self) }
+        ]
+    }
+}
+#endif

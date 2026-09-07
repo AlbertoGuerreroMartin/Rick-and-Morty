@@ -152,11 +152,10 @@ struct CharactersViewModelTests {
     }
 }
 
-/// The purge is a debug affordance, but the reload that follows it is real
-/// behaviour with a real race: rows appended by an in-flight page must never
-/// land on top of the fresh first page.
+/// The reload after a cache clear is real behaviour with a real race: rows
+/// appended by an in-flight page must never land on top of the fresh first page.
 extension CharactersViewModelTests {
-    @Test func purgeCachePurgesAndReloadsFromTheFirstPage() async {
+    @Test func reloadFromScratchReloadsFromTheFirstPage() async {
         let useCase = StubCharactersUseCase(pages: [
             1: .success(.page(1, nextPage: 2)),
             2: .success(.page(2, nextPage: 3))
@@ -167,31 +166,18 @@ extension CharactersViewModelTests {
 
         #expect(viewModel.charactersPublished?.count == 4)
 
-        await viewModel.purgeCache()
+        await viewModel.reloadFromScratch()
 
-        #expect(useCase.purgeCallCount == 1)
         #expect(useCase.callCount(for: 1) == 2)
         #expect(viewModel.charactersPublished?.map(\.id) == ["1-0", "1-1"])
         #expect(viewModel.paginationPublished == .idle(nextPage: 2))
         #expect(viewModel.loadingPublished == false)
     }
 
-    @Test func purgeCacheStillReloadsWhenThePurgeFails() async {
-        let useCase = StubCharactersUseCase(pages: [1: .success(.page(1, nextPage: nil))],
-                                            purgeError: StubError())
-        let viewModel = CharactersViewModel(charactersUseCase: useCase)
-        await viewModel.loadData()
-
-        await viewModel.purgeCache()
-
-        #expect(useCase.callCount(for: 1) == 2)
-        #expect(viewModel.charactersPublished?.map(\.id) == ["1-0", "1-1"])
-    }
-
-    /// A purge while a search is on screen must come back with the *same*
-    /// search, uncached. Reloading `.empty` would look like the purge silently
-    /// dropped the user's query.
-    @Test func purgeCacheReloadsWithTheAppliedFilterRatherThanTheEmptyOne() async {
+    /// A reload while a search is on screen must come back with the *same*
+    /// search, uncached. Reloading `.empty` would look like the cache clear
+    /// silently dropped the user's query.
+    @Test func reloadFromScratchKeepsTheAppliedFilterRatherThanTheEmptyOne() async {
         let alive = CharactersFilter(status: .alive)
         let useCase = StubCharactersUseCase(pages: [1: .success(.page(1, nextPage: 2))])
         useCase.setResult(.success(.page(5, nextPage: nil)), for: alive)
@@ -200,9 +186,8 @@ extension CharactersViewModelTests {
 
         viewModel.apply(alive)
         await viewModel.settle()
-        await viewModel.purgeCache()
+        await viewModel.reloadFromScratch()
 
-        #expect(useCase.purgeCallCount == 1)
         #expect(useCase.calls.last == StubCharactersUseCase.Call(filter: alive, page: 1))
         #expect(viewModel.filterPublished == alive)
         #expect(viewModel.charactersPublished?.map(\.id) == ["5-0", "5-1"])
@@ -498,16 +483,9 @@ private final class StubCharactersUseCase: CharactersUseCaseContract, @unchecked
     /// does *while* a fetch is open, and a fetch that unblocked itself on cancel
     /// would race the assertions.
     private var heldCalls: Set<Call> = []
-    private var purgeCount = 0
-    private let purgeError: StubError?
 
-    init(pages: [Int: Result<CharactersPage, StubError>], purgeError: StubError? = nil) {
+    init(pages: [Int: Result<CharactersPage, StubError>]) {
         self.pagesByNumber = pages
-        self.purgeError = purgeError
-    }
-
-    var purgeCallCount: Int {
-        lock.withLock { purgeCount }
     }
 
     var calls: [Call] {
@@ -549,11 +527,6 @@ private final class StubCharactersUseCase: CharactersUseCaseContract, @unchecked
             if callCount(for: call) > 0 { return }
             await Task.yield()
         }
-    }
-
-    func purgeCache() async throws {
-        lock.withLock { purgeCount += 1 }
-        if let purgeError { throw purgeError }
     }
 
     func fetchCharacters(filter: CharactersFilter, page: Int) async throws -> CharactersPage {

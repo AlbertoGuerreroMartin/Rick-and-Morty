@@ -22,10 +22,20 @@ public final class APILogStore: APILogSinkContract, Sendable {
     }
 
     private let state: Mutex<State>
+    private let capacity: Int
 
-    /// - Parameter sinks: receive every event from the first one.
-    public init(sinks: [any APILogSinkContract] = []) {
+    /// - Parameters:
+    ///   - sinks: receive every event from the first one.
+    ///   - capacity: how many events the history keeps; the oldest are dropped
+    ///     past it. A bound is necessary because images log through this store
+    ///     too — a scroll through the characters grid is hundreds of events in
+    ///     seconds, each holding its response body, and an unbounded history
+    ///     would grow until the app was killed. 500 is roughly a minute of
+    ///     heavy use, far more than anyone reads in the inspector, and the
+    ///     console sink has already seen everything that falls off the end.
+    public init(sinks: [any APILogSinkContract] = [], capacity: Int = 500) {
         state = Mutex(State(sinks: sinks))
+        self.capacity = max(0, capacity)
     }
 
     /// Everything logged so far, oldest first.
@@ -60,6 +70,12 @@ public final class APILogStore: APILogSinkContract, Sendable {
         // store (a bug, but not one that should deadlock).
         let (sinks, continuations) = state.withLock { state in
             state.events.append(event)
+            // Only the history is capped. Sinks and live streams have already
+            // been handed the event, so a consumer that is keeping its own list
+            // — the inspector does — never loses anything to the cap.
+            if state.events.count > capacity {
+                state.events.removeFirst(state.events.count - capacity)
+            }
             return (state.sinks, Array(state.continuations.values))
         }
         for sink in sinks {

@@ -33,31 +33,12 @@ struct EpisodesUseCaseTests {
         }
     }
 
-    @Test("purgeCache forwards to the repository")
-    func purgeForwards() async throws {
-        let repository = FakeEpisodesRepository(episodes: [])
-        let useCase = EpisodesUseCase(repository: repository)
-
-        try await useCase.purgeCache()
-
-        #expect(await repository.purgeCallCount == 1)
-    }
-
-    @Test("a failed purge reaches the caller")
-    func purgeRethrows() async {
-        let useCase = EpisodesUseCase(repository: FakeEpisodesRepository(error: TestError()))
-
-        await #expect(throws: TestError.self) {
-            try await useCase.purgeCache()
-        }
-    }
 }
 
 private actor FakeEpisodesRepository: EpisodesRepositoryContract {
     private let episodes: [EpisodeModel]
     private let error: (any Error)?
     private(set) var fetchCallCount = 0
-    private(set) var purgeCallCount = 0
 
     init(episodes: [EpisodeModel] = [], error: (any Error)? = nil) {
         self.episodes = episodes
@@ -68,10 +49,5 @@ private actor FakeEpisodesRepository: EpisodesRepositoryContract {
         fetchCallCount += 1
         if let error { throw error }
         return episodes
-    }
-
-    func purgeCache() async throws {
-        purgeCallCount += 1
-        if let error { throw error }
     }
 }

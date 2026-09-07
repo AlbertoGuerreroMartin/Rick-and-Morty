@@ -38,6 +38,16 @@ public enum CharactersFactory {
         )
     }
 
+    /// Drops everything this feature has cached, pages and details alike.
+    ///
+    /// On the factory rather than exposed as a data source, because the cache
+    /// namespace is the feature's own private business: a developer-tools screen
+    /// gets to say "clear Characters" without learning the string, and no caller
+    /// outside this module can reach a namespace that is not theirs.
+    public static func purgeCache(dependencies: any CharactersDependencies) async throws {
+        try await CharactersLocalDataSource(cacheStore: dependencies.cacheStore).removeAll()
+    }
+
     /// The feature's composition root: every layer is wired here by constructor
     /// injection, from the infrastructure the app provides down to the screen.
     static func makeGraph(dependencies: any CharactersDependencies) -> CharactersScreenGraph {

@@ -9,7 +9,6 @@ import Foundation
 
 protocol EpisodesUseCaseContract: Sendable {
     func fetchEpisodes() async throws -> [EpisodeModel]
-    func purgeCache() async throws
 }
 
 /// A pass-through today, and worth having anyway: it is the seam the view model
@@ -28,7 +27,4 @@ final class EpisodesUseCase: EpisodesUseCaseContract {
         try await repository.fetchEpisodes()
     }
 
-    func purgeCache() async throws {
-        try await repository.purgeCache()
-    }
 }

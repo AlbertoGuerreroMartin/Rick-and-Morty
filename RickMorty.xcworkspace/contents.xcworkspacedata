@@ -25,4 +25,7 @@
    <FileRef
       location = "group:Storage">
    </FileRef>
+   <FileRef
+      location = "group:DevTools">
+   </FileRef>
 </Workspace>

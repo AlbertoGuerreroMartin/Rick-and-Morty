@@ -154,30 +154,24 @@ final class CharactersViewModel: CharactersListSectionViewModelContract,
         startReload(to: filterPublished)
     }
 
-    /// Wipes the feature's cache and reloads the list from page 1.
+    /// Throws away what is on screen and loads the list again from page 1.
     ///
-    /// A debug affordance: the purge alone is invisible, so the reload is what
-    /// makes it observable — the next request has to leave the device, and the
-    /// API logger shows it doing so. Everything in flight is cancelled and the
-    /// page task awaited first, so its rows cannot land on top of the fresh
-    /// first page. A failed purge is logged and the reload still happens; there
-    /// is nothing useful to show a developer beyond the console line.
+    /// The screen calls this when a cache has been cleared behind its back —
+    /// see `CacheClearedNotification`. A cleared cache is invisible on its own,
+    /// so the reload is what makes it observable: the next request has to
+    /// leave the device, and the API logger shows it doing so. Everything in
+    /// flight is cancelled and the page task awaited first, so its rows cannot
+    /// land on top of the fresh first page.
     ///
     /// The reload uses the **applied** filter rather than `.empty`, so a
-    /// developer purging the cache while looking at a search result gets the
+    /// developer clearing the cache while looking at a search result gets the
     /// same search back, uncached, instead of silently losing it.
-    func purgeCache() async {
+    func reloadFromScratch() async {
         searchDebounceTask?.cancel()
         reloadTask?.cancel()
         if let task = nextPageTask {
             task.cancel()
             await task.value
-        }
-
-        do {
-            try await charactersUseCase.purgeCache()
-        } catch {
-            print("[ERROR] Could not purge the characters cache: \(error.localizedDescription)")
         }
 
         hasLoaded = false
@@ -187,7 +181,7 @@ final class CharactersViewModel: CharactersListSectionViewModelContract,
     }
 
     /// Every change to the filter — a keystroke, the sheet's Done, a chip's ×,
-    /// a retry, a purge — goes through here and is handled identically: the list
+    /// a retry, a cache clear — goes through here and is handled identically: the list
     /// hides behind the spinner, page 1 of the new filter is fetched, and the
     /// answer replaces the rows. Nothing on screen is ever anything other than
     /// the server's answer to the applied filter, which is the whole point of a

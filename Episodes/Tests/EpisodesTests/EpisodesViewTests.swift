@@ -218,6 +218,4 @@ private final class StubViewsEpisodesUseCase: EpisodesUseCaseContract, @unchecke
     func fetchEpisodes() async throws -> [EpisodeModel] {
         [.make(name: "Pilot", season: 1, number: 1)]
     }
-
-    func purgeCache() async throws {}
 }

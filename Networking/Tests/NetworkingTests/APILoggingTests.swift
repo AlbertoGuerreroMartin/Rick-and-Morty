@@ -139,6 +139,60 @@ struct APILogFormatterTests {
 
         #expect(formatter.string(for: record).hasSuffix("[Body]: <3 bytes of non-UTF-8 data>"))
     }
+
+    /// The header line is what a console filter matches on, so "Image Request"
+    /// is the whole point of the kind — an image download that still announced
+    /// itself as "API Request" would be indistinguishable from a GraphQL call.
+    @Test("an image request announces itself as an image")
+    func imageRequestHeader() {
+        let record = APIRequestRecord(
+            id: id,
+            timestamp: timestamp,
+            kind: .image,
+            method: "GET",
+            url: URL(string: "https://rickandmortyapi.com/api/character/avatar/1.jpeg")!,
+            headers: [:],
+            body: nil
+        )
+
+        #expect(formatter.string(for: record).hasPrefix(
+            "♦️ 14:20:37.360 > [PENDING] Image Request: [GET] https://rickandmortyapi.com/api/character/avatar/1.jpeg"
+        ))
+    }
+
+    @Test("an image response announces itself as an image")
+    func imageResponseHeader() {
+        let record = APIResponseRecord(
+            id: id,
+            timestamp: timestamp,
+            kind: .image,
+            method: "GET",
+            url: URL(string: "https://rickandmortyapi.com/api/character/avatar/1.jpeg")!,
+            outcome: .success(statusCode: 200),
+            headers: [:],
+            body: Data([0xFF, 0xD8, 0xFF]),
+            duration: 0.1
+        )
+
+        let lines = formatter.string(for: record).split(separator: "\n")
+        #expect(lines.first == "♦️ 14:20:37.360 > [Done] Image Request: [GET] https://rickandmortyapi.com/api/character/avatar/1.jpeg")
+        // Image bytes are described rather than dumped — the existing body
+        // handling, which is exactly why images needed no new formatter.
+        #expect(lines.last == "Response body: <3 bytes of non-UTF-8 data>")
+    }
+
+    /// The kind is defaulted so the GraphQL client never names it; if that
+    /// default ever flipped, every API log would silently read "Image Request".
+    @Test("a record left unqualified is an API record")
+    func defaultKindIsAPI() {
+        let request = APIRequestRecord(method: "POST", url: url, headers: [:], body: nil)
+        let response = APIResponseRecord(id: request.id, method: "POST", url: url,
+                                         outcome: .success(statusCode: 200), headers: [:],
+                                         body: nil, duration: 0)
+
+        #expect(request.kind == .api)
+        #expect(response.kind == .api)
+    }
 }
 
 // MARK: - Store
@@ -210,6 +264,36 @@ struct APILogStoreTests {
 
         #expect(store.events == [.request(second)])
         #expect(sink.events == [.request(first), .request(second)])
+    }
+
+    /// Images log through this store too, so the history has to stay bounded or
+    /// a long scroll grows it until the app is killed.
+    @Test("the history drops the oldest events past its capacity")
+    func capsTheHistory() {
+        let store = APILogStore(capacity: 3)
+        let requests = (0..<5).map { _ in makeRequest() }
+
+        for request in requests {
+            store.log(.request(request))
+        }
+
+        #expect(store.events.map(\.id) == requests.suffix(3).map(\.id))
+    }
+
+    /// The cap is on the history alone: a sink and a live consumer have already
+    /// been handed every event, and losing one there would be a dropped log
+    /// rather than a trimmed one.
+    @Test("the capacity does not affect sinks")
+    func capDoesNotAffectSinks() {
+        let sink = SpySink()
+        let store = APILogStore(sinks: [sink], capacity: 1)
+
+        for _ in 0..<4 {
+            store.log(.request(makeRequest()))
+        }
+
+        #expect(store.events.count == 1)
+        #expect(sink.events.count == 4)
     }
 }
 

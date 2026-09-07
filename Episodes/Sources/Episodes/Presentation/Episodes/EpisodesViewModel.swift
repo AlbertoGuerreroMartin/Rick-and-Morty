@@ -99,34 +99,26 @@ final class EpisodesViewModel: EpisodesListSectionViewModelContract {
         startReload()
     }
 
-    /// Wipes the feature's cache and reloads the catalogue.
+    /// Throws away what is on screen and loads the catalogue again.
     ///
-    /// A debug affordance: the purge alone is invisible, so the reload is what
-    /// makes it observable — the next requests have to leave the device, and the
-    /// API logger shows them doing so. A failed purge is logged and the reload
-    /// still happens; there is nothing useful to show a developer beyond the
-    /// console line, and refusing to reload would leave the button looking
-    /// broken rather than merely ineffective.
+    /// The screen calls this when a cache has been cleared behind its back —
+    /// see `CacheClearedNotification`. A cleared cache is invisible on its own,
+    /// so the reload is what makes it observable: the next requests have to
+    /// leave the device, and the API logger shows them doing so.
     ///
     /// The search text is deliberately left alone: it is a local filter over
-    /// whatever is loaded, so it survives the purge the same way it survives a
-    /// retry, and clearing it would look like the purge silently discarded what
+    /// whatever is loaded, so it survives the reload the same way it survives a
+    /// retry, and clearing it would look like the clear silently discarded what
     /// the user typed.
-    func purgeCache() async {
+    func reloadFromScratch() async {
         reloadTask?.cancel()
-
-        do {
-            try await episodesUseCase.purgeCache()
-        } catch {
-            print("[ERROR] Could not purge the episodes cache: \(error.localizedDescription)")
-        }
 
         hasLoaded = false
         episodesPublished = nil
         await startReload().value
     }
 
-    /// Every load — the first one, a retry, a purge — goes through here and is
+    /// Every load — the first one, a retry, a cache clear — goes through here and is
     /// handled identically: the list hides behind the spinner, the catalogue is
     /// fetched, and the answer replaces the rows.
     @discardableResult

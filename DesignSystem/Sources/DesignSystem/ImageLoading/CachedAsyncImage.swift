@@ -7,6 +7,12 @@ import SwiftUI
 /// into view draws its image immediately instead of resetting to a placeholder
 /// and re-decoding — which is what `AsyncImage` does every time SwiftUI
 /// recreates a recycled row.
+///
+/// The read in the initializer is deliberately not logged as a cache hit: it is
+/// the same load as the `.task` that follows a moment later, and counting it
+/// would double every hit in the inspector for no new information. The `.task`
+/// always goes through ``ImageLoader/image(for:maxPixelSize:)``, so one
+/// appearance is one event.
 public struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     private let url: URL?
     private let maxPixelSize: CGFloat
@@ -62,12 +68,19 @@ public struct CachedAsyncImage<Content: View, Placeholder: View>: View {
 
         // Re-check the cache here as well as in `init`: SwiftUI reuses a view's
         // `@State` when only the URL changes, so `image` may still hold the
-        // previous row's picture.
+        // previous row's picture. A hit adopts it immediately, which is what
+        // keeps a recycled row from flashing a placeholder — but it does *not*
+        // return: the load below answers from the same memory cache without
+        // touching the disk or the network, and going through it is what makes
+        // every appearance produce exactly one cache event. Returning early
+        // here would leave the busiest path in the app — a scroll over rows
+        // that are already cached — invisible in the inspector, which is the
+        // one place someone looks to find out why an image did not appear.
         if let cached = loader.cachedImage(for: url, maxPixelSize: maxPixelSize) {
             image = Image(uiImage: cached)
-            return
+        } else {
+            image = nil
         }
-        image = nil
 
         guard let loaded = try? await loader.image(for: url, maxPixelSize: maxPixelSize) else { return }
         // The load outlives cancellation on purpose (see `ImageLoader.image`),

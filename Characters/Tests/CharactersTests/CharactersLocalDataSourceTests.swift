@@ -111,8 +111,36 @@ struct CharactersLocalDataSourceTests {
         #expect(try await dataSource.characterDetail(for: detail) == nil)
     }
 
+    /// The developer-tools screen wipes this feature's cache through the
+    /// factory, which is the only way in from outside the module: the namespace
+    /// stays private, so a caller cannot name — or mistype — it.
+    @Test("purging through the factory empties the feature's cache")
+    func purgeCacheEmptiesTheFeature() async throws {
+        let directory = TemporaryDirectory()
+        defer { directory.remove() }
+        let dependencies = PurgeTestCharactersDependencies(root: directory.url)
+        let dataSource = CharactersLocalDataSource(cacheStore: dependencies.cacheStore)
+        let query = CharactersQuery(page: 1)
+        try await dataSource.store(.make(names: ["Rick Sanchez"], next: nil), for: query)
+
+        try await CharactersFactory.purgeCache(dependencies: dependencies)
+
+        #expect(try await dataSource.charactersPage(for: query) == nil)
+    }
+
     private func makeDataSource(root: URL) -> CharactersLocalDataSource {
         CharactersLocalDataSource(cacheStore: CodableCacheStore(diskStore: FileDiskStore(root: root)))
+    }
+}
+
+/// Stands in for the app container. `purgeCache` only ever touches the cache
+/// store, so the client here is never used.
+private struct PurgeTestCharactersDependencies: CharactersDependencies {
+    let graphQLClient = GraphQLClient(endpoint: URL(string: "https://example.com/graphql")!)
+    let cacheStore: any CacheStoreContract
+
+    init(root: URL) {
+        cacheStore = CodableCacheStore(diskStore: FileDiskStore(root: root))
     }
 }
 

@@ -6,7 +6,9 @@
 //
 
 import Foundation
+import Networking
 import Storage
+import Synchronization
 @testable import DesignSystem
 
 /// A unique directory per test.
@@ -35,6 +37,48 @@ struct FailingImageDiskCache: ImageDiskCacheContract {
     func data(for url: URL) async throws -> Data? { throw Failure() }
 
     func store(_ data: Data, for url: URL) async throws { throw Failure() }
+
+    func removeAll() async throws { throw Failure() }
+}
+
+/// Records the network events an image load produced.
+final class SpyAPISink: APILogSinkContract, @unchecked Sendable {
+    private let storage = Mutex<[APILogEvent]>([])
+
+    var events: [APILogEvent] {
+        storage.withLock { $0 }
+    }
+
+    var requests: [APIRequestRecord] {
+        events.compactMap { if case .request(let record) = $0 { record } else { nil } }
+    }
+
+    var responses: [APIResponseRecord] {
+        events.compactMap { if case .response(let record) = $0 { record } else { nil } }
+    }
+
+    func log(_ event: APILogEvent) {
+        storage.withLock { $0.append(event) }
+    }
+}
+
+/// Records the cache events an image load produced. Which layer answered is
+/// invisible from the outside — every hit returns the same bitmap — so a spy is
+/// the only way to assert on it.
+final class SpyImageCacheSink: CacheLogSinkContract, @unchecked Sendable {
+    private let storage = Mutex<[CacheLogEvent]>([])
+
+    var events: [CacheLogEvent] {
+        storage.withLock { $0 }
+    }
+
+    var outcomes: [CacheLogEvent.Outcome] {
+        events.map(\.outcome)
+    }
+
+    func log(_ event: CacheLogEvent) {
+        storage.withLock { $0.append(event) }
+    }
 }
 
 /// In-memory ``DiskStoreContract`` whose entry metadata is written by the test.

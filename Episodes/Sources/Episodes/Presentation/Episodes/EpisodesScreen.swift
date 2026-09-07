@@ -7,6 +7,7 @@
 
 import Core
 import Foundation
+import Storage
 import SwiftUI
 
 struct EpisodesScreen<Content: View>: View {
@@ -55,19 +56,14 @@ struct EpisodesScreen<Content: View>: View {
                     // `EpisodesViewModel.updateSearchText(_:)`.
                     graph.value.viewModel.updateSearchText(text)
                 }
-                .toolbar {
-                    // Debug only, and compiled out rather than hidden: a purge
-                    // button has no business shipping, and `#if` is the one
-                    // guard a release build cannot get wrong.
-                    #if DEBUG
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            Task { await graph.value.viewModel.purgeCache() }
-                        } label: {
-                            Label("Purge cache", systemImage: "trash")
-                        }
-                    }
-                    #endif
+                // A cache wiped behind this screen's back — from the developer
+                // tools — is announced through `Storage`, and the screen answers
+                // by loading again from scratch. Neither side knows the other
+                // exists: the tool does not know this screen, and this screen
+                // does not know the tool; the notification is the only thing
+                // they share. See `CacheClearedNotification`.
+                .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
+                    Task { await graph.value.viewModel.reloadFromScratch() }
                 }
         }
         .task {
@@ -125,5 +121,4 @@ private struct PreviewEpisodesRepository: EpisodesRepositoryContract {
         }
     }
 
-    func purgeCache() async throws {}
 }

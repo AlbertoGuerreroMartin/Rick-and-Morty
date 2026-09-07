@@ -34,6 +34,23 @@ struct ImageDiskCacheTests {
         #expect(try await cache.data(for: URL(string: "https://example.com/absent.jpeg")!) == nil)
     }
 
+    @Test("removeAll drops every cached image")
+    func removeAllEmptiesTheNamespace() async throws {
+        let directory = TemporaryDirectory()
+        defer { directory.remove() }
+        let disk = FileDiskStore(root: directory.url)
+        let cache = ImageDiskCache(diskStore: disk)
+        try await cache.store(Data("a".utf8), for: URL(string: "https://example.com/a.jpeg")!)
+        try await cache.store(Data("b".utf8), for: URL(string: "https://example.com/b.jpeg")!)
+
+        try await cache.removeAll()
+
+        #expect(try await cache.data(for: URL(string: "https://example.com/a.jpeg")!) == nil)
+        #expect(try await cache.data(for: URL(string: "https://example.com/b.jpeg")!) == nil)
+        // The whole directory goes, not just the two files this test wrote.
+        #expect(try await disk.entries(in: "images").isEmpty)
+    }
+
     @Test("the size cap sweeps the oldest entries first")
     func sweepRemovesOldestEntries() async throws {
         // Dates are set explicitly rather than taken from the filesystem: real
