@@ -1,8 +1,8 @@
 //
-//  CharactersListSectionMapperTests.swift
+//  CharactersGridSectionMapperTests.swift
 //  Characters
 //
-//  Created by Alberto Guerrero Martin on 06/09/2026.
+//  Created by Alberto Guerrero Martin on 07/09/2026.
 //
 
 import Combine
@@ -10,20 +10,20 @@ import Foundation
 import Testing
 @testable import Characters
 
-/// The mapper is where "what the view model knows" becomes "what the screen
-/// shows", and the *order* of its rules is the screen's behaviour: a spinner
-/// beating an empty state, a `nil` list never being mistaken for a zero-length
-/// one. Each rule gets a test.
-@Suite("CharactersListSectionMapper")
+/// A case-for-case mirror of `CharactersListSectionMapperTests`. The grid has
+/// its own mapper so it can diverge, and this suite is what says it has not:
+/// a user toggling layouts must never meet a spinner in one and an empty state
+/// in the other.
+@Suite("CharactersGridSectionMapper")
 @MainActor
-struct CharactersListSectionMapperTests {
+struct CharactersGridSectionMapperTests {
 
     @Test("loading hides everything")
-    func loadingHidesTheList() {
+    func loadingHidesTheGrid() {
         #expect(map(.make(isLoading: true, characters: [.rick])) == .hidden)
     }
 
-    @Test("no page has ever landed hides the list rather than emptying it")
+    @Test("no page has ever landed hides the grid rather than emptying it")
     func nilCharactersIsHiddenNotEmpty() {
         #expect(map(.make(characters: nil)) == .hidden)
     }
@@ -46,8 +46,6 @@ struct CharactersListSectionMapperTests {
                                             canClearFilters: true)))
     }
 
-    /// There is nothing to clear when only the search text is set, and a button
-    /// that cannot help is worse than no button.
     @Test("no results with only a search text cannot clear filters")
     func noMatchesWithoutFieldsHidesTheClearButton() {
         let render = map(.make(characters: [], filter: CharactersFilter(name: "rick")))
@@ -55,13 +53,13 @@ struct CharactersListSectionMapperTests {
         #expect(render == .empty(.noMatches(summary: "\u{201C}rick\u{201D}", canClearFilters: false)))
     }
 
-    @Test("an unfiltered empty list is still no results, with nothing to explain")
+    @Test("an unfiltered empty grid is still no results, with nothing to explain")
     func emptyWithoutAFilterHasNoSummary() {
         #expect(map(.make(characters: [])) == .empty(.noMatches(summary: nil, canClearFilters: false)))
     }
 
-    @Test("rows are shown with the applied search text as the highlight")
-    func visibleRowsCarryTheAppliedName() {
+    @Test("cells are shown with the applied search text as the highlight")
+    func visibleCellsCarryTheAppliedName() {
         let render = map(.make(characters: [.rick],
                                pagination: .idle(nextPage: 2),
                                filter: CharactersFilter(name: "rick")))
@@ -77,12 +75,44 @@ struct CharactersListSectionMapperTests {
         #expect(footer(for: .end) == .none)
     }
 
+    /// The equivalence the two mappers promise, checked directly rather than
+    /// left to the reader comparing two suites: the same data yields the same
+    /// shape from both, for every kind of outcome.
+    @Test("the grid agrees with the list on every outcome")
+    func gridAgreesWithList() {
+        let cases: [DataModel] = [
+            .make(isLoading: true, characters: [.rick]),
+            .make(characters: nil),
+            .make(characters: [], loadFailed: true),
+            .make(characters: [], filter: CharactersFilter(name: "rick", status: .alive)),
+            .make(characters: [.rick, .morty], pagination: .failed(nextPage: 3), filter: CharactersFilter(name: "m")),
+        ]
+        let listMapper = CharactersListSectionMapper(viewModel: StubCharactersListViewModel())
+
+        for data in cases {
+            let list = listMapper.mapToRenderModel(data.asListData)
+            let grid = map(data)
+            switch (list, grid) {
+            case (.hidden, .hidden):
+                break
+            case (.empty(let lhs), .empty(let rhs)):
+                #expect(lhs == rhs)
+            case (.visible(let lc, let lf, let lh), .visible(let gc, let gf, let gh)):
+                #expect(lc == gc)
+                #expect(lf == gf)
+                #expect(lh == gh)
+            default:
+                Issue.record("List drew \(list) while grid drew \(grid)")
+            }
+        }
+    }
+
     // MARK: - Helpers
 
-    private typealias DataModel = CharactersListSectionMapper.DataModel
+    private typealias DataModel = CharactersGridSectionMapper.DataModel
 
-    private func map(_ data: DataModel) -> CharactersListRenderModel {
-        CharactersListSectionMapper(viewModel: StubCharactersListViewModel()).mapToRenderModel(data)
+    private func map(_ data: DataModel) -> CharactersGridRenderModel {
+        CharactersGridSectionMapper(viewModel: StubCharactersGridViewModel()).mapToRenderModel(data)
     }
 
     private func footer(for pagination: CharactersPaginationState) -> CharactersSectionFooter {
@@ -93,7 +123,7 @@ struct CharactersListSectionMapperTests {
     }
 }
 
-private extension CharactersListSectionMapper.DataModel {
+private extension CharactersGridSectionMapper.DataModel {
     /// Named defaults for "nothing special is going on", so each test states
     /// only the one thing it is about.
     static func make(isLoading: Bool = false,
@@ -107,25 +137,33 @@ private extension CharactersListSectionMapper.DataModel {
              filter: filter,
              loadFailed: loadFailed)
     }
-}
 
-extension CharacterModel {
-    static let rick = make(id: "1", name: "Rick Sanchez")
-    static let morty = make(id: "2", name: "Morty Smith")
-
-    static func make(id: String, name: String) -> CharacterModel {
-        CharacterModel(id: id,
-                       name: name,
-                       status: .alive,
-                       species: "Human",
-                       image: URL(string: "https://example.com/\(id).jpeg")!,
-                       location: CharacterLocation(name: "Earth", dimension: nil))
+    var asListData: CharactersListSectionMapper.DataModel {
+        .init(isLoading: isLoading,
+              characters: characters,
+              pagination: pagination,
+              filter: filter,
+              loadFailed: loadFailed)
     }
 }
 
-/// The mapper needs a view model to hold, but not to read: every rule under test
-/// is a pure function of the data model. The publishers are here to satisfy the
-/// contract and nothing else.
+/// The mapper needs a view model to hold, but not to read. The publishers are
+/// here to satisfy the contract and nothing else.
+@MainActor
+private final class StubCharactersGridViewModel: CharactersGridSectionViewModelContract {
+    var loadingPublisher: AnyPublisher<Bool, Never> { Just(false).eraseToAnyPublisher() }
+    var charactersPublisher: AnyPublisher<[CharacterModel]?, Never> { Just(nil).eraseToAnyPublisher() }
+    var paginationPublisher: AnyPublisher<CharactersPaginationState, Never> {
+        Just(.end).eraseToAnyPublisher()
+    }
+    var filterPublisher: AnyPublisher<CharactersFilter, Never> { Just(.empty).eraseToAnyPublisher() }
+    var loadFailedPublisher: AnyPublisher<Bool, Never> { Just(false).eraseToAnyPublisher() }
+
+    func loadNextPage() async {}
+    func retryLoad() {}
+    func clearAllFilters() {}
+}
+
 @MainActor
 private final class StubCharactersListViewModel: CharactersListSectionViewModelContract {
     var loadingPublisher: AnyPublisher<Bool, Never> { Just(false).eraseToAnyPublisher() }

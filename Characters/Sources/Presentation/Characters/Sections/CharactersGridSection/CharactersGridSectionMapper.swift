@@ -1,28 +1,33 @@
 //
-//  CharactersListSectionMapper.swift
+//  CharactersGridSectionMapper.swift
 //  Characters
 //
-//  Created by Alberto Guerrero Martin on 03/09/2026.
+//  Created by Alberto Guerrero Martin on 07/09/2026.
 //
 
 import Combine
 import Core
 import Foundation
 
-enum CharactersListRenderModel: Equatable {
+enum CharactersGridRenderModel: Equatable {
     case hidden
-    /// `highlight` is the substring to emphasise in each row's name, or `nil`
+    /// `highlight` is the substring to emphasise in each cell's name, or `nil`
     /// when there is no search text.
     case visible(characters: [CharacterModel], footer: CharactersSectionFooter, highlight: String?)
     case empty(CharactersSectionEmptyReason)
 }
 
-protocol CharactersListSectionMapperContract: SectionMapperContract {}
+protocol CharactersGridSectionMapperContract: SectionMapperContract {}
 
+/// The grid's own mapper. Its rules are the list's rules, on purpose: the two
+/// layouts are two drawings of one result, and a user toggling between them
+/// must never see the spinner in one and an empty state in the other. That
+/// equivalence is asserted by `CharactersGridSectionMapperTests` mirroring the
+/// list's suite case for case.
 @MainActor
-final class CharactersListSectionMapper: CharactersListSectionMapperContract {
-    typealias ViewModel = CharactersListSectionViewModelContract
-    typealias RenderModel = CharactersListRenderModel
+final class CharactersGridSectionMapper: CharactersGridSectionMapperContract {
+    typealias ViewModel = CharactersGridSectionViewModelContract
+    typealias RenderModel = CharactersGridRenderModel
 
     struct DataModel {
         let isLoading: Bool
@@ -38,31 +43,26 @@ final class CharactersListSectionMapper: CharactersListSectionMapperContract {
         self.viewModel = viewModel
     }
 
-    /// Five publishers through two `combineLatest`s: Combine's operator tops out
-    /// at four streams, so the pair is nested rather than the view model growing
-    /// a single pre-combined "state" publisher — which would defeat the point of
-    /// per-property publishers, since every section would then wake for every
-    /// change.
+    /// Five publishers through two nested `combineLatest`s; see the list mapper
+    /// for why the view model does not grow a single pre-combined state.
     func dataPublisher(_ viewModel: ViewModel) -> AnyPublisher<DataModel, Never> {
-        let list = viewModel.loadingPublisher
+        let grid = viewModel.loadingPublisher
             .combineLatest(viewModel.charactersPublisher, viewModel.paginationPublisher)
         let query = viewModel.filterPublisher
             .combineLatest(viewModel.loadFailedPublisher)
 
-        return list.combineLatest(query)
-            .map { list, query in
-                DataModel(isLoading: list.0,
-                          characters: list.1,
-                          pagination: list.2,
+        return grid.combineLatest(query)
+            .map { grid, query in
+                DataModel(isLoading: grid.0,
+                          characters: grid.1,
+                          pagination: grid.2,
                           filter: query.0,
                           loadFailed: query.1)
             }
             .eraseToAnyPublisher()
     }
 
-    /// The order of these rules *is* the screen's behaviour, so they are written
-    /// as one straight line of early returns rather than a nest of conditions.
-    func mapToRenderModel(_ data: DataModel) -> CharactersListRenderModel {
+    func mapToRenderModel(_ data: DataModel) -> CharactersGridRenderModel {
         guard !data.isLoading else {
             return .hidden
         }

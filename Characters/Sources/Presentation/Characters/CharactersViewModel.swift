@@ -11,6 +11,7 @@ import Networking
 
 @MainActor
 final class CharactersViewModel: CharactersListSectionViewModelContract,
+                                 CharactersGridSectionViewModelContract,
                                  CharactersFilterBarSectionViewModelContract {
     var loadingPublisher: AnyPublisher<Bool, Never> {
         $loadingPublished.eraseToAnyPublisher()

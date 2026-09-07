@@ -10,7 +10,7 @@ struct CharactersScreen<Content: View>: View {
     // (view model publishers -> mapper -> section `@State`). `Owned` never
     // publishes anything, so we get the ownership without the observation.
     @StateObject private var graph: Owned<CharactersScreenGraph>
-    private let makeSection: (CharactersScreenGraph) -> Content
+    private let makeSection: (CharactersScreenGraph, CharactersLayout) -> Content
 
     /// The search field's text, owned by the screen.
     ///
@@ -21,15 +21,24 @@ struct CharactersScreen<Content: View>: View {
     /// model — the rows still arrive through the mapper.
     @State private var searchText = ""
 
+    /// Which of the two results sections is on screen.
+    ///
+    /// Plain `@State`, per screen identity, starting at the list: a preference
+    /// the user has to re-toggle after a relaunch is a small price against
+    /// a `UserDefaults` key the feature would then have to own, migrate and
+    /// reset in tests. Like `searchText`, it is view state the view model never
+    /// learns about, so the screen stays non-observing.
+    @State private var layout: CharactersLayout = .list
+
     init(makeGraph: @escaping () -> CharactersScreenGraph,
-         makeSection: @escaping (CharactersScreenGraph) -> Content) {
+         makeSection: @escaping (CharactersScreenGraph, CharactersLayout) -> Content) {
         _graph = StateObject(wrappedValue: Owned(makeGraph))
         self.makeSection = makeSection
     }
 
     var body: some View {
         NavigationStack {
-            makeSection(graph.value)
+            makeSection(graph.value, layout)
                 .navigationTitle("Characters")
                 .searchable(text: $searchText,
                             placement: .navigationBarDrawer(displayMode: .always),
@@ -47,6 +56,13 @@ struct CharactersScreen<Content: View>: View {
                     graph.value.viewModel.updateSearchText(text)
                 }
                 .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            layout = layout.toggled
+                        } label: {
+                            Label(layout.toggleTitle, systemImage: layout.toggleSystemImage)
+                        }
+                    }
                     // Debug only, and compiled out rather than hidden: a purge
                     // button has no business shipping, and `#if` is the one
                     // guard a release build cannot get wrong.
@@ -74,12 +90,18 @@ struct CharactersScreen<Content: View>: View {
             let viewModel = CharactersViewModel(charactersUseCase: useCase)
             return CharactersScreenGraph(viewModel: viewModel,
                                          listMapper: CharactersListSectionMapper(viewModel: viewModel),
+                                         gridMapper: CharactersGridSectionMapper(viewModel: viewModel),
                                          filterBarMapper: CharactersFilterBarSectionMapper(viewModel: viewModel))
         },
-        makeSection: { graph in
+        makeSection: { graph, layout in
             VStack(spacing: 0) {
                 CharactersFilterBarSectionView(viewModel: graph.viewModel, mapper: graph.filterBarMapper)
-                CharactersListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
+                switch layout {
+                case .list:
+                    CharactersListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
+                case .grid:
+                    CharactersGridSectionView(viewModel: graph.viewModel, mapper: graph.gridMapper)
+                }
             }
         }
     )
