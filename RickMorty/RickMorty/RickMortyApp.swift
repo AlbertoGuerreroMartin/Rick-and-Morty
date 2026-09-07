@@ -28,7 +28,7 @@ struct RickMortyApp: App {
                 }
 
                 Tab("Episodes", systemImage: "list.bullet") {
-                    EpisodesView()
+                    EpisodesFactory.build(dependencies: container)
                 }
 
                 Tab("Locations", systemImage: "mappin") {

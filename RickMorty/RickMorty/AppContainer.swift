@@ -6,6 +6,7 @@
 //
 
 import Characters
+import Episodes
 import Foundation
 import Networking
 import Storage
@@ -59,3 +60,5 @@ struct AppContainer: Sendable {
 }
 
 extension AppContainer: CharactersDependencies {}
+
+extension AppContainer: EpisodesDependencies {}
