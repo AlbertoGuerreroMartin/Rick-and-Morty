@@ -99,9 +99,9 @@ struct EpisodesListSectionMapperTests {
     @Test("a tie on number is broken by code and then id")
     func tiesAreBrokenDeterministically() throws {
         let first = EpisodeModel(id: "a", name: "A", airDate: "2013", code: "S01E01",
-                                 season: 1, number: 1, created: nil, characters: [])
+                                 season: 1, number: 1, created: nil, characters: [], hboMaxURL: nil)
         let second = EpisodeModel(id: "b", name: "B", airDate: "2013", code: "S01E01",
-                                  season: 1, number: 1, created: nil, characters: [])
+                                  season: 1, number: 1, created: nil, characters: [], hboMaxURL: nil)
 
         let ascending = try #require(visibleSeasons(map(.make(episodes: [first, second]))))
         let descending = try #require(visibleSeasons(map(.make(episodes: [second, first]))))
@@ -193,7 +193,8 @@ extension EpisodeModel {
                      season: Int = 1,
                      number: Int = 1,
                      created: Date? = nil,
-                     characters: [EpisodeCharacterModel] = []) -> EpisodeModel {
+                     characters: [EpisodeCharacterModel] = [],
+                     hboMaxURL: URL? = nil) -> EpisodeModel {
         let code = String(format: "S%02dE%02d", season, number)
         return EpisodeModel(id: id ?? "\(code)-\(name)",
                             name: name,
@@ -202,7 +203,8 @@ extension EpisodeModel {
                             season: season,
                             number: number,
                             created: created,
-                            characters: characters)
+                            characters: characters,
+                            hboMaxURL: hboMaxURL)
     }
 }
 

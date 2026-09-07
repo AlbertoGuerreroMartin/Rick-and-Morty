@@ -69,6 +69,24 @@ struct EpisodesViewModelTests {
         #expect(viewModel.episodesPublished?.count == 3)
     }
 
+    /// The view model publishes the models the use case built, links included.
+    /// It does no joining of its own — that is the use case's job — so what this
+    /// pins is that nothing on the way to the section drops the URL.
+    @Test("the HBO Max link survives the trip to the section")
+    func loadDataPublishesTheHBOMaxLink() async {
+        let useCase = StubEpisodesUseCase(result: .success([
+            .make(name: "Pilot", season: 1, number: 1,
+                  hboMaxURL: URL(string: "https://play.hbomax.com/video/watch/1")),
+            .make(name: "Lawnmower Dog", season: 1, number: 2)
+        ]))
+        let viewModel = EpisodesViewModel(episodesUseCase: useCase)
+
+        await viewModel.loadData()
+
+        #expect(viewModel.episodesPublished?.map(\.hboMaxURL?.absoluteString)
+                == ["https://play.hbomax.com/video/watch/1", nil])
+    }
+
     // MARK: - Search
 
     /// The search is local, so a keystroke costs one pass through the mapper and

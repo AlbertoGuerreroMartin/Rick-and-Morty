@@ -37,10 +37,16 @@ public enum EpisodesFactory {
     static func makeGraph(dependencies: any EpisodesDependencies) -> EpisodesScreenGraph {
         let entityMapper = EpisodeEntityMapper()
         let remoteDataSource = EpisodesRemoteDataSource(client: dependencies.graphQLClient)
+        // The one place the two clients are told apart. Everything downstream
+        // takes a contract, so nothing else in the feature can hand a JustWatch
+        // query to rickandmortyapi.
+        let linksRemoteDataSource = HBOMaxLinksRemoteDataSource(client: dependencies.justWatchClient)
         let localDataSource = EpisodesLocalDataSource(cacheStore: dependencies.cacheStore)
         let repository = EpisodesRepository(remoteDataSource: remoteDataSource,
+                                            hboMaxLinksRemoteDataSource: linksRemoteDataSource,
                                             localDataSource: localDataSource,
-                                            mapper: entityMapper)
+                                            mapper: entityMapper,
+                                            linksMapper: HBOMaxLinksMapper())
         let useCase = EpisodesUseCase(repository: repository)
         let viewModel = EpisodesViewModel(episodesUseCase: useCase)
         let listMapper = EpisodesListSectionMapper(viewModel: viewModel)

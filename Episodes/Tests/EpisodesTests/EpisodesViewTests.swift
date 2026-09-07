@@ -69,7 +69,8 @@ struct EpisodesViewTests {
     func sectionDrawsSeasons() async {
         let viewModel = StubEpisodesListViewModel()
         viewModel.episodes = [
-            .make(name: "Pilot", season: 1, number: 1, characters: .cast),
+            .make(name: "Pilot", season: 1, number: 1, characters: .cast,
+                  hboMaxURL: URL(string: "https://play.hbomax.com/video/watch/1")),
             .make(name: "Lawnmower Dog", season: 1, number: 2),
             .make(name: "A Rickle in Time", season: 2, number: 1, characters: .cast)
         ]
@@ -104,6 +105,41 @@ struct EpisodesViewTests {
                                           season: 3, number: 6,
                                           characters: [.init(id: "1",
                                                              image: URL(string: "https://example.com/1.jpeg")!)]))
+        })
+    }
+
+    /// The button is inside a `List` row, which is the arrangement that breaks
+    /// it: the row is tappable itself, and a `Button` whose body never ran is a
+    /// button nobody would notice was missing until they tried to use it.
+    @Test("a row with a link draws its button")
+    func linkedRowDraws() async {
+        await render(List {
+            EpisodeRowView(episode: .make(name: "Pilot", season: 1, number: 1,
+                                          characters: .cast,
+                                          hboMaxURL: URL(string: "https://play.hbomax.com/video/watch/1")))
+        })
+    }
+
+    /// The other half: no link, no button, and the row still lays out — the
+    /// details take the full width whether or not anything sits beside them.
+    @Test("a row without a link draws no button")
+    func unlinkedRowDraws() async {
+        await render(List {
+            EpisodeRowView(episode: .make(name: "Pilot", season: 1, number: 1, hboMaxURL: nil))
+        })
+    }
+
+    /// Both kinds of row in one list, which is what the screen actually shows:
+    /// an episode that is not on HBO Max sits between two that are.
+    @Test("linked and unlinked rows draw side by side")
+    func mixedRowsDraw() async {
+        await render(List {
+            EpisodeRowView(episode: .make(name: "Pilot", season: 1, number: 1,
+                                          hboMaxURL: URL(string: "https://play.hbomax.com/video/watch/1")))
+            EpisodeRowView(episode: .make(name: "Lawnmower Dog", season: 1, number: 2))
+            EpisodeRowView(episode: .make(name: "Anatomy Park", season: 1, number: 3,
+                                          characters: .cast,
+                                          hboMaxURL: URL(string: "https://play.hbomax.com/video/watch/2")))
         })
     }
 
@@ -206,6 +242,7 @@ private extension Array where Element == EpisodeCharacterModel {
 /// nothing else.
 private struct StubEpisodesDependencies: EpisodesDependencies {
     let graphQLClient = GraphQLClient(endpoint: URL(string: "https://example.com/graphql")!)
+    let justWatchClient = GraphQLClient(endpoint: URL(string: "https://example.com/justwatch")!)
     let cacheStore: any CacheStoreContract = CodableCacheStore(
         diskStore: FileDiskStore(
             root: FileManager.default.temporaryDirectory

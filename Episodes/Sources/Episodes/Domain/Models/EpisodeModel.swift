@@ -37,6 +37,36 @@ struct EpisodeModel: Sendable, Hashable, Identifiable {
     /// was absent or unparseable, which is why it is optional and not required.
     let created: Date?
     let characters: [EpisodeCharacterModel]
+    /// Where to watch this episode on HBO Max, or `nil` when there is nowhere —
+    /// or when the lookup that would have found it did not answer.
+    ///
+    /// It lives on the model rather than reaching the row as a stream of its
+    /// own, for two reasons. The row draws it, and everything else the row draws
+    /// is here; and the section mapper's `combineLatest` is already at Combine's
+    /// four-publisher limit, so a fifth stream would mean nesting combines to
+    /// carry a value that is a property of an episode in the first place.
+    ///
+    /// It comes from a different server than every other property here, which is
+    /// why it is the only one that can be `nil` for no reason the user did
+    /// anything about — see `EpisodesUseCase`.
+    let hboMaxURL: URL?
+
+    /// The same episode with its link attached.
+    ///
+    /// The join happens after both fetches land, so the model is built once
+    /// without a link and completed here rather than being made mutable or
+    /// carried through the mapper in a half-built state.
+    func withHBOMaxURL(_ url: URL?) -> EpisodeModel {
+        EpisodeModel(id: id,
+                     name: name,
+                     airDate: airDate,
+                     code: code,
+                     season: season,
+                     number: number,
+                     created: created,
+                     characters: characters,
+                     hboMaxURL: url)
+    }
 }
 
 /// A character as an episode row knows one: something to draw and something to

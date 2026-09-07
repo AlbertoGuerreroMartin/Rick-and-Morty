@@ -37,6 +37,11 @@ struct AppContainer: Sendable {
     /// `ConsoleCacheLogger`.
     let cacheLogStore: CacheLogStore
     let graphQLClient: GraphQLClient
+    /// The second endpoint the app talks to: JustWatch, for the "Watch on HBO
+    /// Max" links on the episodes screen. It shares `apiLogStore` with the
+    /// client above, so a third-party request shows up in the console and the
+    /// request inspector rather than going out unseen.
+    let justWatchClient: GraphQLClient
 
     /// One store for the whole app, app-lifetime like the client. Features get
     /// their own directory through the key's namespace, so sharing the instance
@@ -57,6 +62,7 @@ struct AppContainer: Sendable {
         cacheLogStore = CacheLogStore()
         #endif
         graphQLClient = GraphQLClient.rickAndMorty(logger: apiLogStore)
+        justWatchClient = GraphQLClient.justWatch(logger: apiLogStore)
         // Built here rather than as a property initializer because it needs the
         // log store, which is only ready inside `init`.
         cacheStore = CodableCacheStore(diskStore: FileDiskStore(), logger: cacheLogStore)

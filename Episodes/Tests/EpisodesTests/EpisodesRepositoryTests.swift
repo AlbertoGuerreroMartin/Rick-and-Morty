@@ -213,10 +213,126 @@ struct EpisodesRepositoryTests {
     }
 
     private func makeRepository(remote: FakeEpisodesRemoteDataSource,
-                                local: FakeEpisodesLocalDataSource) -> EpisodesRepository {
+                                local: FakeEpisodesLocalDataSource,
+                                links: FakeHBOMaxLinksRemoteDataSource = FakeHBOMaxLinksRemoteDataSource()) -> EpisodesRepository {
         EpisodesRepository(remoteDataSource: remote,
+                           hboMaxLinksRemoteDataSource: links,
                            localDataSource: local,
-                           mapper: EpisodeEntityMapper())
+                           mapper: EpisodeEntityMapper(),
+                           linksMapper: HBOMaxLinksMapper())
+    }
+}
+
+/// The JustWatch lookup runs on the very same four-step policy as a page of
+/// episodes — one extracted helper, two call sites — so these are the same six
+/// states asserted against the other call site. Sharing the implementation is
+/// exactly why they are worth repeating: a change made for one of the two
+/// fetches now silently changes both.
+@Suite("EpisodesRepository HBO Max links")
+struct EpisodesRepositoryHBOMaxLinksTests {
+
+    @Test("a fresh cache entry answers without touching JustWatch")
+    func freshCacheSkipsTheNetwork() async throws {
+        let local = FakeEpisodesLocalDataSource(offers: .fresh(offers: .oneEpisode(link: "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444")))
+        let links = FakeHBOMaxLinksRemoteDataSource(result: .success(.oneEpisode(link: "https://play.hbomax.com/video/watch/bbbbbbbb-1111-2222-3333-444444444444")))
+        let repository = makeRepository(local: local, links: links)
+
+        let fetched = try await repository.fetchHBOMaxLinks()
+
+        #expect(fetched.url(season: 1, number: 1)?.absoluteString.contains("aaaaaaaa") == true)
+        #expect(await links.callCount == 0)
+    }
+
+    @Test("an expired entry is refreshed from JustWatch and written back")
+    func expiredCacheRefetchesAndStores() async throws {
+        let local = FakeEpisodesLocalDataSource(offers: .expired(offers: .oneEpisode(link: "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444")))
+        let links = FakeHBOMaxLinksRemoteDataSource(result: .success(.oneEpisode(link: "https://play.hbomax.com/video/watch/bbbbbbbb-1111-2222-3333-444444444444")))
+        let repository = makeRepository(local: local, links: links)
+
+        let fetched = try await repository.fetchHBOMaxLinks()
+
+        #expect(fetched.url(season: 1, number: 1)?.absoluteString.contains("bbbbbbbb") == true)
+        #expect(await links.callCount == 1)
+        #expect(await local.storedOffers.count == 1)
+    }
+
+    /// The stale-while-error case, and the reason the links are cached at all:
+    /// an unofficial endpoint that has started refusing requests still leaves
+    /// last week's buttons on the rows.
+    @Test("a failed refresh falls back to the stale entry")
+    func staleEntrySurvivesAFailedFetch() async throws {
+        let local = FakeEpisodesLocalDataSource(offers: .expired(offers: .oneEpisode(link: "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444")))
+        let repository = makeRepository(local: local,
+                                        links: FakeHBOMaxLinksRemoteDataSource(result: .failure(TestError())))
+
+        #expect(try await repository.fetchHBOMaxLinks().url(season: 1, number: 1) != nil)
+    }
+
+    /// It throws rather than answering `.empty`: whether a missing link is
+    /// survivable is the use case's decision, and a repository that swallowed
+    /// the error here would take it away and log nothing.
+    @Test("with nothing cached, a failed fetch is an error")
+    func noCacheAndFailedFetchThrows() async {
+        let repository = makeRepository(local: FakeEpisodesLocalDataSource(),
+                                        links: FakeHBOMaxLinksRemoteDataSource(result: .failure(TestError())))
+
+        await #expect(throws: TestError.self) {
+            _ = try await repository.fetchHBOMaxLinks()
+        }
+    }
+
+    @Test("a cache read that throws is a miss, not a failure")
+    func cacheReadFailureFallsThroughToTheNetwork() async throws {
+        let local = FakeEpisodesLocalDataSource(readError: TestError())
+        let links = FakeHBOMaxLinksRemoteDataSource(result: .success(.oneEpisode(link: "https://play.hbomax.com/video/watch/bbbbbbbb-1111-2222-3333-444444444444")))
+        let repository = makeRepository(local: local, links: links)
+
+        #expect(try await repository.fetchHBOMaxLinks().url(season: 1, number: 1) != nil)
+        #expect(await links.callCount == 1)
+    }
+
+    @Test("a cache write that throws still returns the links")
+    func cacheWriteFailureDoesNotFailTheFetch() async throws {
+        let local = FakeEpisodesLocalDataSource(writeError: TestError())
+        let links = FakeHBOMaxLinksRemoteDataSource(result: .success(.oneEpisode(link: "https://play.hbomax.com/video/watch/bbbbbbbb-1111-2222-3333-444444444444")))
+        let repository = makeRepository(local: local, links: links)
+
+        #expect(try await repository.fetchHBOMaxLinks().url(season: 1, number: 1) != nil)
+    }
+
+    @Test("cancellation is rethrown rather than answered from a stale entry")
+    func cancellationIsRethrown() async {
+        let local = FakeEpisodesLocalDataSource(offers: .expired(offers: .oneEpisode(link: "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444")))
+        let repository = makeRepository(local: local,
+                                        links: FakeHBOMaxLinksRemoteDataSource(result: .failure(CancellationError())))
+
+        await #expect(throws: CancellationError.self) {
+            _ = try await repository.fetchHBOMaxLinks()
+        }
+    }
+
+    /// The offers are cached as the *entity*, so the normalisation rules run on
+    /// every read — a week-old entry is mapped by today's mapper rather than by
+    /// whatever the rules were when it was written.
+    @Test("a cached entity is mapped on read, not when it was stored")
+    func cachedOffersAreMappedOnRead() async throws {
+        let local = FakeEpisodesLocalDataSource(offers: .fresh(offers: .oneEpisode(
+            link: "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444?utm_source=universal_search"
+        )))
+
+        let fetched = try await makeRepository(local: local).fetchHBOMaxLinks()
+
+        #expect(fetched.url(season: 1, number: 1)?.absoluteString
+                == "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444")
+    }
+
+    private func makeRepository(local: FakeEpisodesLocalDataSource,
+                                links: FakeHBOMaxLinksRemoteDataSource = FakeHBOMaxLinksRemoteDataSource()) -> EpisodesRepository {
+        EpisodesRepository(remoteDataSource: FakeEpisodesRemoteDataSource(pages: [:]),
+                           hboMaxLinksRemoteDataSource: links,
+                           localDataSource: local,
+                           mapper: EpisodeEntityMapper(),
+                           linksMapper: HBOMaxLinksMapper())
     }
 }
 
@@ -247,15 +363,21 @@ actor FakeEpisodesRemoteDataSource: EpisodesRemoteDataSourceContract {
 
 actor FakeEpisodesLocalDataSource: EpisodesLocalDataSourceContract {
     private let entries: [Int: CacheEntry<EpisodesPageEntity>]
+    /// There is only ever one offers entry — the lookup is one request for the
+    /// whole show — so it needs no key.
+    private let offers: CacheEntry<JustWatchShowEntity>?
     private let readError: (any Error)?
     private let writeError: (any Error)?
     private(set) var storedPages: [EpisodesPageEntity] = []
+    private(set) var storedOffers: [JustWatchShowEntity] = []
     private(set) var removeAllCallCount = 0
 
     init(entries: [Int: CacheEntry<EpisodesPageEntity>] = [:],
+         offers: CacheEntry<JustWatchShowEntity>? = nil,
          readError: (any Error)? = nil,
          writeError: (any Error)? = nil) {
         self.entries = entries
+        self.offers = offers
         self.readError = readError
         self.writeError = writeError
     }
@@ -270,9 +392,35 @@ actor FakeEpisodesLocalDataSource: EpisodesLocalDataSourceContract {
         storedPages.append(page)
     }
 
+    func showOffers(for query: JustWatchShowOffersQuery) async throws -> CacheEntry<JustWatchShowEntity>? {
+        if let readError { throw readError }
+        return offers
+    }
+
+    func store(_ offers: JustWatchShowEntity, for query: JustWatchShowOffersQuery) async throws {
+        if let writeError { throw writeError }
+        storedOffers.append(offers)
+    }
+
     func removeAll() async throws {
         if let writeError { throw writeError }
         removeAllCallCount += 1
+    }
+}
+
+/// One canned answer, because the lookup is one request: there is no page, no
+/// filter and no second call to tell apart.
+actor FakeHBOMaxLinksRemoteDataSource: HBOMaxLinksRemoteDataSourceContract {
+    private let result: Result<JustWatchShowEntity, any Error>
+    private(set) var callCount = 0
+
+    init(result: Result<JustWatchShowEntity, any Error> = .success(JustWatchShowEntity(seasons: nil))) {
+        self.result = result
+    }
+
+    func fetchShowOffers(_ query: JustWatchShowOffersQuery) async throws -> JustWatchShowEntity {
+        callCount += 1
+        return try result.get()
     }
 }
 
@@ -285,6 +433,24 @@ extension CacheEntry where Value == EpisodesPageEntity {
 
     static func expired(page: EpisodesPageEntity) -> CacheEntry {
         CacheEntry(value: page, storedAt: .distantPast, expiresAt: .distantPast, isExpired: true)
+    }
+}
+
+extension CacheEntry where Value == JustWatchShowEntity {
+    static func fresh(offers: JustWatchShowEntity) -> CacheEntry {
+        CacheEntry(value: offers, storedAt: .distantPast, expiresAt: .distantFuture, isExpired: false)
+    }
+
+    static func expired(offers: JustWatchShowEntity) -> CacheEntry {
+        CacheEntry(value: offers, storedAt: .distantPast, expiresAt: .distantPast, isExpired: true)
+    }
+}
+
+extension JustWatchShowEntity {
+    /// Season 1, episode 1, on HBO Max at `link`. The policy tests only ever
+    /// need to tell one answer from another.
+    static func oneEpisode(link: String) -> JustWatchShowEntity {
+        .make(episodes: [.make(season: 1, number: 1, offers: [.max(link)])])
     }
 }
 

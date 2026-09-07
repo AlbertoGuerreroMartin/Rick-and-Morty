@@ -60,7 +60,11 @@ final class EpisodeEntityMapper: EpisodeEntityMapperContract {
                             season: season,
                             number: number,
                             created: Self.date(from: entity.created),
-                            characters: mapCharacters(entity.characters))
+                            characters: mapCharacters(entity.characters),
+                            // Always nil here: the link comes from JustWatch, a
+                            // different server this mapper knows nothing about,
+                            // and is joined on later. See `EpisodesUseCase`.
+                            hboMaxURL: nil)
     }
 
     // MARK: - Episode code

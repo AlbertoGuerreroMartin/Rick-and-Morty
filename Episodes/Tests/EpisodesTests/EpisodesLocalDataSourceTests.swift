@@ -92,6 +92,72 @@ struct EpisodesLocalDataSourceTests {
         #expect(try await dataSource.episodesPage(for: EpisodesQuery(page: 1)) == nil)
     }
 
+    // MARK: - The JustWatch offers
+
+    /// The offers go through the same generic plumbing as a page, so what is
+    /// actually being checked is that a deeply nested, entirely-optional tree
+    /// survives a JSON round trip through the real encoder and the real
+    /// filesystem — which is the one thing a fake store would not exercise.
+    @Test("the offers entity round trips through disk")
+    func offersRoundTrip() async throws {
+        let directory = TemporaryDirectory()
+        defer { directory.remove() }
+        let dataSource = makeDataSource(root: directory.url)
+        let query = JustWatchShowOffersQuery()
+
+        try await dataSource.store(.oneEpisode(link: "https://play.hbomax.com/video/watch/1"), for: query)
+        let entry = try await dataSource.showOffers(for: query)
+
+        #expect(entry?.value.seasons?.first?.episodes?.first?.content?.episodeNumber == 1)
+        #expect(entry?.value.seasons?.first?.episodes?.first?.offers?.first?.deeplinkURL
+                == "https://play.hbomax.com/video/watch/1")
+        #expect(entry?.isExpired == false)
+    }
+
+    @Test("offers that were never stored read as nil")
+    func missingOffersAreNil() async throws {
+        let directory = TemporaryDirectory()
+        defer { directory.remove() }
+        let dataSource = makeDataSource(root: directory.url)
+
+        #expect(try await dataSource.showOffers(for: JustWatchShowOffersQuery()) == nil)
+    }
+
+    /// The offers share the `episodes` namespace with the catalogue pages, and
+    /// the key comes from the query — so the two live side by side without one
+    /// ever being read back as the other.
+    @Test("the offers and a page of episodes are two entries")
+    func offersDoNotCollideWithAPage() async throws {
+        let directory = TemporaryDirectory()
+        defer { directory.remove() }
+        let dataSource = makeDataSource(root: directory.url)
+
+        try await dataSource.store(.make(codes: ["S01E01"]), for: EpisodesQuery(page: 1))
+        try await dataSource.store(.oneEpisode(link: "https://play.hbomax.com/video/watch/1"), for: JustWatchShowOffersQuery())
+
+        #expect(try await dataSource.episodesPage(for: EpisodesQuery(page: 1))?
+            .value.results.map(\.episode) == ["S01E01"])
+        #expect(try await dataSource.showOffers(for: JustWatchShowOffersQuery())?
+            .value.seasons?.count == 1)
+    }
+
+    /// "Clear Episodes" in the developer tools has to mean the whole feature,
+    /// links included — an offers entry that survived the wipe would put buttons
+    /// back on a screen the developer just emptied.
+    @Test("removeAll forgets the offers too")
+    func removeAllForgetsTheOffers() async throws {
+        let directory = TemporaryDirectory()
+        defer { directory.remove() }
+        let dataSource = makeDataSource(root: directory.url)
+        try await dataSource.store(.make(codes: ["S01E01"]), for: EpisodesQuery(page: 1))
+        try await dataSource.store(.oneEpisode(link: "https://play.hbomax.com/video/watch/1"), for: JustWatchShowOffersQuery())
+
+        try await dataSource.removeAll()
+
+        #expect(try await dataSource.episodesPage(for: EpisodesQuery(page: 1)) == nil)
+        #expect(try await dataSource.showOffers(for: JustWatchShowOffersQuery()) == nil)
+    }
+
     /// Not a tautology: the number is the one deliberate difference from the
     /// characters feature's cache, and a careless edit back to 24 hours would
     /// triple this screen's request count with nothing on screen to show for it.
@@ -109,6 +175,7 @@ struct EpisodesLocalDataSourceTests {
 /// store, so the client here is never used.
 private struct PurgeTestEpisodesDependencies: EpisodesDependencies {
     let graphQLClient = GraphQLClient(endpoint: URL(string: "https://example.com/graphql")!)
+    let justWatchClient = GraphQLClient(endpoint: URL(string: "https://example.com/justwatch")!)
     let cacheStore: any CacheStoreContract
 
     init(root: URL) {

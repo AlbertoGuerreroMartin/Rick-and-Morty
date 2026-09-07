@@ -24,6 +24,28 @@ public struct GraphQLClient: Sendable {
         )
     }
 
+    /// JustWatch's public — but unofficial and undocumented — GraphQL endpoint.
+    ///
+    /// A second factory rather than a second *client type*: everything this
+    /// package does is endpoint-agnostic, so the only thing that differs between
+    /// the two services is the URL. Both take the same logger, which is the
+    /// point of building it here — a JustWatch call then shows up in the API log
+    /// and the request inspector next to the Rick and Morty ones, rather than
+    /// being an invisible third-party request nobody can see going out.
+    ///
+    /// Unofficial has two consequences worth spelling out. There is no schema to
+    /// introspect (the server disables it), so every operation against this
+    /// endpoint is pinned by observation and has to be written by hand rather
+    /// than generated. And nothing here is a promise: a caller must treat a
+    /// failure as normal and degrade rather than surface an error — see
+    /// `EpisodesUseCase`.
+    public static func justWatch(logger: any APILogSinkContract = NoOpAPILogger()) -> GraphQLClient {
+        GraphQLClient(
+            endpoint: URL(string: "https://apis.justwatch.com/graphql")!,
+            logger: logger
+        )
+    }
+
     let endpoint: URL
     let session: URLSession
     let logger: any APILogSinkContract

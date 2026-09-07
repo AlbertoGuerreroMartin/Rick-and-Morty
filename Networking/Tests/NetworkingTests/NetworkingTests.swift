@@ -109,6 +109,43 @@ private struct WideEntity: GraphQLDocumentConvertible, Codable, Sendable {
     }
 }
 
+/// The two endpoints the app talks to are built here and nowhere else, and one
+/// of them is a third party. A typo in either is a request that leaves the
+/// device for the wrong host — so the URLs are asserted rather than trusted to
+/// review.
+@Suite("GraphQLClient endpoints")
+struct GraphQLClientEndpointTests {
+
+    @Test("the Rick and Morty client points at rickandmortyapi")
+    func rickAndMortyEndpoint() {
+        #expect(GraphQLClient.rickAndMorty().endpoint.absoluteString == "https://rickandmortyapi.com/graphql")
+    }
+
+    @Test("the JustWatch client points at the JustWatch endpoint")
+    func justWatchEndpoint() {
+        #expect(GraphQLClient.justWatch().endpoint.absoluteString == "https://apis.justwatch.com/graphql")
+    }
+
+    /// Two clients, two endpoints. They are built from the same factory type and
+    /// differ in exactly one thing, which is the mistake worth guarding.
+    @Test("the two clients are not the same endpoint")
+    func endpointsDiffer() {
+        #expect(GraphQLClient.rickAndMorty().endpoint != GraphQLClient.justWatch().endpoint)
+    }
+
+    /// The logger is the whole reason the JustWatch client is built by the app
+    /// rather than by the feature: a third-party request that did not reach the
+    /// log would go out unseen by the console and the request inspector alike.
+    @Test("the JustWatch client keeps the logger it is given")
+    func justWatchKeepsItsLogger() {
+        let store = APILogStore()
+
+        let client = GraphQLClient.justWatch(logger: store)
+
+        #expect(client.logger as? APILogStore === store)
+    }
+}
+
 private struct CharactersTestQuery: GraphQLPaginatedQuery {
     typealias ResponseEntity = NarrowEntity
 

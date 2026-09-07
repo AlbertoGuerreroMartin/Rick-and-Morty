@@ -19,7 +19,17 @@ import Storage
 protocol EpisodesLocalDataSourceContract: Sendable {
     func episodesPage(for query: EpisodesQuery) async throws -> CacheEntry<EpisodesPageEntity>?
     func store(_ page: EpisodesPageEntity, for query: EpisodesQuery) async throws
-    /// Drops every page this feature has cached.
+    /// JustWatch's offer tree for the show, cached exactly like a page of
+    /// episodes: same namespace, same lifetime, same `CacheEntry` so the
+    /// repository keeps the stale-while-error decision.
+    ///
+    /// A week is if anything more obviously right here than it is for the
+    /// catalogue. Which episodes are on HBO Max changes when a licensing deal
+    /// does, which is a matter of months, and the cost of being a few days out of
+    /// date is a play button that opens an episode the service no longer has.
+    func showOffers(for query: JustWatchShowOffersQuery) async throws -> CacheEntry<JustWatchShowEntity>?
+    func store(_ offers: JustWatchShowEntity, for query: JustWatchShowOffersQuery) async throws
+    /// Drops everything this feature has cached — pages and offers alike.
     func removeAll() async throws
 }
 
@@ -55,6 +65,18 @@ final class EpisodesLocalDataSource: EpisodesLocalDataSourceContract {
 
     func store(_ page: EpisodesPageEntity, for query: EpisodesQuery) async throws {
         try await storeValue(page, for: query)
+    }
+
+    // Two lines each, and no key string in sight: the generic plumbing below
+    // derives the key from the query, so a second cached endpoint costs the same
+    // as the first one did.
+
+    func showOffers(for query: JustWatchShowOffersQuery) async throws -> CacheEntry<JustWatchShowEntity>? {
+        try await entry(for: query, as: JustWatchShowEntity.self)
+    }
+
+    func store(_ offers: JustWatchShowEntity, for query: JustWatchShowOffersQuery) async throws {
+        try await storeValue(offers, for: query)
     }
 
     /// The namespace is what makes this one call rather than a walk over every

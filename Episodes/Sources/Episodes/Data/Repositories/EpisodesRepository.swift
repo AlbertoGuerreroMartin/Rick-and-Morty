@@ -6,12 +6,21 @@
 //
 
 import Foundation
+import Storage
 
 protocol EpisodesRepositoryContract: Sendable {
     /// The whole catalogue, in server order. There is no page parameter because
     /// the screen has no pagination: see the walk below for why fetching
     /// everything is the cheaper option here.
     func fetchEpisodes() async throws -> [EpisodeModel]
+
+    /// Where to watch each episode on HBO Max, for every episode that is on it.
+    ///
+    /// Separate from `fetchEpisodes()` rather than folded into it: the two come
+    /// from different services and can be asked for at the same time, and only
+    /// the caller knows that a missing link is survivable while a missing
+    /// catalogue is not. Joining them is `EpisodesUseCase`'s job.
+    func fetchHBOMaxLinks() async throws -> HBOMaxLinks
 }
 
 /// Decides, per page, whether the answer comes from disk or from the network —
@@ -42,18 +51,29 @@ protocol EpisodesRepositoryContract: Sendable {
 ///    failed, and swallowing it would defeat structured concurrency.
 ///
 /// Applying it per page rather than to the walk as a whole is what lets a
-/// half-cached catalogue cost only the missing requests.
+/// half-cached catalogue cost only the missing requests — and the same four
+/// steps, extracted into `fetchThroughCache(label:cached:fetch:store:)`, are
+/// what the JustWatch lookup runs on too. It is a different server with a
+/// different failure mode, but the reason for every one of the four steps is
+/// unchanged, and two copies of a policy are two policies the moment one of them
+/// is edited.
 final class EpisodesRepository: EpisodesRepositoryContract {
     private let remoteDataSource: EpisodesRemoteDataSourceContract
+    private let hboMaxLinksRemoteDataSource: HBOMaxLinksRemoteDataSourceContract
     private let localDataSource: EpisodesLocalDataSourceContract
     private let mapper: EpisodeEntityMapperContract
+    private let linksMapper: HBOMaxLinksMapperContract
 
     init(remoteDataSource: EpisodesRemoteDataSourceContract,
+         hboMaxLinksRemoteDataSource: HBOMaxLinksRemoteDataSourceContract,
          localDataSource: EpisodesLocalDataSourceContract,
-         mapper: EpisodeEntityMapperContract) {
+         mapper: EpisodeEntityMapperContract,
+         linksMapper: HBOMaxLinksMapperContract) {
         self.remoteDataSource = remoteDataSource
+        self.hboMaxLinksRemoteDataSource = hboMaxLinksRemoteDataSource
         self.localDataSource = localDataSource
         self.mapper = mapper
+        self.linksMapper = linksMapper
     }
 
     /// Page 1, then wherever `info.next` points, until it points nowhere.
@@ -92,27 +112,76 @@ final class EpisodesRepository: EpisodesRepositoryContract {
         // own entry without a single extra line in the local data source.
         let query = EpisodesQuery(page: page)
 
-        // `try?`: an unreadable cache is a miss, not a failure. Step 1.
-        let cached = try? await localDataSource.episodesPage(for: query)
+        return try await fetchThroughCache(
+            label: "episodes page \(page)",
+            cached: { try await localDataSource.episodesPage(for: query) },
+            fetch: { try await remoteDataSource.fetchEpisodesPage(query) },
+            store: { try await localDataSource.store($0, for: query) }
+        )
+    }
 
-        if let cached, !cached.isExpired {
-            return cached.value
+    /// The show's offers, through the same four-step policy, then mapped.
+    ///
+    /// One request for the whole show rather than one per episode: JustWatch
+    /// answers with every season and every offer in a single ~120 KB response,
+    /// and 51 lookups against an unofficial endpoint to build one column of
+    /// buttons would be the wrong trade by two orders of magnitude.
+    ///
+    /// Mapping happens here, on every read, so the cache stores the server's
+    /// shape and the normalisation rules apply to a week-old entry exactly as
+    /// they do to a fresh one.
+    func fetchHBOMaxLinks() async throws -> HBOMaxLinks {
+        let query = JustWatchShowOffersQuery()
+
+        let offers = try await fetchThroughCache(
+            label: "HBO Max links",
+            cached: { try await localDataSource.showOffers(for: query) },
+            fetch: { try await hboMaxLinksRemoteDataSource.fetchShowOffers(query) },
+            store: { try await localDataSource.store($0, for: query) }
+        )
+
+        return linksMapper.map(offers)
+    }
+
+    /// The four-step policy itself, with the three things that differ — which
+    /// entry to read, what to fetch, where to write it — handed in.
+    ///
+    /// Generic over the value rather than over the query: the query is already
+    /// captured by all three closures at the call site, which is also the only
+    /// place it can be built correctly. `label` appears in nothing but the log
+    /// line, and is a parameter so that line still names *which* fetch could not
+    /// be cached.
+    ///
+    /// - See: the type's documentation for what each of the four steps is for.
+    private func fetchThroughCache<Value: Sendable>(
+        label: String,
+        cached: () async throws -> CacheEntry<Value>?,
+        fetch: () async throws -> Value,
+        store: (Value) async throws -> Void
+    ) async throws -> Value {
+        // `try?`: an unreadable cache is a miss, not a failure. Step 1.
+        let entry = try? await cached()
+
+        // Step 2.
+        if let entry, !entry.isExpired {
+            return entry.value
         }
 
         do {
-            let fetched = try await remoteDataSource.fetchEpisodesPage(query)
+            let fetched = try await fetch()
             do {
-                try await localDataSource.store(fetched, for: query)
+                try await store(fetched)
             } catch {
-                // Step 3: the fetch succeeded, so the caller still gets its page.
-                print("[ERROR] Could not cache episodes page \(page): \(error.localizedDescription)")
+                // Step 3: the fetch succeeded, so the caller still gets its value.
+                print("[ERROR] Could not cache \(label): \(error.localizedDescription)")
             }
             return fetched
         } catch let error as CancellationError {
             throw error
         } catch {
-            guard let cached else { throw error }
-            return cached.value
+            // Step 4.
+            guard let entry else { throw error }
+            return entry.value
         }
     }
 

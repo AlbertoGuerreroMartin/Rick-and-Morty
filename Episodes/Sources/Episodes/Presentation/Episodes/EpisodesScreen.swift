@@ -116,9 +116,20 @@ private struct PreviewEpisodesRepository: EpisodesRepositoryContract {
                                             id: "\(code)-\(index)",
                                             image: URL(string: "https://rickandmortyapi.com/api/character/avatar/\(index).jpeg")!
                                         )
-                                    })
+                                    },
+                                    // Every other episode, so the canvas shows
+                                    // both a linked row and an unlinked one
+                                    // without a JustWatch request.
+                                    hboMaxURL: number.isMultiple(of: 2)
+                                        ? URL(string: "https://play.hbomax.com/video/watch/ef7d1c40-2ecc-471a-81a5-7fe06400240a")
+                                        : nil)
             }
         }
     }
 
+    /// The preview joins nothing: the links are already on the models above, so
+    /// this only has to satisfy the contract.
+    func fetchHBOMaxLinks() async throws -> HBOMaxLinks {
+        .empty
+    }
 }
