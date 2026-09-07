@@ -8,7 +8,10 @@
 import Foundation
 
 protocol CharactersRepositoryContract: Sendable {
-    func fetchCharacters(page: Int) async throws -> CharactersPage
+    /// One page of the list *for a filter*. The filter is part of the request
+    /// rather than state on the repository so that two screens — or two reloads
+    /// racing each other — can never read each other's constraints.
+    func fetchCharacters(filter: CharactersFilter, page: Int) async throws -> CharactersPage
     /// Forgets every cached page and detail. The next fetch goes to the network.
     func purgeCache() async throws
 }
@@ -46,8 +49,12 @@ final class CharactersRepository: CharactersRepositoryContract {
         self.mapper = mapper
     }
 
-    func fetchCharacters(page: Int) async throws -> CharactersPage {
-        let query = CharactersQuery(page: page)
+    func fetchCharacters(filter: CharactersFilter, page: Int) async throws -> CharactersPage {
+        // Building the query here — and only here — is what keeps the cache
+        // honest: the key is derived from the query, so a filtered page and an
+        // unfiltered one address different entries without a single extra line
+        // in the local data source.
+        let query = CharactersQuery(filter: filter, page: page)
 
         // `try?`: an unreadable cache is a miss, not a failure. Step 1.
         let cached = try? await localDataSource.charactersPage(for: query)

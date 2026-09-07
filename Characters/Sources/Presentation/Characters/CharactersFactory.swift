@@ -17,7 +17,14 @@ public enum CharactersFactory {
         CharactersScreen(
             makeGraph: { makeGraph(dependencies: dependencies) },
             makeSection: { graph in
-                CharactersListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
+                // The bar sits above the `List` rather than inside it: a section
+                // that scrolls away with the rows would take the only way back to
+                // the filter sheet with it.
+                VStack(spacing: 0) {
+                    CharactersFilterBarSectionView(viewModel: graph.viewModel,
+                                                   mapper: graph.filterBarMapper)
+                    CharactersListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
+                }
             }
         )
     }
@@ -34,6 +41,9 @@ public enum CharactersFactory {
         let useCase = CharactersUseCase(repository: repository)
         let viewModel = CharactersViewModel(charactersUseCase: useCase)
         let listMapper = CharactersListSectionMapper(viewModel: viewModel)
-        return CharactersScreenGraph(viewModel: viewModel, listMapper: listMapper)
+        let filterBarMapper = CharactersFilterBarSectionMapper(viewModel: viewModel)
+        return CharactersScreenGraph(viewModel: viewModel,
+                                     listMapper: listMapper,
+                                     filterBarMapper: filterBarMapper)
     }
 }

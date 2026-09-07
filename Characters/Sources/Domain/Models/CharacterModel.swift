@@ -16,7 +16,9 @@ struct CharacterModel: Sendable, Hashable {
     let location: CharacterLocation
 }
 
-enum CharacterStatus: String, Sendable {
+/// `CaseIterable` so the filter sheet's picker can list the statuses without a
+/// second, hand-maintained array that could drift from the enum.
+enum CharacterStatus: String, Sendable, Hashable, CaseIterable {
     case alive
     case dead
     case unknown

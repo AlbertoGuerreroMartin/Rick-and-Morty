@@ -7,6 +7,7 @@
 
 import Combine
 import Core
+import Foundation
 
 /// What the last row of the list is, once the rows above it are drawn.
 ///
@@ -21,9 +22,26 @@ enum CharactersListFooter: Equatable {
     case none
 }
 
-enum CharactersListRenderModel {
-    case visible(characters: [CharacterModel], footer: CharactersListFooter)
+/// Why there is nothing to draw.
+///
+/// The two cases are told apart deliberately: "your search matched nothing" and
+/// "we could not ask" look identical in an empty list, but one is answered by
+/// widening the filter and the other by tapping Retry. Collapsing them would
+/// offer the user the wrong button.
+enum CharactersListEmptyReason: Equatable {
+    /// The server answered, with nothing. `summary` is the filter in words, for
+    /// copy that says *what* found nothing; `canClearFilters` is false when
+    /// there is no filter to clear and the button would be a dead end.
+    case noMatches(summary: String?, canClearFilters: Bool)
+    case failed
+}
+
+enum CharactersListRenderModel: Equatable {
     case hidden
+    /// `highlight` is the substring to emphasise in each row's name, or `nil`
+    /// when there is no search text.
+    case visible(characters: [CharacterModel], footer: CharactersListFooter, highlight: String?)
+    case empty(CharactersListEmptyReason)
 }
 
 protocol CharactersListSectionMapperContract: SectionMapperContract {}
@@ -37,6 +55,8 @@ final class CharactersListSectionMapper: CharactersListSectionMapperContract {
         let isLoading: Bool
         let characters: [CharacterModel]?
         let pagination: CharactersPaginationState
+        let filter: CharactersFilter
+        let loadFailed: Bool
     }
 
     let viewModel: ViewModel
@@ -45,19 +65,51 @@ final class CharactersListSectionMapper: CharactersListSectionMapperContract {
         self.viewModel = viewModel
     }
 
+    /// Five publishers through two `combineLatest`s: Combine's operator tops out
+    /// at four streams, so the pair is nested rather than the view model growing
+    /// a single pre-combined "state" publisher — which would defeat the point of
+    /// per-property publishers, since every section would then wake for every
+    /// change.
     func dataPublisher(_ viewModel: ViewModel) -> AnyPublisher<DataModel, Never> {
-        viewModel.loadingPublisher
+        let list = viewModel.loadingPublisher
             .combineLatest(viewModel.charactersPublisher, viewModel.paginationPublisher)
-            .map { DataModel(isLoading: $0, characters: $1, pagination: $2) }
+        let query = viewModel.filterPublisher
+            .combineLatest(viewModel.loadFailedPublisher)
+
+        return list.combineLatest(query)
+            .map { list, query in
+                DataModel(isLoading: list.0,
+                          characters: list.1,
+                          pagination: list.2,
+                          filter: query.0,
+                          loadFailed: query.1)
+            }
             .eraseToAnyPublisher()
     }
 
+    /// The order of these rules *is* the screen's behaviour, so they are written
+    /// as one straight line of early returns rather than a nest of conditions.
     func mapToRenderModel(_ data: DataModel) -> CharactersListRenderModel {
         guard !data.isLoading else {
             return .hidden
         }
 
-        return .visible(characters: data.characters ?? [], footer: footer(for: data.pagination))
+        // `nil` is "no page has ever landed", which is not the same as "zero
+        // results" and must not draw an empty state.
+        guard let characters = data.characters else {
+            return .hidden
+        }
+
+        guard !characters.isEmpty else {
+            return data.loadFailed
+                ? .empty(.failed)
+                : .empty(.noMatches(summary: data.filter.summary,
+                                    canClearFilters: data.filter.hasActiveFields))
+        }
+
+        return .visible(characters: characters,
+                        footer: footer(for: data.pagination),
+                        highlight: data.filter.name)
     }
 
     private func footer(for state: CharactersPaginationState) -> CharactersListFooter {

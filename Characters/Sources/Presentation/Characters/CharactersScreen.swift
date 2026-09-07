@@ -12,6 +12,15 @@ struct CharactersScreen<Content: View>: View {
     @StateObject private var graph: Owned<CharactersScreenGraph>
     private let makeSection: (CharactersScreenGraph) -> Content
 
+    /// The search field's text, owned by the screen.
+    ///
+    /// `.searchable` needs a `Binding`, and the only two-way binding available
+    /// without observation is local `@State`. It is a *write-only* mirror: the
+    /// screen pushes each change into the view model and never reads anything
+    /// back, so this stays consistent with the screen not observing the view
+    /// model — the rows still arrive through the mapper.
+    @State private var searchText = ""
+
     init(makeGraph: @escaping () -> CharactersScreenGraph,
          makeSection: @escaping (CharactersScreenGraph) -> Content) {
         _graph = StateObject(wrappedValue: Owned(makeGraph))
@@ -22,6 +31,21 @@ struct CharactersScreen<Content: View>: View {
         NavigationStack {
             makeSection(graph.value)
                 .navigationTitle("Characters")
+                .searchable(text: $searchText,
+                            placement: .navigationBarDrawer(displayMode: .always),
+                            prompt: "Search by name")
+                // Character names are proper nouns the keyboard has never seen,
+                // so autocorrect turns "Squanchy" into a different query and
+                // capitalization only adds noise the server ignores.
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .onChange(of: searchText) { _, text in
+                    // Debounced inside the view model, not here: the delay is a
+                    // property of how the feature spends its request budget, and
+                    // a `.task(id:)` on the view would be cancelled by the very
+                    // re-render the keystroke causes.
+                    graph.value.viewModel.updateSearchText(text)
+                }
                 .toolbar {
                     // Debug only, and compiled out rather than hidden: a purge
                     // button has no business shipping, and `#if` is the one
@@ -33,7 +57,6 @@ struct CharactersScreen<Content: View>: View {
                         } label: {
                             Label("Purge cache", systemImage: "trash")
                         }
-                        .accessibilityIdentifier("characters.purgeCache")
                     }
                     #endif
                 }
@@ -50,10 +73,14 @@ struct CharactersScreen<Content: View>: View {
             let useCase = CharactersUseCase(repository: PreviewCharactersRepository())
             let viewModel = CharactersViewModel(charactersUseCase: useCase)
             return CharactersScreenGraph(viewModel: viewModel,
-                                         listMapper: CharactersListSectionMapper(viewModel: viewModel))
+                                         listMapper: CharactersListSectionMapper(viewModel: viewModel),
+                                         filterBarMapper: CharactersFilterBarSectionMapper(viewModel: viewModel))
         },
         makeSection: { graph in
-            CharactersListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
+            VStack(spacing: 0) {
+                CharactersFilterBarSectionView(viewModel: graph.viewModel, mapper: graph.filterBarMapper)
+                CharactersListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
+            }
         }
     )
 }
@@ -64,22 +91,32 @@ struct CharactersScreen<Content: View>: View {
 ///
 /// It serves three pages rather than one so the footer, the append and the end
 /// of the list are all reachable in the canvas without a network.
+///
+/// It honours `name` and `status` in memory. That is a *preview* standing in for
+/// the server, not the local search the feature deliberately does not do: the
+/// point is that the canvas can exercise the search bar, the chips and the empty
+/// state at all, which a repository that ignored the filter could not.
 private struct PreviewCharactersRepository: CharactersRepositoryContract {
     private static let pageCount = 3
     private static let names = ["Rick Sanchez", "Morty Smith", "Summer Smith",
                                 "Beth Smith", "Jerry Smith", "Birdperson"]
 
-    func fetchCharacters(page: Int) async throws -> CharactersPage {
+    func fetchCharacters(filter: CharactersFilter, page: Int) async throws -> CharactersPage {
         let characters = Self.names.enumerated().map { index, name in
             // Ids have to be unique *across* pages: `List` keys rows on them, so
             // a repeated id would collapse page two into page one.
             let number = (page - 1) * Self.names.count + index + 1
             return CharacterModel(id: "\(number)",
                                   name: "\(name) (page \(page))",
-                                  status: .alive,
+                                  status: index.isMultiple(of: 2) ? .alive : .dead,
                                   species: "Human",
                                   image: URL(string: "https://rickandmortyapi.com/api/character/avatar/\(number).jpeg")!,
                                   location: CharacterLocation(name: "C-137", dimension: nil))
+        }
+        .filter { character in
+            let matchesName = filter.name.map { character.name.localizedStandardContains($0) } ?? true
+            let matchesStatus = filter.status.map { $0 == character.status } ?? true
+            return matchesName && matchesStatus
         }
         return CharactersPage(characters: characters,
                               nextPage: page < Self.pageCount ? page + 1 : nil)

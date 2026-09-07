@@ -15,4 +15,5 @@
 struct CharactersScreenGraph {
     let viewModel: CharactersViewModel
     let listMapper: CharactersListSectionMapper
+    let filterBarMapper: CharactersFilterBarSectionMapper
 }

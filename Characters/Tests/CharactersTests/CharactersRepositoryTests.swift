@@ -23,7 +23,7 @@ struct CharactersRepositoryTests {
         let remote = FakeCharactersRemoteDataSource(result: .success(.make(names: ["From network"])))
         let repository = makeRepository(remote: remote, local: local)
 
-        let page = try await repository.fetchCharacters(page: 1)
+        let page = try await repository.fetchCharacters(filter: .empty, page: 1)
 
         #expect(page.characters.map(\.name) == ["Rick Sanchez"])
         #expect(await remote.callCount == 0)
@@ -35,7 +35,7 @@ struct CharactersRepositoryTests {
         let remote = FakeCharactersRemoteDataSource(result: .success(.make(names: ["Rick Sanchez"])))
         let repository = makeRepository(remote: remote, local: local)
 
-        let page = try await repository.fetchCharacters(page: 1)
+        let page = try await repository.fetchCharacters(filter: .empty, page: 1)
 
         #expect(page.characters.map(\.name) == ["Rick Sanchez"])
         #expect(await remote.callCount == 1)
@@ -50,7 +50,7 @@ struct CharactersRepositoryTests {
         let remote = FakeCharactersRemoteDataSource(result: .failure(TestError()))
         let repository = makeRepository(remote: remote, local: local)
 
-        let page = try await repository.fetchCharacters(page: 1)
+        let page = try await repository.fetchCharacters(filter: .empty, page: 1)
 
         #expect(page.characters.map(\.name) == ["Yesterday"])
     }
@@ -62,7 +62,7 @@ struct CharactersRepositoryTests {
         let repository = makeRepository(remote: remote, local: local)
 
         await #expect(throws: TestError.self) {
-            _ = try await repository.fetchCharacters(page: 1)
+            _ = try await repository.fetchCharacters(filter: .empty, page: 1)
         }
     }
 
@@ -72,7 +72,7 @@ struct CharactersRepositoryTests {
         let remote = FakeCharactersRemoteDataSource(result: .success(.make(names: ["Rick Sanchez"])))
         let repository = makeRepository(remote: remote, local: local)
 
-        let page = try await repository.fetchCharacters(page: 1)
+        let page = try await repository.fetchCharacters(filter: .empty, page: 1)
 
         #expect(page.characters.map(\.name) == ["Rick Sanchez"])
         #expect(await remote.callCount == 1)
@@ -84,7 +84,7 @@ struct CharactersRepositoryTests {
         let remote = FakeCharactersRemoteDataSource(result: .success(.make(names: ["Rick Sanchez"])))
         let repository = makeRepository(remote: remote, local: local)
 
-        let page = try await repository.fetchCharacters(page: 1)
+        let page = try await repository.fetchCharacters(filter: .empty, page: 1)
 
         #expect(page.characters.map(\.name) == ["Rick Sanchez"])
     }
@@ -98,7 +98,7 @@ struct CharactersRepositoryTests {
         let repository = makeRepository(remote: remote, local: local)
 
         await #expect(throws: CancellationError.self) {
-            _ = try await repository.fetchCharacters(page: 1)
+            _ = try await repository.fetchCharacters(filter: .empty, page: 1)
         }
     }
 
@@ -108,7 +108,7 @@ struct CharactersRepositoryTests {
         let remote = FakeCharactersRemoteDataSource(result: .failure(TestError()))
         let repository = makeRepository(remote: remote, local: local)
 
-        #expect(try await repository.fetchCharacters(page: 1).nextPage == 2)
+        #expect(try await repository.fetchCharacters(filter: .empty, page: 1).nextPage == 2)
     }
 
     @Test("one unmappable entity is skipped, not fatal to the page")
@@ -123,7 +123,7 @@ struct CharactersRepositoryTests {
         let remote = FakeCharactersRemoteDataSource(result: .failure(TestError()))
         let repository = makeRepository(remote: remote, local: local)
 
-        #expect(try await repository.fetchCharacters(page: 1).characters.map(\.name) == ["Rick Sanchez"])
+        #expect(try await repository.fetchCharacters(filter: .empty, page: 1).characters.map(\.name) == ["Rick Sanchez"])
     }
 
     @Test("purging the cache wipes the local data source")
@@ -148,6 +148,52 @@ struct CharactersRepositoryTests {
         }
     }
 
+    /// The filter has to reach the query, or every constraint the user sets is
+    /// silently dropped and the list quietly lies about what it is showing.
+    @Test("every filter field reaches the query")
+    func filterFieldsReachTheQuery() async throws {
+        let local = FakeCharactersLocalDataSource(entry: nil)
+        let remote = FakeCharactersRemoteDataSource(result: .success(.make(names: ["Rick Sanchez"])))
+        let repository = makeRepository(remote: remote, local: local)
+        let filter = CharactersFilter(name: "Rick",
+                                      status: .alive,
+                                      species: "Human",
+                                      type: "Parasite",
+                                      gender: .female)
+
+        _ = try await repository.fetchCharacters(filter: filter, page: 2)
+
+        let query = try #require(await remote.lastQuery)
+        #expect(query.page == 2)
+        #expect(query.name == "Rick")
+        #expect(query.status == .alive)
+        #expect(query.species == "Human")
+        #expect(query.type == "Parasite")
+        #expect(query.gender == .female)
+    }
+
+    /// The identity of an *unfiltered* page must not change now that filters
+    /// exist: the cache key is derived from the document and the encoded
+    /// variables, and both drop `nil` optionals, so the pages already on disk
+    /// stay addressable instead of ageing out on the first launch after this
+    /// feature ships.
+    @Test("an empty filter builds exactly the unfiltered query")
+    func emptyFilterKeepsTheUnfilteredCacheIdentity() async throws {
+        let local = FakeCharactersLocalDataSource(entry: nil)
+        let remote = FakeCharactersRemoteDataSource(result: .success(.make(names: ["Rick Sanchez"])))
+        let repository = makeRepository(remote: remote, local: local)
+
+        _ = try await repository.fetchCharacters(filter: .empty, page: 1)
+
+        let query = try #require(await remote.lastQuery)
+        #expect(query.cacheIdentifier == CharactersQuery(page: 1).cacheIdentifier)
+        #expect(query.name == nil)
+        #expect(query.status == nil)
+        #expect(query.species == nil)
+        #expect(query.type == nil)
+        #expect(query.gender == nil)
+    }
+
     private func makeRepository(remote: FakeCharactersRemoteDataSource,
                                 local: FakeCharactersLocalDataSource) -> CharactersRepository {
         CharactersRepository(remoteDataSource: remote,
@@ -163,6 +209,10 @@ struct TestError: Error, Equatable {}
 actor FakeCharactersRemoteDataSource: CharactersRemoteDataSourceContract {
     private let result: Result<CharactersPageEntity, any Error>
     private(set) var callCount = 0
+    /// The query as the repository built it. Recording it is the only way to
+    /// check the filter mapping without reaching into the repository: the query
+    /// is a private local, and the network is where it becomes observable.
+    private(set) var lastQuery: CharactersQuery?
 
     init(result: Result<CharactersPageEntity, any Error>) {
         self.result = result
@@ -170,6 +220,7 @@ actor FakeCharactersRemoteDataSource: CharactersRemoteDataSourceContract {
 
     func fetchCharactersPage(_ query: CharactersQuery) async throws -> CharactersPageEntity {
         callCount += 1
+        lastQuery = query
         return try result.get()
     }
 

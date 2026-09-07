@@ -35,7 +35,8 @@ struct CharactersListSectionView: View {
     ///
     /// This is *not* observation — the view never reads a property on it. The
     /// render pipeline is unchanged (publishers -> mapper -> `@State`); the view
-    /// model is here only so the footer has something to call.
+    /// model is here only so the footer and the empty states have something to
+    /// call.
     let viewModel: any CharactersListSectionViewModelContract
 
     private let renderModelPublisher: AnyPublisher<CharactersListRenderModel, Never>
@@ -54,26 +55,71 @@ struct CharactersListSectionView: View {
                 renderModel = $0
             }
     }
-    
+
     @ViewBuilder
     var content: some View {
         switch renderModel {
-        case .visible(let characters, let footer):
-            charactersList(characters: characters, footer: footer)
+        case .visible(let characters, let footer, let highlight):
+            charactersList(characters: characters, footer: footer, highlight: highlight)
+        case .empty(let reason):
+            emptyState(reason: reason)
         case .hidden:
             ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
     @ViewBuilder
-    func charactersList(characters: [CharacterModel], footer: CharactersListFooter) -> some View {
+    func charactersList(characters: [CharacterModel],
+                        footer: CharactersListFooter,
+                        highlight: String?) -> some View {
         List {
             ForEach(characters, id: \.id) { character in
-                characterRow(character: character)
+                characterRow(character: character, highlight: highlight)
                     .accessibilityElement(children: .combine)
             }
             footerRow(footer: footer, loadedCount: characters.count)
                 .accessibilityElement(children: .combine)
+        }
+    }
+
+    /// Nothing to draw, and why.
+    ///
+    /// `ContentUnavailableView` rather than a hand-rolled `VStack` so the copy
+    /// gets the system's own layout, metrics and Dynamic Type behaviour for
+    /// free — and so this state looks like every other "nothing here" in iOS
+    /// rather than like something this app invented.
+    @ViewBuilder
+    func emptyState(reason: CharactersListEmptyReason) -> some View {
+        switch reason {
+        case .noMatches(let summary, let canClearFilters):
+            ContentUnavailableView {
+                Label("No characters found", systemImage: "magnifyingglass")
+            } description: {
+                // Naming the query is the difference between a dead end and an
+                // explanation the user can act on: a forgotten species filter is
+                // invisible until the copy says it is there.
+                Text(summary.map { "No results for \($0)." }
+                     ?? "There are no characters to show.")
+            } actions: {
+                if canClearFilters {
+                    Button("Clear filters") {
+                        viewModel.clearAllFilters()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+        case .failed:
+            ContentUnavailableView {
+                Label("Couldn't load characters", systemImage: "exclamationmark.triangle")
+            } description: {
+                Text("Check your connection and try again.")
+            } actions: {
+                Button("Retry") {
+                    viewModel.retryLoad()
+                }
+                .buttonStyle(.borderedProminent)
+            }
         }
     }
 
@@ -123,7 +169,7 @@ struct CharactersListSectionView: View {
     }
 
     @ViewBuilder
-    func characterRow(character: CharacterModel) -> some View {
+    func characterRow(character: CharacterModel, highlight: String?) -> some View {
         HStack(spacing: 12) {
             // `CachedAsyncImage` rather than `AsyncImage`: it keeps the decoded
             // bitmap and the downloaded bytes, so a row scrolling back into view
@@ -138,8 +184,13 @@ struct CharactersListSectionView: View {
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(character.name)
+                Text(highlighted(character.name, matching: highlight))
                     .font(.headline)
+                    // The plain name, always: an `AttributedString` read aloud
+                    // would announce nothing about the emphasis anyway, and the
+                    // highlight is a visual aid to a sighted user scanning a
+                    // list, not information.
+                    .accessibilityLabel(character.name)
                 HStack(spacing: 5) {
                     Circle()
                         .fill(character.status.color)
@@ -157,5 +208,24 @@ struct CharactersListSectionView: View {
         }
         .padding(.vertical, 4)
 
+    }
+
+    /// The searched substring, emphasised inside the name.
+    ///
+    /// Matched case- and diacritic-insensitively so it lines up with what the
+    /// server matched. A name that does not contain the text is returned plain
+    /// rather than treated as an error: the server may well have matched on
+    /// something this client cannot see.
+    private func highlighted(_ name: String, matching highlight: String?) -> AttributedString {
+        var attributed = AttributedString(name)
+        guard let highlight = CharactersFilter.normalized(highlight),
+              let matched = name.range(of: highlight, options: [.caseInsensitive, .diacriticInsensitive]),
+              let range = Range(matched, in: attributed) else {
+            return attributed
+        }
+
+        attributed[range].font = .headline.bold()
+        attributed[range].foregroundColor = .accentColor
+        return attributed
     }
 }
