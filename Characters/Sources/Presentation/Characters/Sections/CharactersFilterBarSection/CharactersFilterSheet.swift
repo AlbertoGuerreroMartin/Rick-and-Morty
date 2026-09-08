@@ -22,7 +22,7 @@ struct CharactersFilterSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
+                Section("Status") {
                     Picker("Status", selection: $draft.status) {
                         Text("Any").tag(CharacterStatus?.none)
                         ForEach(CharacterStatus.allCases, id: \.self) { status in
@@ -30,26 +30,28 @@ struct CharactersFilterSheet: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                }
 
+                Section("Gender") {
                     Picker("Gender", selection: $draft.gender) {
                         Text("Any").tag(CharacterGender?.none)
                         ForEach(CharacterGender.allCases, id: \.self) { gender in
                             Text(gender.rawValue.capitalized).tag(CharacterGender?.some(gender))
                         }
                     }
+                    .pickerStyle(.menu)
                 }
 
-                Section {
-                    // Trimmed on Done, not per keystroke, so a trailing space typed
-                    // mid-word isn't eaten immediately.
+                Section("Species") {
                     TextField("Species", text: text(\.species), prompt: Text("e.g. Human, Alien"))
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
+                }
+
+                Section("Type") {
                     TextField("Type", text: text(\.type), prompt: Text("e.g. Parasite, Clone"))
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
-                } footer: {
-                    Text("Type is the sub-species the API records, like Parasite or Clone.")
                 }
             }
             .navigationTitle("Filters")
