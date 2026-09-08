@@ -45,6 +45,7 @@ struct LocationDetailSectionView: View {
             Text(content.name)
                 .font(.title3.weight(.semibold))
                 .lineLimit(2)
+                .padding(.horizontal, 20)
 
             if !content.rows.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
@@ -53,13 +54,13 @@ struct LocationDetailSectionView: View {
                     }
                 }
                 .padding(.top, 10)
+                .padding(.horizontal, 20)
             }
 
             LocationResidentsListView(residents: content.residents)
                 .padding(.top, 20)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.horizontal, 20)
         .padding(.vertical, 16)
     }
 
@@ -88,6 +89,8 @@ struct LocationDetailSectionView: View {
         residents: (1...8).map { index in
             LocationResidentModel(id: "\(index)",
                                   name: "\(index)",
+                                  status: .alive,
+                                  species: "Human",
                                   image: URL(string: "https://rickandmortyapi.com/api/character/avatar/\(index).jpeg")!)
         },
         residentsDescription: "8 residents"

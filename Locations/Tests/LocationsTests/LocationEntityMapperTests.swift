@@ -21,6 +21,10 @@ struct LocationEntityMapperTests {
         #expect(model.type == "Planet")
         #expect(model.dimension == "Dimension C-137")
         #expect(model.residents.map(\.id) == ["1", "2"])
+        #expect(model.residents.map(\.name) == ["Rick Sanchez", "Morty Smith"])
+        #expect(model.residents.map(\.status) == [.alive, .dead])
+        #expect(model.residents.map(\.species) == ["Human", "Human"])
+        #expect(model.residents.map(\.image) == [URL(string: "https://example.com/1.jpeg"), URL(string: "https://example.com/2.jpeg")])
     }
 
     @Test("a nil entity throws")
@@ -86,22 +90,53 @@ struct LocationEntityMapperTests {
 
     @Test("a resident missing its id is skipped, not fatal")
     func residentWithoutAnIdIsSkipped() throws {
-        let entity = LocationEntity.make(residents: [
-            LocationResidentEntity(id: nil, name: "Rick Sanchez", image: URL(string: "https://example.com/1.jpeg")),
-            LocationResidentEntity(id: "2", name: "Morty Smith", image: URL(string: "https://example.com/2.jpeg"))
-        ])
+        let entity = LocationEntity.make(residents: [.make(id: nil), .make(id: "2")])
+
+        #expect(try LocationEntityMapper().map(entity).residents.map(\.id) == ["2"])
+    }
+
+    @Test("a resident missing its name is skipped, not fatal")
+    func residentWithoutANameIsSkipped() throws {
+        let entity = LocationEntity.make(residents: [.make(id: "1", name: nil), .make(id: "2")])
+
+        #expect(try LocationEntityMapper().map(entity).residents.map(\.id) == ["2"])
+    }
+
+    @Test("a resident missing its status is skipped, not fatal")
+    func residentWithoutAStatusIsSkipped() throws {
+        let entity = LocationEntity.make(residents: [.make(id: "1", status: nil), .make(id: "2")])
+
+        #expect(try LocationEntityMapper().map(entity).residents.map(\.id) == ["2"])
+    }
+
+    @Test("a resident missing its species is skipped, not fatal")
+    func residentWithoutASpeciesIsSkipped() throws {
+        let entity = LocationEntity.make(residents: [.make(id: "1", species: nil), .make(id: "2")])
 
         #expect(try LocationEntityMapper().map(entity).residents.map(\.id) == ["2"])
     }
 
     @Test("a resident missing its image is skipped, not fatal")
     func residentWithoutAnImageIsSkipped() throws {
-        let entity = LocationEntity.make(residents: [
-            LocationResidentEntity(id: "1", name: "Rick Sanchez", image: nil),
-            LocationResidentEntity(id: "2", name: "Morty Smith", image: URL(string: "https://example.com/2.jpeg"))
-        ])
+        let entity = LocationEntity.make(residents: [.make(id: "1", image: nil), .make(id: "2")])
 
         #expect(try LocationEntityMapper().map(entity).residents.map(\.id) == ["2"])
+    }
+
+    @Test("the status is parsed regardless of the API's casing",
+          arguments: [("Alive", LocationResidentStatus.alive), ("alive", .alive), ("DEAD", .dead), ("dead", .dead),
+                      ("unknown", .unknown), ("Unknown", .unknown)])
+    func statusIgnoresCasing(raw: String, expected: LocationResidentStatus) throws {
+        let entity = LocationEntity.make(residents: [.make(status: raw)])
+
+        #expect(try LocationEntityMapper().map(entity).residents.map(\.status) == [expected])
+    }
+
+    @Test("an unrecognized status falls back to unknown rather than dropping the resident")
+    func unrecognizedStatusIsUnknown() throws {
+        let entity = LocationEntity.make(residents: [.make(status: "Schrödinger"), .make(id: "2", status: "")])
+
+        #expect(try LocationEntityMapper().map(entity).residents.map(\.status) == [.unknown, .unknown])
     }
 
     @Test("absent residents map to an empty list rather than failing")
@@ -111,9 +146,7 @@ struct LocationEntityMapperTests {
 
     @Test("the residents keep the API's order")
     func residentsKeepTheirOrder() throws {
-        let entity = LocationEntity.make(residents: ["9", "3", "7"].map { (id: String) in
-            LocationResidentEntity(id: id, name: "Resident \(id)", image: URL(string: "https://example.com/\(id).jpeg"))
-        })
+        let entity = LocationEntity.make(residents: ["9", "3", "7"].map { (id: String) in .make(id: id) })
 
         #expect(try LocationEntityMapper().map(entity).residents.map(\.id) == ["9", "3", "7"])
     }

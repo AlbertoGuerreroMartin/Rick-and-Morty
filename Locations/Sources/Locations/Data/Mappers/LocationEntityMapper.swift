@@ -50,8 +50,10 @@ final class LocationEntityMapper: LocationEntityMapperContract {
         (entities ?? []).compactMap { entity in
             guard let id = entity.id,
                   let name = entity.name,
+                  let status = entity.status.flatMap(LocationResidentStatus.init(rawValue:)),
+                  let species = entity.species,
                   let image = entity.image else { return nil }
-            return LocationResidentModel(id: id, name: name, image: image)
+            return LocationResidentModel(id: id, name: name, status: status, species: species, image: image)
         }
     }
 

@@ -67,6 +67,8 @@ private struct PreviewLocationsRepository: LocationsRepositoryContract {
                                      LocationResidentModel(
                                         id: "\(id)-\(resident)",
                                         name: "\(resident)",
+                                        status: .alive,
+                                        species: "Human",
                                         image: URL(string: "https://rickandmortyapi.com/api/character/avatar/\(resident + 1).jpeg")!
                                      )
                                  })

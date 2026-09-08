@@ -46,7 +46,7 @@ struct LocationsQueryTests {
         #expect(!document.contains("url"))
     }
 
-    @Test("residents expands into a nested selection set of id and image")
+    @Test("residents expands into a nested selection set of the fields the row shows")
     func documentNestsTheResidentSelection() throws {
         let document = LocationsQuery(page: 1).document
         let selection = try #require(document.range(of: "residents {"))
@@ -55,9 +55,11 @@ struct LocationsQueryTests {
         let nested = body[..<closing.lowerBound]
 
         #expect(nested.contains("id"))
+        #expect(nested.contains("name"))
+        #expect(nested.contains("status"))
+        #expect(nested.contains("species"))
         #expect(nested.contains("image"))
-        #expect(!nested.contains("status"))
-        #expect(!nested.contains("species"))
+        #expect(!nested.contains("episode"))
     }
 
     @Test("the page info the pagination state needs is selected")

@@ -224,10 +224,20 @@ extension LocationEntity {
                      type: String? = "Planet",
                      dimension: String? = "Dimension C-137",
                      residents: [LocationResidentEntity]? = [
-                        LocationResidentEntity(id: "1", name: "Rick Sanchez", image: URL(string: "https://example.com/1.jpeg")),
-                        LocationResidentEntity(id: "2", name: "Morty Smith", image: URL(string: "https://example.com/2.jpeg"))
+                        .make(id: "1", name: "Rick Sanchez", image: URL(string: "https://example.com/1.jpeg")),
+                        .make(id: "2", name: "Morty Smith", status: "Dead", image: URL(string: "https://example.com/2.jpeg"))
                      ]) -> LocationEntity {
         LocationEntity(id: id, name: name, type: type, dimension: dimension, residents: residents)
+    }
+}
+
+extension LocationResidentEntity {
+    static func make(id: String? = "1",
+                     name: String? = "Rick Sanchez",
+                     status: String? = "Alive",
+                     species: String? = "Human",
+                     image: URL? = URL(string: "https://example.com/1.jpeg")) -> LocationResidentEntity {
+        LocationResidentEntity(id: id, name: name, status: status, species: species, image: image)
     }
 }
 

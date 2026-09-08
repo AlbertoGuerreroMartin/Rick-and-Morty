@@ -11,7 +11,7 @@ import SwiftUI
 struct LocationsCarouselItemView: View {
 
     /// Big enough for three lines of a headline, covering all but the catalogue's longest names.
-    static let diameter: CGFloat = 150
+    static let diameter: CGFloat = 130
 
     let title: String
     /// Drives only the glow; scale and dimming follow the scroll itself in the section view.

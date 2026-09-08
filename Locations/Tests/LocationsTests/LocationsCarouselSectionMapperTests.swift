@@ -195,6 +195,8 @@ extension Array where Element == LocationResidentModel {
         (1...6).map { index in
             LocationResidentModel(id: "\(index)",
                                   name: "Resident \(index)",
+                                  status: LocationResidentStatus.allCases[index % LocationResidentStatus.allCases.count],
+                                  species: "Human",
                                   image: URL(string: "https://example.com/\(index).jpeg")!)
         }
     }

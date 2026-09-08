@@ -19,7 +19,6 @@ struct LocationEntity: GraphQLDocumentConvertible, Codable, Sendable, Identifiab
     /// API sends `""`, not `null`, when a location has no type; the mapper normalizes it.
     let type: String?
     let dimension: String?
-    /// Only `id` and `image` are selected; `@Document` derives the nested selection set from this type.
     let residents: [LocationResidentEntity]?
 }
 
@@ -29,5 +28,7 @@ struct LocationEntity: GraphQLDocumentConvertible, Codable, Sendable, Identifiab
 struct LocationResidentEntity: GraphQLDocumentConvertible, Codable, Sendable, Identifiable, Hashable {
     let id: String?
     let name: String?
+    let status: String?
+    let species: String?
     let image: URL?
 }

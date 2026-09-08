@@ -22,32 +22,44 @@ struct LocationResidentsListView: View {
 
     var body: some View {
         VStack(alignment: .leading) {
-            Text("Residents")
-                .font(.title3.weight(.semibold))
-                .lineLimit(2)
             List {
-                // Rows are `NavigationLink`s: dead unless a `NavigationStack` is above this view.
-                ForEach(residents) { resident in
-                    NavigationLink(value: LocationsRoute.character(id: resident.id)) {
-                        HStack {
-                            CachedAsyncImage(url: resident.image, maxPixelSize: avatarPixelSize) { image in
-                                image.resizable().scaledToFill()
-                            } placeholder: {
-                                Circle().fill(.quaternary)
-                            }
-                            .frame(width: Self.avatarSize, height: Self.avatarSize)
-                            .clipShape(Circle())
-                            .padding(.trailing)
+                Section(content: {
+                    // Rows are `NavigationLink`s: dead unless a `NavigationStack` is above this view.
+                    ForEach(residents) { resident in
+                        NavigationLink(value: LocationsRoute.character(id: resident.id)) {
+                            HStack {
+                                CachedAsyncImage(url: resident.image, maxPixelSize: avatarPixelSize) { image in
+                                    image.resizable().scaledToFill()
+                                } placeholder: {
+                                    Circle().fill(.quaternary)
+                                }
+                                .frame(width: Self.avatarSize, height: Self.avatarSize)
+                                .clipShape(Circle())
+                                .padding(.trailing)
 
-                            Text(resident.name)
-                                .font(.subheadline.weight(.medium))
-                                .multilineTextAlignment(.trailing)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(resident.name)
+                                        .font(.headline)
+
+                                    HStack(spacing: 5) {
+                                        Circle()
+                                            .fill(resident.status.color)
+                                            .frame(width: 7, height: 7)
+                                        Text("\(resident.status.rawValue.capitalized) · \(resident.species)")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                            .accessibilityElement(children: .combine)
                         }
-                        .accessibilityElement(children: .combine)
                     }
-                }
+                }, header: {
+                    Text("Residents")
+                        .font(.title3.weight(.semibold))
+                        .lineLimit(2)
+                })
             }
-            .listStyle(.inset)
         }
     }
 }
