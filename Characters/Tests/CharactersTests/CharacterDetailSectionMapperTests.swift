@@ -117,12 +117,11 @@ struct CharacterDetailInfoSectionMapperTests {
         let rows = try rows(for: detail)
 
         #expect(rows.map(\.label) == ["Status", "Species", "Type", "Gender",
-                                      "Origin", "Location", "ID"])
+                                      "Origin", "Location"])
         #expect(rows.first { $0.label == "Status" }?.value == "Alive")
         #expect(rows.first { $0.label == "Species" }?.value == "Human")
         #expect(rows.first { $0.label == "Type" }?.value == "Parasite")
         #expect(rows.first { $0.label == "Gender" }?.value == "Male")
-        #expect(rows.first { $0.label == "ID" }?.value == "1")
     }
 
     /// A labelled row with nothing after the colon is worse than one line fewer,
@@ -131,7 +130,7 @@ struct CharacterDetailInfoSectionMapperTests {
     func absentRowsAreDropped() throws {
         let detail = CharacterDetailModel.make(type: nil, origin: nil, location: nil)
 
-        #expect(try rows(for: detail).map(\.label) == ["Status", "Species", "Gender", "ID"])
+        #expect(try rows(for: detail).map(\.label) == ["Status", "Species", "Gender"])
     }
 
     @Test("a place's three fields join into one line")
