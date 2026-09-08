@@ -2,7 +2,7 @@ import Core
 import Storage
 import SwiftUI
 
-struct CharactersScreen<Content: View>: View {
+struct CharactersScreen<Content: View, Detail: View>: View {
     // The graph lives in `Owned` rather than the view model living directly in
     // `@StateObject`: `@StateObject` is what keeps the graph alive for the
     // screen's identity, but it also observes. An observable view model would
@@ -12,6 +12,15 @@ struct CharactersScreen<Content: View>: View {
     // publishes anything, so we get the ownership without the observation.
     @StateObject private var graph: Owned<CharactersScreenGraph>
     private let makeSection: (CharactersScreenGraph, CharactersLayout) -> Content
+
+    /// Builds the pushed character detail for a route value.
+    ///
+    /// A closure, and generic over its result, for exactly the reason
+    /// `makeSection` is: this screen stays a shape rather than a wiring diagram,
+    /// so a test or a preview can push a stub detail without a container, and
+    /// `CharactersFactory` remains the single place where the feature's real
+    /// graph is assembled.
+    private let makeDetail: (CharacterDetailRoute) -> Detail
 
     /// The search field's text, owned by the screen.
     ///
@@ -32,14 +41,24 @@ struct CharactersScreen<Content: View>: View {
     @State private var layout: CharactersLayout = .list
 
     init(makeGraph: @escaping () -> CharactersScreenGraph,
-         makeSection: @escaping (CharactersScreenGraph, CharactersLayout) -> Content) {
+         makeSection: @escaping (CharactersScreenGraph, CharactersLayout) -> Content,
+         makeDetail: @escaping (CharacterDetailRoute) -> Detail) {
         _graph = StateObject(wrappedValue: Owned(makeGraph))
         self.makeSection = makeSection
+        self.makeDetail = makeDetail
     }
 
     var body: some View {
         NavigationStack {
             makeSection(graph.value, layout)
+                // Inside the stack, and declared once for the whole screen
+                // rather than per row: both the list and the grid push the same
+                // `CharacterDetailRoute`, so a layout toggle cannot leave the
+                // two layouts navigating to different places — and there is one
+                // destination built per push instead of one per visible row.
+                .navigationDestination(for: CharacterDetailRoute.self) { route in
+                    makeDetail(route)
+                }
                 .navigationTitle("Characters")
                 .searchable(text: $searchText,
                             placement: .navigationBarDrawer(displayMode: .always),
@@ -101,6 +120,11 @@ struct CharactersScreen<Content: View>: View {
                     CharactersGridSectionView(viewModel: graph.viewModel, mapper: graph.gridMapper)
                 }
             }
+        },
+        // The canvas pushes a placeholder rather than the real detail: building
+        // one needs a container, and what this preview is for is the list.
+        makeDetail: { route in
+            Text("Character \(route.id)")
         }
     )
 }
@@ -142,4 +166,13 @@ private struct PreviewCharactersRepository: CharactersRepositoryContract {
                               nextPage: page < Self.pageCount ? page + 1 : nil)
     }
 
+    /// Never called: this preview never pushes the real detail. The screen it
+    /// stands in for has its own preview and its own stub.
+    func fetchCharacterDetail(id: String) async throws -> CharacterDetailModel {
+        throw CancellationError()
+    }
+
+    func fetchHBOMaxLinks() async throws -> HBOMaxLinks {
+        .empty
+    }
 }

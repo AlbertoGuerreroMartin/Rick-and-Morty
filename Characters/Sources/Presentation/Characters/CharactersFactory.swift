@@ -34,6 +34,12 @@ public enum CharactersFactory {
                         CharactersGridSectionView(viewModel: graph.viewModel, mapper: graph.gridMapper)
                     }
                 }
+            },
+            // The detail is built here, when a row is tapped, and not by the
+            // sections that name the route: the two layouts push the same value
+            // and neither knows what is on the other side of it.
+            makeDetail: { route in
+                CharacterDetailFactory.build(dependencies: dependencies, route: route)
             }
         )
     }
@@ -53,10 +59,18 @@ public enum CharactersFactory {
     static func makeGraph(dependencies: any CharactersDependencies) -> CharactersScreenGraph {
         let entityMapper = CharacterEntityMapper()
         let remoteDataSource = CharactersRemoteDataSource(client: dependencies.graphQLClient)
+        // The one place the two clients are told apart — here and in
+        // `CharacterDetailFactory`. Everything downstream takes a contract, so
+        // nothing else in the feature can hand a JustWatch query to
+        // rickandmortyapi.
+        let linksRemoteDataSource = HBOMaxLinksRemoteDataSource(client: dependencies.justWatchClient)
         let localDataSource = CharactersLocalDataSource(cacheStore: dependencies.cacheStore)
         let repository = CharactersRepository(remoteDataSource: remoteDataSource,
+                                              hboMaxLinksRemoteDataSource: linksRemoteDataSource,
                                               localDataSource: localDataSource,
-                                              mapper: entityMapper)
+                                              mapper: entityMapper,
+                                              detailMapper: CharacterDetailEntityMapper(),
+                                              linksMapper: HBOMaxLinksMapper())
         let useCase = CharactersUseCase(repository: repository)
         let viewModel = CharactersViewModel(charactersUseCase: useCase)
         let listMapper = CharactersListSectionMapper(viewModel: viewModel)

@@ -127,8 +127,23 @@ struct CharactersGridSectionView: View {
     /// letting it drive the layout is how a grid ends up with cells of uneven
     /// heights. The clear square sets the size; the image fills it and is
     /// clipped.
+    ///
+    /// Wrapped in a `NavigationLink` carrying a *value* rather than a
+    /// destination, for the same reasons as the list's row — the detail is built
+    /// on the push, not once per visible cell, and this section never learns
+    /// what it is pushing. `.buttonStyle(.plain)` is not cosmetic here: the
+    /// default style tints its label with the accent colour, which on a cell
+    /// that *is* a photograph turns every character blue.
     @ViewBuilder
     func characterCell(character: CharacterModel, highlight: String?) -> some View {
+        NavigationLink(value: CharacterDetailRoute(id: character.id)) {
+            characterCellContent(character: character, highlight: highlight)
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    func characterCellContent(character: CharacterModel, highlight: String?) -> some View {
         Color.clear
             .aspectRatio(1, contentMode: .fit)
             .overlay {

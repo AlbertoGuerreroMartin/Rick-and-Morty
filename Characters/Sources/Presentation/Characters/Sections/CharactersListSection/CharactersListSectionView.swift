@@ -90,8 +90,23 @@ struct CharactersListSectionView: View {
         }
     }
 
+    /// The row is a `NavigationLink` carrying a *value*, not a destination.
+    ///
+    /// The destination is built by the screen's `navigationDestination(for:)`,
+    /// which means the detail is constructed when the push happens rather than
+    /// once per visible row — a `NavigationLink(destination:)` would build a
+    /// whole screen graph for every row the list lays out. It also keeps this
+    /// section ignorant of what a character detail even is: it names a route
+    /// value and nothing else.
     @ViewBuilder
     func characterRow(character: CharacterModel, highlight: String?) -> some View {
+        NavigationLink(value: CharacterDetailRoute(id: character.id)) {
+            characterRowContent(character: character, highlight: highlight)
+        }
+    }
+
+    @ViewBuilder
+    func characterRowContent(character: CharacterModel, highlight: String?) -> some View {
         HStack(spacing: 12) {
             // `CachedAsyncImage` rather than `AsyncImage`: it keeps the decoded
             // bitmap and the downloaded bytes, so a row scrolling back into view

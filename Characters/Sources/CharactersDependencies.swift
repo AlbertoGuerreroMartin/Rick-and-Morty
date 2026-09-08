@@ -18,6 +18,17 @@ import Storage
 public protocol CharactersDependencies: Sendable {
     var graphQLClient: GraphQLClient { get }
 
+    /// A second client, because this feature talks to a second service: the
+    /// "Watch on HBO Max" links on the character detail come from JustWatch, at
+    /// a different endpoint.
+    ///
+    /// It is a separate requirement rather than something the feature builds for
+    /// itself, so the app stays the only place that decides what a network client
+    /// is — same session policy, and above all the *same logger*, which is what
+    /// puts a JustWatch request in the API log and the request inspector next to
+    /// the character pages instead of leaving it invisible.
+    var justWatchClient: GraphQLClient { get }
+
     /// Shared with every other feature on purpose: the store namespaces its
     /// entries, so one instance backing the whole app means one directory, one
     /// expiry sweep and one place to reason about disk usage — rather than each

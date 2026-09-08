@@ -19,6 +19,21 @@ enum CharacterGender: String, Sendable, Hashable, CaseIterable {
     case male
     case genderless
     case unknown
+
+    init?(rawValue: String) {
+        // Exactly `CharacterStatus`'s reading, for exactly its reasons: the API
+        // sends some of these upper camel cased and some lowercased, and it may
+        // grow a value this app has never heard of. Lowercasing first and
+        // falling back to `unknown` means a detail is never rejected over a
+        // spelling, which matters here because gender is a *required* field of
+        // the detail — a `nil` would fail the whole screen.
+        switch rawValue.lowercased() {
+        case "female": self = .female
+        case "male": self = .male
+        case "genderless": self = .genderless
+        default: self = .unknown
+        }
+    }
 }
 
 /// Every constraint the API accepts on the characters list, in one value.
