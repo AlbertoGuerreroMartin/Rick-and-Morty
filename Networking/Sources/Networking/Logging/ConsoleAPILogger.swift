@@ -97,7 +97,7 @@ public struct APILogFormatter: Sendable {
     public func string(for record: APIRequestRecord) -> String {
         var lines = [
             "♦️ \(time(record.timestamp)) > [PENDING] \(header(record.kind)): [\(record.method)] \(record.url.absoluteString)",
-            "[Method]: \(record.method)",
+            "[Method]: \(record.method)"
         ]
         lines.append(contentsOf: headerLines(record.headers))
         lines.append(contentsOf: requestBodyLines(record.body))
@@ -106,7 +106,7 @@ public struct APILogFormatter: Sendable {
 
     public func string(for record: APIResponseRecord) -> String {
         var lines = [
-            "♦️ \(time(record.timestamp)) > [Done] \(header(record.kind)): [\(record.method)] \(record.url.absoluteString)",
+            "♦️ \(time(record.timestamp)) > [Done] \(header(record.kind)): [\(record.method)] \(record.url.absoluteString)"
         ]
         switch record.outcome {
         case .success(let statusCode):

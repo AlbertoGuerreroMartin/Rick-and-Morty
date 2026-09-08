@@ -14,6 +14,7 @@ let package = Package(
         ),
     ],
     dependencies: [
+        .package(url: "https://github.com/SimplyDanny/SwiftLintPlugins", exact: "0.65.1"),
         .package(path: "../Storage"),
         // Image downloads are logged through Networking's records rather than a
         // parallel set of their own: they are HTTP requests, and one inspector
@@ -26,6 +27,9 @@ let package = Package(
             dependencies: [
                 .product(name: "Storage", package: "Storage"),
                 .product(name: "Networking", package: "Networking"),
+            ],
+            plugins: [
+                .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins"),
             ]
         ),
         .testTarget(
@@ -34,6 +38,9 @@ let package = Package(
                 "DesignSystem",
                 .product(name: "Storage", package: "Storage"),
                 .product(name: "Networking", package: "Networking"),
+            ],
+            plugins: [
+                .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins"),
             ]
         ),
     ],

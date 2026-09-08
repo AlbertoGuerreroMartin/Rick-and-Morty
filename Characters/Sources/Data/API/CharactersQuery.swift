@@ -22,7 +22,7 @@ enum CharactersQueryStatus: String, Encodable {
 
 struct CharactersQuery: GraphQLPaginatedQuery {
     typealias ResponseEntity = CharacterEntity
-    
+
     static var objectRequested: String { "characters" }
 
     let page: Int?
@@ -31,7 +31,7 @@ struct CharactersQuery: GraphQLPaginatedQuery {
     let species: String?
     let type: String?
     let gender: CharactersQueryGender?
-    
+
     init(
         page: Int? = nil,
         name: String? = nil,

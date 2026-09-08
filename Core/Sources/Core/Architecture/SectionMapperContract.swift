@@ -8,8 +8,6 @@
 import Combine
 import Foundation
 
-//public protocol ViewModelContract {}
-
 // Main-actor isolated: mappers read view model publishers and feed section
 // views, both of which live on the main actor.
 @MainActor

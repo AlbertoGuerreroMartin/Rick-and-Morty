@@ -72,9 +72,9 @@ struct EpisodeRowView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 watchOnHBOMaxButton
             }
             characterStrip

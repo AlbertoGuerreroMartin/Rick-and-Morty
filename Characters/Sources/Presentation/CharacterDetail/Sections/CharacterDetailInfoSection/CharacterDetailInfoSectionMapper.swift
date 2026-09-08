@@ -88,7 +88,7 @@ final class CharacterDetailInfoSectionMapper: CharacterDetailInfoSectionMapperCo
             detail.type.map { CharacterDetailInfoRow(label: "Type", value: $0) },
             CharacterDetailInfoRow(label: "Gender", value: detail.gender.rawValue.capitalized),
             place(detail.origin, label: "Origin"),
-            place(detail.location, label: "Location"),
+            place(detail.location, label: "Location")
         ].compactMap { $0 }
     }
 

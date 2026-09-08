@@ -13,7 +13,7 @@ struct LocationResidentsListView: View {
 
     /// The avatar's rendered edge, in points.
     private static let avatarSize: CGFloat = 50
-    
+
     /// The avatar edge in *pixels*, which is what the downsampler decodes to.
     /// Decoding at point size would be soft on every device shipped this decade;
     /// decoding at the source's own size would hold a 300x300 bitmap for each of
@@ -23,7 +23,7 @@ struct LocationResidentsListView: View {
     }
 
     let residents: [LocationResidentModel]
-    
+
     var body: some View {
         VStack(alignment: .leading) {
             Text("Residents")
@@ -40,7 +40,7 @@ struct LocationResidentsListView: View {
                         .frame(width: Self.avatarSize, height: Self.avatarSize)
                         .clipShape(Circle())
                         .padding(.trailing)
-                        
+
                         Text(resident.name)
                             .font(.subheadline.weight(.medium))
                             .multilineTextAlignment(.trailing)

@@ -67,7 +67,7 @@ extension GraphQLPageResponse: GraphQLDocumentConvertible where ResponseEntity: 
     public static func document(depth: Int) -> String {
         [
             GraphQLField.selection("info", GraphQLPageInfo.document(depth: depth)),
-            GraphQLField.selection("results", ResponseEntity.document(depth: depth)),
+            GraphQLField.selection("results", ResponseEntity.document(depth: depth))
         ].joined(separator: "\n")
     }
 }

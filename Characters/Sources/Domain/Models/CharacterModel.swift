@@ -22,7 +22,7 @@ enum CharacterStatus: String, Sendable, Hashable, CaseIterable {
     case alive
     case dead
     case unknown
-    
+
     init?(rawValue: String) {
         // API sends some values upper camel cased, and some lowercased. Lowercase by default to avoid false parsing errors.
         // Also fallback to unknown case to cover from new values.

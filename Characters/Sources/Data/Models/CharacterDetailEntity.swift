@@ -68,7 +68,6 @@ struct CharacterDetailEpisode: GraphQLDocumentConvertible, Codable, Sendable, Id
     let episode: String?
 }
 
-
 // MARK: - Debugging
 
 /// Written out by hand rather than reflected. `@Document` skips computed

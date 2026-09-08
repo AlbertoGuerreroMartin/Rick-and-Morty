@@ -53,6 +53,7 @@ private func expand(
     )
 }
 
+// swiftlint:disable line_length
 /// Optionals and arrays are peeled off so the runtime check sees the element
 /// type — `[Episode]?` has to resolve against `Episode`, not against the array.
 @Test func peelsOptionalsAndArraysDownToTheBaseType() {
@@ -80,6 +81,7 @@ private func expand(
         """
     )
 }
+// swiftlint:enable line_length
 
 @Test func skipsStaticComputedAndUntypedProperties() {
     expand(

@@ -27,7 +27,7 @@ public protocol GraphQLQuery: Encodable {
 
     /// The name of the root field in the schema, e.g. `"characters"`.
     static var objectRequested: String { get }
-    
+
     /// The operation text, exactly as you would paste it into a GraphQL playground.
     var document: String { get }
 }

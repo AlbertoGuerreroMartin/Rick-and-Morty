@@ -25,7 +25,7 @@ enum ImageDownsampler {
             // Force the decode to happen here, on whatever background thread
             // called us, rather than lazily on the main thread at draw time.
             kCGImageSourceShouldCacheImmediately: true,
-            kCGImageSourceThumbnailMaxPixelSize: max(1, maxPixelSize.rounded()),
+            kCGImageSourceThumbnailMaxPixelSize: max(1, maxPixelSize.rounded())
         ] as CFDictionary
 
         guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbnailOptions) else {

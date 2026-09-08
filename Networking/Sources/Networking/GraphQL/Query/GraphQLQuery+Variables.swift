@@ -22,7 +22,7 @@ extension GraphQLQuery {
                                     isOptional: true)
         }
     }
-    
+
     func queryParametersDefinitions(_ declaredProperties: [DeclaredProperty]) -> String {
         return declaredProperties.map {
             // "id" keys must be defined on the query document as an "ID!" type,

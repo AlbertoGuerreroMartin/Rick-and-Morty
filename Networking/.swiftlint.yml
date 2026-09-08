@@ -1,0 +1,4 @@
+# Points the SwiftLint SwiftPM plugin at the shared root configuration.
+# The plugin only searches inside the package directory, so this file has
+# to exist here; all rules live in the parent.
+parent_config: ../.swiftlint.yml

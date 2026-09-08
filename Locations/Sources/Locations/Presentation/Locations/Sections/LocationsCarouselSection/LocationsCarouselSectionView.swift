@@ -45,7 +45,7 @@ struct LocationsCarouselSectionView: View {
 
     private let renderModelPublisher: AnyPublisher<LocationsCarouselRenderModel, Never>
     private let carouselMaxHeight: CGFloat = 200
-    
+
     @State var renderModel: LocationsCarouselRenderModel = .hidden
 
     /// The item the carousel has settled on, written by the scroll view itself
@@ -137,7 +137,7 @@ struct LocationsCarouselSectionView: View {
                             withAnimation(.snappy) { position = item.id }
                         }
                     }
-                    
+
                     // The last stop, and the pagination trigger — see the type. It
                     // sits inside the lazy row on purpose: outside it, it would be
                     // built on the first frame and chain-load every page.
@@ -156,7 +156,7 @@ struct LocationsCarouselSectionView: View {
         .scrollIndicators(.hidden)
         .safeAreaPadding(.horizontal, edgeInset)
         .scrollPosition(id: $position, anchor: .center)
-        .frame(maxHeight : carouselMaxHeight)
+        .frame(maxHeight: carouselMaxHeight)
         .onChange(of: position) { _, id in
             focusChanged(to: id, items: items)
         }

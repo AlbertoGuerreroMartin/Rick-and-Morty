@@ -13,13 +13,22 @@ let package = Package(
             targets: ["Storage"]
         ),
     ],
+    dependencies: [
+        .package(url: "https://github.com/SimplyDanny/SwiftLintPlugins", exact: "0.65.1"),
+    ],
     targets: [
         .target(
-            name: "Storage"
+            name: "Storage",
+            plugins: [
+                .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins"),
+            ]
         ),
         .testTarget(
             name: "StorageTests",
-            dependencies: ["Storage"]
+            dependencies: ["Storage"],
+            plugins: [
+                .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins"),
+            ]
         ),
     ],
     swiftLanguageModes: [.v6]

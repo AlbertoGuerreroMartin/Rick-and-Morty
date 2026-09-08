@@ -14,6 +14,6 @@ public protocol SectionViewContract: View {
 
     var viewModel: ViewModel { get }
     var renderModelPublisher: AnyPublisher<RenderModel, Never> { get }
-    
+
     init(viewModel: ViewModel, renderModelPublisher: AnyPublisher<RenderModel, Never>)
 }

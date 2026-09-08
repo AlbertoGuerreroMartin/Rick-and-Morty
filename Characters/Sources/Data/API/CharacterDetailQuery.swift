@@ -9,8 +9,8 @@ import Networking
 
 struct CharacterDetailQuery: GraphQLQuery {
     typealias ResponseEntity = CharacterDetailEntity
-    
+
     static var objectRequested: String { "character" }
-    
+
     let id: String
 }

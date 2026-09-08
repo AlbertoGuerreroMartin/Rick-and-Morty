@@ -38,12 +38,12 @@ final class CharacterEntityMapper: CharacterEntityMapperContract {
                               image: try require(entity.image, "image"),
                               location: try mapLocation(entity.location))
     }
-    
+
     func mapLocation(_ entity: CharacterLocationEntity?) throws -> CharacterLocation {
         guard let entity else {
             throw CharacterEntityMapperError.noEntityError("location (CharacterLocationEntity)")
         }
-        
+
         return CharacterLocation(name: try require(entity.name, "location.name"),
                                  dimension: entity.dimension)
     }

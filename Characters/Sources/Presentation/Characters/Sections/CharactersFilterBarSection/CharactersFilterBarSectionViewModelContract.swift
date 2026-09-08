@@ -16,8 +16,6 @@ import Combine
 /// and a section that can only see what it needs is a section that cannot
 /// accidentally start depending on the rest.
 ///
-// Main-actor isolated for the same reason as every other contract here: the
-// conforming view model, the mapper and the view all live on the main actor.
 @MainActor
 protocol CharactersFilterBarSectionViewModelContract {
     var filterPublisher: AnyPublisher<CharactersFilter, Never> { get }

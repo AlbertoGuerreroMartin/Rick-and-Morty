@@ -14,6 +14,7 @@ let package = Package(
         ),
     ],
     dependencies: [
+        .package(url: "https://github.com/SimplyDanny/SwiftLintPlugins", exact: "0.65.1"),
         .package(path: "../Networking"),
         .package(path: "../Storage"),
         .package(path: "../DesignSystem"),
@@ -25,6 +26,9 @@ let package = Package(
                 .product(name: "Networking", package: "Networking"),
                 .product(name: "Storage", package: "Storage"),
                 .product(name: "DesignSystem", package: "DesignSystem"),
+            ],
+            plugins: [
+                .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins"),
             ]
         ),
         .testTarget(
@@ -34,6 +38,9 @@ let package = Package(
                 .product(name: "Networking", package: "Networking"),
                 .product(name: "Storage", package: "Storage"),
                 .product(name: "DesignSystem", package: "DesignSystem"),
+            ],
+            plugins: [
+                .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins"),
             ]
         ),
     ],

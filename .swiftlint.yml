@@ -1,0 +1,45 @@
+# Root SwiftLint configuration shared by the app project and every local package.
+#
+# Each package directory (and `RickMorty/`, the app project directory) has a
+# tiny `.swiftlint.yml` that only points back here via `parent_config`. That
+# indirection is required because the SwiftLint SwiftPM plugin looks for a
+# config inside the package directory and never walks above it.
+
+disabled_rules:
+  - optional_data_string_conversion
+
+excluded:
+  - "**/.build"
+  - "**/.swiftpm"
+  - "**/DerivedData"
+
+identifier_name:
+  # Overriding `excluded` replaces SwiftLint's default list, so `id` is
+  # re-added here explicitly.
+  excluded:
+    - id
+    # Entity properties deliberately mirror the API's snake_case field names,
+    # because the property name doubles as the GraphQL selection and coding key.
+    - air_date
+    # Short mathematical names in geometry code (SpiralNavigator).
+    - x
+    - y
+    - t
+    - a
+    - b
+
+line_length:
+  warning: 150
+  error: 200
+
+function_body_length:
+  warning: 100
+  error: 150
+
+type_name:
+  # Contract / mapper / view-model types are named after their section, which
+  # produces long but descriptive names such as
+  # `CharacterDetailEpisodesSectionViewModelContract`.
+  max_length:
+    warning: 60
+    error: 80

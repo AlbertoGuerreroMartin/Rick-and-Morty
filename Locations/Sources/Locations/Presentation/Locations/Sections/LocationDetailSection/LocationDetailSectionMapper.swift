@@ -118,7 +118,7 @@ final class LocationDetailSectionMapper: LocationDetailSectionMapperContract {
     private func rows(for location: LocationModel) -> [LocationDetailInfoRow] {
         [
             location.type.map { LocationDetailInfoRow(label: "Type", value: $0) },
-            location.dimension.map { LocationDetailInfoRow(label: "Dimension", value: $0) },
+            location.dimension.map { LocationDetailInfoRow(label: "Dimension", value: $0) }
         ].compactMap { $0 }
     }
 
