@@ -10,20 +10,20 @@ import Foundation
 import Storage
 import SwiftUI
 
-struct EpisodesScreen<Content: View>: View {
+struct EpisodesScreen<Content: View, Destination: View>: View {
     // `Owned`, not an observed view model, so a view-model publish doesn't re-evaluate this body.
     @StateObject private var graph: Owned<EpisodesScreenGraph>
     private let makeSection: (EpisodesScreenGraph) -> Content
 
-    /// `AnyView`: the destination is a screen from another package; see `EpisodesExternalDestinations`.
-    private let makeDestination: (EpisodesRoute) -> AnyView
+    /// Generic, not erased: the destination is a screen from another package; see `EpisodesExternalDestinations`.
+    private let makeDestination: (EpisodesRoute) -> Destination
 
     /// Write-only mirror pushed into the view model; `.searchable` needs a `Binding`.
     @State private var searchText = ""
 
     init(makeGraph: @escaping () -> EpisodesScreenGraph,
          makeSection: @escaping (EpisodesScreenGraph) -> Content,
-         makeDestination: @escaping (EpisodesRoute) -> AnyView) {
+         @ViewBuilder makeDestination: @escaping (EpisodesRoute) -> Destination) {
         _graph = StateObject(wrappedValue: Owned(makeGraph))
         self.makeSection = makeSection
         self.makeDestination = makeDestination
@@ -71,7 +71,7 @@ struct EpisodesScreen<Content: View>: View {
         makeDestination: { route in
             switch route {
             case .character(let id):
-                AnyView(Text("Character \(id)"))
+                Text("Character \(id)")
             }
         }
     )

@@ -10,18 +10,18 @@ import Foundation
 import Storage
 import SwiftUI
 
-struct LocationsScreen<Content: View>: View {
+struct LocationsScreen<Content: View, Destination: View>: View {
     // `Owned`, not the view model directly in `@StateObject`: keeps the graph alive without
     // observing it, so a `@Published` write re-renders only the sections, not this body.
     @StateObject private var graph: Owned<LocationsScreenGraph>
     private let makeSection: (LocationsScreenGraph) -> Content
 
-    /// `AnyView`: the destination is a screen from another package; see `LocationsExternalDestinations`.
-    private let makeDestination: (LocationsRoute) -> AnyView
+    /// Generic, not erased: the destination is a screen from another package; see `LocationsExternalDestinations`.
+    private let makeDestination: (LocationsRoute) -> Destination
 
     init(makeGraph: @escaping () -> LocationsScreenGraph,
          makeSection: @escaping (LocationsScreenGraph) -> Content,
-         makeDestination: @escaping (LocationsRoute) -> AnyView) {
+         @ViewBuilder makeDestination: @escaping (LocationsRoute) -> Destination) {
         _graph = StateObject(wrappedValue: Owned(makeGraph))
         self.makeSection = makeSection
         self.makeDestination = makeDestination

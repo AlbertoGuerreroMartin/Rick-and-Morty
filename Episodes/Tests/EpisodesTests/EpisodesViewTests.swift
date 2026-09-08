@@ -152,7 +152,7 @@ struct EpisodesViewTests {
             makeDestination: { route in
                 switch route {
                 case .character(let id):
-                    AnyView(Text(id))
+                    Text(id)
                 }
             }
         )
@@ -265,9 +265,9 @@ private struct StubEpisodesDependencies: EpisodesDependencies {
 private final class StubExternalDestinations: EpisodesExternalDestinations {
     private(set) var requestedIds: [String] = []
 
-    func characterDetail(id: String) -> AnyView {
+    func characterDetail(id: String) -> some View {
         requestedIds.append(id)
-        return AnyView(Text(id))
+        return Text(id)
     }
 }
 

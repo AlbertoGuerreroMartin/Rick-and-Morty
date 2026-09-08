@@ -291,7 +291,7 @@ struct LocationsViewTests {
             makeDestination: { route in
                 switch route {
                 case .character(let id):
-                    AnyView(Text(id))
+                    Text(id)
                 }
             }
         )
@@ -423,9 +423,9 @@ private extension Array where Element == LocationModel {
 private final class StubExternalDestinations: LocationsExternalDestinations {
     private(set) var requestedIds: [String] = []
 
-    func characterDetail(id: String) -> AnyView {
+    func characterDetail(id: String) -> some View {
         requestedIds.append(id)
-        return AnyView(Text(id))
+        return Text(id)
     }
 }
 

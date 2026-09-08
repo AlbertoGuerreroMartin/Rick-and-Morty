@@ -12,7 +12,7 @@ public enum EpisodesFactory {
     /// Closures below are invoked once per screen identity; see `EpisodesScreen`.
     public static func build(dependencies: any EpisodesDependencies,
                              navigator: EpisodesNavigator,
-                             external: any EpisodesExternalDestinations) -> some View {
+                             external: some EpisodesExternalDestinations) -> some View {
         EpisodesScreen(
             makeGraph: { makeGraph(dependencies: dependencies, navigator: navigator) },
             makeSection: { graph in

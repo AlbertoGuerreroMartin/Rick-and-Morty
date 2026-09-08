@@ -13,7 +13,7 @@ public enum LocationsFactory {
     /// screen identity, so a parent re-evaluating its body doesn't rebuild the view model.
     public static func build(dependencies: any LocationsDependencies,
                              navigator: LocationsNavigator,
-                             external: any LocationsExternalDestinations) -> some View {
+                             external: some LocationsExternalDestinations) -> some View {
         LocationsScreen(
             makeGraph: { makeGraph(dependencies: dependencies, navigator: navigator) },
             makeSection: { graph in section(graph) },
@@ -59,7 +59,7 @@ public enum LocationsFactory {
                         makeDestination: { route in
                             switch route {
                             case .character(let id):
-                                AnyView(Text("Character \(id)"))
+                                Text("Character \(id)")
                             }
                         })
     }

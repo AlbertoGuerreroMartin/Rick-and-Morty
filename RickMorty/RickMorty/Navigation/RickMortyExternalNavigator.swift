@@ -26,14 +26,11 @@ final class RickMortyExternalNavigator {
     }
 }
 
-extension RickMortyExternalNavigator: EpisodesExternalDestinations {
+extension RickMortyExternalNavigator: EpisodesExternalDestinations, LocationsExternalDestinations {
     /// The Characters feature's detail screen, pushed onto the host stack. Returns the
-    /// screen alone (no `NavigationStack`) so it inherits the host's back button; erased to
-    /// `AnyView` here since this is the only side that knows the concrete type.
-    func characterDetail(id: String) -> AnyView {
-        AnyView(CharactersFactory.buildCharacterDetail(dependencies: container, id: id))
+    /// screen alone (no `NavigationStack`) so it inherits the host's back button. One opaque
+    /// return satisfies both protocols' `CharacterDetail` associated types.
+    func characterDetail(id: String) -> some View {
+        CharactersFactory.buildCharacterDetail(dependencies: container, id: id)
     }
 }
-
-/// Same requirement, same signature: `characterDetail(id:)` above satisfies both protocols.
-extension RickMortyExternalNavigator: LocationsExternalDestinations {}
