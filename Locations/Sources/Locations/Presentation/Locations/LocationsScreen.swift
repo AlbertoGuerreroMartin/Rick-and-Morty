@@ -33,7 +33,7 @@ struct LocationsScreen<Content: View>: View {
             makeSection(graph.value)
                 // Declared once for the whole stack: every row pushes the same route case.
                 .navigationDestination(for: LocationsRoute.self) { makeDestination($0) }
-                .navigationTitle("Locations")
+                .navigationTitle(Text("Locations", bundle: .module))
                 // Reloads on a cache clear announced via `Storage` (e.g. from developer tools).
                 .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
                     Task { await graph.value.viewModel.reloadFromScratch() }

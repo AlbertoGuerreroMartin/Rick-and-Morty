@@ -68,7 +68,7 @@ struct EpisodeRowView: View {
             }
             // `.borderless`: any style drawing a background lets the `List` row swallow the tap.
             .buttonStyle(.borderless)
-            .accessibilityLabel("Watch on HBO Max")
+            .accessibilityLabel(Text("Watch on HBO Max", bundle: .module))
         }
     }
 
@@ -89,7 +89,8 @@ struct EpisodeRowView: View {
                         }
                         // `.plain`: default style tints the photograph with the accent color.
                         .buttonStyle(.plain)
-                        .accessibilityLabel(character.name ?? "Character \(character.id)")
+                        .accessibilityLabel(character.name.map { Text($0) }
+                            ?? Text("Character \(character.id)", bundle: .module))
                     }
                 }
             }
@@ -97,11 +98,7 @@ struct EpisodeRowView: View {
     }
 
     private var characterCountDescription: String {
-        switch episode.characters.count {
-        case 0: "No characters"
-        case 1: "1 character"
-        case let count: "\(count) characters"
-        }
+        String(localized: "\(episode.characters.count) characters", bundle: .module)
     }
 }
 

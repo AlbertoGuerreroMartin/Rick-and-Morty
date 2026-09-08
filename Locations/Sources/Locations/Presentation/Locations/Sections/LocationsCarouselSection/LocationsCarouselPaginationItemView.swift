@@ -29,19 +29,21 @@ struct LocationsCarouselPaginationItemView: View {
                     .scaleEffect(1.4)
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Loading more locations")
+            .accessibilityLabel(Text("Loading more locations", bundle: .module))
             .task(id: loadedCount) {
                 await loadNextPage()
             }
         case .retry:
             circle {
                 VStack(spacing: 8) {
-                    Text("Couldn't load more")
+                    Text("Couldn't load more locations", bundle: .module)
                         .font(.system(.footnote, design: .rounded))
                         .foregroundStyle(.black.opacity(0.78))
                         .multilineTextAlignment(.center)
-                    Button("Retry") {
+                    Button {
                         Task { await loadNextPage() }
+                    } label: {
+                        Text("Retry", bundle: .module)
                     }
                     .buttonStyle(.bordered)
                     .tint(.black)

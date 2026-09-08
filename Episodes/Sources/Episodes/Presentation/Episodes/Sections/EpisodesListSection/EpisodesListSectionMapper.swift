@@ -88,7 +88,7 @@ final class EpisodesListSectionMapper: EpisodesListSectionMapperContract {
             .sorted { $0.key < $1.key }
             .map { season, episodes in
                 EpisodesSeasonRenderModel(season: season,
-                                          title: "Season \(season)",
+                                          title: String(localized: "Season \(season)", bundle: .module),
                                           episodes: episodes.sorted(by: Self.isOrderedBefore))
             }
     }

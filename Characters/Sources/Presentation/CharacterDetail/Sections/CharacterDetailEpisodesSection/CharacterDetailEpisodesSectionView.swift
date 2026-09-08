@@ -37,7 +37,7 @@ struct CharacterDetailEpisodesSectionView: View {
             episodesList(episodes)
         case .empty:
             section {
-                Text("This character doesn't appear in any episode.")
+                Text("This character doesn't appear in any episode.", bundle: .module)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -66,7 +66,7 @@ struct CharacterDetailEpisodesSectionView: View {
     @ViewBuilder
     private func section<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Episodes")
+            Text("Episodes", bundle: .module)
                 .font(.title2.bold())
                 .accessibilityAddTraits(.isHeader)
             content()

@@ -5,6 +5,8 @@
 //  Created by Alberto Guerrero Martin on 07/09/2026.
 //
 
+import Foundation
+
 /// How the characters screen lays its results out. Screen state, not view model state: the
 /// list and grid draw the same data, so the choice changes nothing about loading or filtering.
 enum CharactersLayout: Equatable, Sendable {
@@ -28,8 +30,8 @@ enum CharactersLayout: Equatable, Sendable {
 
     var toggleTitle: String {
         switch self {
-        case .list: "Show as grid"
-        case .grid: "Show as list"
+        case .list: String(localized: "Show as grid", bundle: .module)
+        case .grid: String(localized: "Show as list", bundle: .module)
         }
     }
 }

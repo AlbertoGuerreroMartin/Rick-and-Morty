@@ -16,19 +16,29 @@ struct LocationsEmptyStateView: View {
         switch reason {
         case .noLocations:
             ContentUnavailableView {
-                Label("No locations", systemImage: "mappin.slash")
+                Label {
+                    Text("No locations", bundle: .module)
+                } icon: {
+                    Image(systemName: "mappin.slash")
+                }
             } description: {
                 // No Retry: the API answered correctly, there's just nothing to show.
-                Text("There are no locations to show.")
+                Text("There are no locations to show.", bundle: .module)
             }
         case .failed:
             ContentUnavailableView {
-                Label("Couldn't load locations", systemImage: "exclamationmark.triangle")
+                Label {
+                    Text("Couldn't load locations", bundle: .module)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle")
+                }
             } description: {
-                Text("Check your connection and try again.")
+                Text("Check your connection and try again.", bundle: .module)
             } actions: {
-                Button("Retry", action: onRetry)
-                    .buttonStyle(.borderedProminent)
+                Button(action: onRetry) {
+                    Text("Retry", bundle: .module)
+                }
+                .buttonStyle(.borderedProminent)
             }
         }
     }

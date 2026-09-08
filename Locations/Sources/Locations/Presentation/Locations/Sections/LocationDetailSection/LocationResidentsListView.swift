@@ -45,7 +45,7 @@ struct LocationResidentsListView: View {
                                         Circle()
                                             .fill(resident.status.color)
                                             .frame(width: 7, height: 7)
-                                        Text("\(resident.status.rawValue.capitalized) · \(resident.species)")
+                                        Text("\(resident.status.displayName) · \(resident.species)")
                                             .font(.subheadline)
                                             .foregroundStyle(.secondary)
                                     }
@@ -55,7 +55,7 @@ struct LocationResidentsListView: View {
                         }
                     }
                 }, header: {
-                    Text("Residents")
+                    Text("Residents", bundle: .module)
                         .font(.title3.weight(.semibold))
                         .lineLimit(2)
                 })

@@ -113,7 +113,7 @@ struct CharacterDetailHeaderSectionView: View {
                 Circle()
                     .fill(header.status.color)
                     .frame(width: 9, height: 9)
-                Text("\(header.status.rawValue.capitalized) · \(header.species)")
+                Text("\(header.status.displayName) · \(header.species)")
                     .font(.headline)
                     .foregroundStyle(.white.opacity(0.9))
             }
@@ -128,6 +128,6 @@ struct CharacterDetailHeaderSectionView: View {
                 .padding(.top, -80)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(header.name), \(header.status.rawValue.capitalized), \(header.species)")
+        .accessibilityLabel("\(header.name), \(header.status.displayName), \(header.species)")
     }
 }

@@ -18,24 +18,39 @@ struct CharactersEmptyStateView: View {
         switch reason {
         case .noMatches(let summary, let canClearFilters):
             ContentUnavailableView {
-                Label("No characters found", systemImage: "magnifyingglass")
+                Label {
+                    Text("No characters found", bundle: .module)
+                } icon: {
+                    Image(systemName: "magnifyingglass")
+                }
             } description: {
-                Text(summary.map { "No results for \($0)." }
-                     ?? "There are no characters to show.")
+                if let summary {
+                    Text("No results for \(summary).", bundle: .module)
+                } else {
+                    Text("There are no characters to show.", bundle: .module)
+                }
             } actions: {
                 if canClearFilters {
-                    Button("Clear filters", action: onClearFilters)
-                        .buttonStyle(.borderedProminent)
+                    Button(action: onClearFilters) {
+                        Text("Clear filters", bundle: .module)
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
             }
         case .failed:
             ContentUnavailableView {
-                Label("Couldn't load characters", systemImage: "exclamationmark.triangle")
+                Label {
+                    Text("Couldn't load characters", bundle: .module)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle")
+                }
             } description: {
-                Text("Check your connection and try again.")
+                Text("Check your connection and try again.", bundle: .module)
             } actions: {
-                Button("Retry", action: onRetry)
-                    .buttonStyle(.borderedProminent)
+                Button(action: onRetry) {
+                    Text("Retry", bundle: .module)
+                }
+                .buttonStyle(.borderedProminent)
             }
         }
     }

@@ -29,11 +29,13 @@ struct CharactersPaginationFooterView: View {
                 }
         case .retry:
             VStack(spacing: 8) {
-                Text("Couldn't load more characters")
+                Text("Couldn't load more characters", bundle: .module)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Button("Retry") {
+                Button {
                     Task { await loadNextPage() }
+                } label: {
+                    Text("Retry", bundle: .module)
                 }
                 .buttonStyle(.bordered)
             }

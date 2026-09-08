@@ -35,10 +35,10 @@ struct EpisodesScreen<Content: View>: View {
             makeSection(graph.value)
                 // Declared once for the whole stack: every row pushes the same route case.
                 .navigationDestination(for: EpisodesRoute.self) { makeDestination($0) }
-                .navigationTitle("Episodes")
+                .navigationTitle(Text("Episodes", bundle: .module))
                 .searchable(text: $searchText,
                             placement: .navigationBarDrawer(displayMode: .always),
-                            prompt: "Search episodes")
+                            prompt: Text("Search episodes", bundle: .module))
                 // Episode titles are puns on proper nouns; autocorrect would rewrite the query.
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)

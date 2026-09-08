@@ -15,19 +15,32 @@ struct EpisodesEmptyStateView: View {
         switch reason {
         case .noMatches(let query):
             ContentUnavailableView {
-                Label("No episodes found", systemImage: "magnifyingglass")
+                Label {
+                    Text("No episodes found", bundle: .module)
+                } icon: {
+                    Image(systemName: "magnifyingglass")
+                }
             } description: {
-                Text(query.map { "No results for \u{201C}\($0)\u{201D}." }
-                     ?? "There are no episodes to show.")
+                if let query {
+                    Text("No results for \u{201C}\(query)\u{201D}.", bundle: .module)
+                } else {
+                    Text("There are no episodes to show.", bundle: .module)
+                }
             }
         case .failed:
             ContentUnavailableView {
-                Label("Couldn't load episodes", systemImage: "exclamationmark.triangle")
+                Label {
+                    Text("Couldn't load episodes", bundle: .module)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle")
+                }
             } description: {
-                Text("Check your connection and try again.")
+                Text("Check your connection and try again.", bundle: .module)
             } actions: {
-                Button("Retry", action: onRetry)
-                    .buttonStyle(.borderedProminent)
+                Button(action: onRetry) {
+                    Text("Retry", bundle: .module)
+                }
+                .buttonStyle(.borderedProminent)
             }
         }
     }

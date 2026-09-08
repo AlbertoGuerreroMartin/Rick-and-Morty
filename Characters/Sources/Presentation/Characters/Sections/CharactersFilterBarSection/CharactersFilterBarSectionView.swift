@@ -34,8 +34,10 @@ struct CharactersFilterBarSectionView: View {
                     chipView(chip)
                 }
                 if renderModel.activeCount > 0 {
-                    Button("Clear all") {
+                    Button {
                         viewModel.clearAllFilters()
+                    } label: {
+                        Text("Clear all", bundle: .module)
                     }
                     .font(.subheadline)
                 }
@@ -60,9 +62,16 @@ struct CharactersFilterBarSectionView: View {
         Button {
             isPresentingFilters = true
         } label: {
-            Label(renderModel.activeCount > 0 ? "Filters · \(renderModel.activeCount)" : "Filters",
-                  systemImage: "line.3.horizontal.decrease.circle")
-                .font(.subheadline)
+            Label {
+                if renderModel.activeCount > 0 {
+                    Text("Filters · \(renderModel.activeCount)", bundle: .module)
+                } else {
+                    Text("Filters", bundle: .module)
+                }
+            } icon: {
+                Image(systemName: "line.3.horizontal.decrease.circle")
+            }
+            .font(.subheadline)
         }
         .buttonStyle(.bordered)
         .buttonBorderShape(.capsule)
@@ -81,6 +90,6 @@ struct CharactersFilterBarSectionView: View {
         }
         .buttonStyle(.bordered)
         .buttonBorderShape(.capsule)
-        .accessibilityLabel("Remove \(chip.title) filter")
+        .accessibilityLabel(Text("Remove \(chip.title) filter", bundle: .module))
     }
 }

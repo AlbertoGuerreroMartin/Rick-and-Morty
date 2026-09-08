@@ -39,10 +39,10 @@ struct CharactersScreen<Content: View, Detail: View>: View {
                         makeDetail(id)
                     }
                 }
-                .navigationTitle("Characters")
+                .navigationTitle(Text("Characters", bundle: .module))
                 .searchable(text: $searchText,
                             placement: .navigationBarDrawer(displayMode: .always),
-                            prompt: "Search by name")
+                            prompt: Text("Search by name", bundle: .module))
                 // Character names are proper nouns; autocorrect would rewrite them.
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)

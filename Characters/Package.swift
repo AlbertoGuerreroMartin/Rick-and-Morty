@@ -4,6 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "Characters",
+    defaultLocalization: "en",
     platforms: [
         .iOS("18.6")
     ],
@@ -29,6 +30,7 @@ let package = Package(
                 .product(name: "Storage", package: "Storage"),
                 .product(name: "DesignSystem", package: "DesignSystem"),
             ],
+            resources: [.process("Resources")],
             plugins: [
                 .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins"),
             ]

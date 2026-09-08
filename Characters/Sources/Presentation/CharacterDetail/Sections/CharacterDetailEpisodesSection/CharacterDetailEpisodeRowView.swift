@@ -53,7 +53,7 @@ struct CharacterDetailEpisodeRowView: View {
             }
             // `.automatic` would let an enclosing tappable row swallow the tap.
             .buttonStyle(.borderless)
-            .accessibilityLabel("Watch on HBO Max")
+            .accessibilityLabel(Text("Watch on HBO Max", bundle: .module))
         }
     }
 }

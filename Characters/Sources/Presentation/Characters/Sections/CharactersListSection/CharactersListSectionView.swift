@@ -103,7 +103,7 @@ struct CharactersListSectionView: View {
                     Circle()
                         .fill(character.status.color)
                         .frame(width: 7, height: 7)
-                    Text("\(character.status.rawValue.capitalized) · \(character.species)")
+                    Text("\(character.status.displayName) · \(character.species)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }

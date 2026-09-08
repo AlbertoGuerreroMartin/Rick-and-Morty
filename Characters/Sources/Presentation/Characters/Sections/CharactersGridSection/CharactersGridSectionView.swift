@@ -135,7 +135,7 @@ struct CharactersGridSectionView: View {
                 Circle()
                     .fill(character.status.color)
                     .frame(width: 7, height: 7)
-                Text("\(character.status.rawValue.capitalized) · \(character.species)")
+                Text("\(character.status.displayName) · \(character.species)")
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.9))
                     .lineLimit(1)

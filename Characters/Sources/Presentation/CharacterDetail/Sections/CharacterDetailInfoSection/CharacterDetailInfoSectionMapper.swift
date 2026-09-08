@@ -62,12 +62,15 @@ final class CharacterDetailInfoSectionMapper: CharacterDetailInfoSectionMapperCo
 
     private func rows(for detail: CharacterDetailModel) -> [CharacterDetailInfoRow] {
         [
-            CharacterDetailInfoRow(label: "Status", value: detail.status.rawValue.capitalized),
-            CharacterDetailInfoRow(label: "Species", value: detail.species),
-            detail.type.map { CharacterDetailInfoRow(label: "Type", value: $0) },
-            CharacterDetailInfoRow(label: "Gender", value: detail.gender.rawValue.capitalized),
-            place(detail.origin, label: "Origin"),
-            place(detail.location, label: "Location")
+            CharacterDetailInfoRow(label: String(localized: "Status", bundle: .module),
+                                   value: detail.status.displayName),
+            CharacterDetailInfoRow(label: String(localized: "Species", bundle: .module),
+                                   value: detail.species),
+            detail.type.map { CharacterDetailInfoRow(label: String(localized: "Type", bundle: .module), value: $0) },
+            CharacterDetailInfoRow(label: String(localized: "Gender", bundle: .module),
+                                   value: detail.gender.displayName),
+            place(detail.origin, label: String(localized: "Origin", bundle: .module)),
+            place(detail.location, label: String(localized: "Location", bundle: .module))
         ].compactMap { $0 }
     }
 

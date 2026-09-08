@@ -7,6 +7,7 @@
 
 import Combine
 import Core
+import Foundation
 
 /// One removable constraint, ready to draw. `field` travels with the title so the ×
 /// can tell the view model which constraint to drop without matching on display text.
@@ -56,8 +57,10 @@ final class CharactersFilterBarSectionMapper: CharactersFilterBarSectionMapperCo
     /// `type` carries its label; it's free text ("Parasite") indistinguishable from a species.
     private func title(for field: CharactersFilter.Field, value: String) -> String {
         switch field {
-        case .type: "Type: \(value)"
-        case .status, .gender, .species: value.capitalized
+        case .type: String(localized: "Type: \(value)", bundle: .module)
+        case .status: CharacterStatus(rawValue: value)?.displayName ?? value.capitalized
+        case .gender: CharacterGender(rawValue: value)?.displayName ?? value.capitalized
+        case .species: value.capitalized
         }
     }
 }
