@@ -9,6 +9,7 @@ import Characters
 import DesignSystem
 import Episodes
 import Foundation
+import Locations
 import Networking
 import Storage
 
@@ -91,6 +92,8 @@ extension AppContainer: CharactersDependencies {}
 
 extension AppContainer: EpisodesDependencies {}
 
+extension AppContainer: LocationsDependencies {}
+
 #if DEBUG
 extension AppContainer {
     /// What the developer-tools screen offers to clear.
@@ -103,7 +106,8 @@ extension AppContainer {
         [
             .images(),
             DevToolsCache(name: "Characters") { try await CharactersFactory.purgeCache(dependencies: self) },
-            DevToolsCache(name: "Episodes") { try await EpisodesFactory.purgeCache(dependencies: self) }
+            DevToolsCache(name: "Episodes") { try await EpisodesFactory.purgeCache(dependencies: self) },
+            DevToolsCache(name: "Locations") { try await LocationsFactory.purgeCache(dependencies: self) }
         ]
     }
 }

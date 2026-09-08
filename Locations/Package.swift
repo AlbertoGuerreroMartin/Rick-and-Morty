@@ -13,9 +13,21 @@ let package = Package(
             targets: ["Locations"]
         ),
     ],
+    dependencies: [
+        .package(path: "../Networking"),
+        .package(path: "../Core"),
+        .package(path: "../Storage"),
+        .package(path: "../DesignSystem"),
+    ],
     targets: [
         .target(
-            name: "Locations"
+            name: "Locations",
+            dependencies: [
+                .product(name: "Networking", package: "Networking"),
+                .product(name: "Core", package: "Core"),
+                .product(name: "Storage", package: "Storage"),
+                .product(name: "DesignSystem", package: "DesignSystem"),
+            ]
         ),
         .testTarget(
             name: "LocationsTests",
