@@ -8,24 +8,17 @@
 import Combine
 import Core
 
-/// One removable constraint, ready to draw.
-///
-/// The `field` travels with the title because the × has to tell the view model
-/// *which* constraint to drop, and matching on a display string to work that out
-/// would break the first time the copy changed.
+/// One removable constraint, ready to draw. `field` travels with the title so the ×
+/// can tell the view model which constraint to drop without matching on display text.
 struct CharactersFilterChip: Identifiable, Equatable, Sendable {
     let field: CharactersFilter.Field
     let title: String
 
-    /// A field appears at most once, so it is its own identity — no synthetic
-    /// UUID that would change on every mapping and re-animate the whole bar.
     var id: CharactersFilter.Field { field }
 }
 
 struct CharactersFilterBarRenderModel: Equatable, Sendable {
-    /// The applied filter, carried through so the bar can seed the sheet it
-    /// presents. The sheet edits a *draft* of it, which is why the bar needs the
-    /// value and not just the summary the chips are made of.
+    /// Carried through so the bar can seed the draft the filter sheet edits.
     let filter: CharactersFilter
     let activeCount: Int
     let chips: [CharactersFilterChip]
@@ -35,12 +28,6 @@ struct CharactersFilterBarRenderModel: Equatable, Sendable {
 
 protocol CharactersFilterBarSectionMapperContract: SectionMapperContract {}
 
-/// The simplest mapper in the feature: one publisher in, a list of capsules out.
-///
-/// It exists anyway, rather than the bar reading the filter directly, because
-/// the alternative is a view that formats domain values — and "how a status
-/// becomes the word Alive" is presentation logic that deserves a test without a
-/// view hierarchy.
 @MainActor
 final class CharactersFilterBarSectionMapper: CharactersFilterBarSectionMapperContract {
     typealias ViewModel = CharactersFilterBarSectionViewModelContract
@@ -66,11 +53,7 @@ final class CharactersFilterBarSectionMapper: CharactersFilterBarSectionMapperCo
                                               chips: chips)
     }
 
-    /// Status, gender and species speak for themselves as chips — "Alive",
-    /// "Female", "Human" all read as what they are. `type` does not: the API's
-    /// type is a free-text sub-species ("Parasite", "Clone") that is
-    /// indistinguishable from a species at a glance, so it is the one field that
-    /// carries its label.
+    /// `type` carries its label; it's free text ("Parasite") indistinguishable from a species.
     private func title(for field: CharactersFilter.Field, value: String) -> String {
         switch field {
         case .type: "Type: \(value)"

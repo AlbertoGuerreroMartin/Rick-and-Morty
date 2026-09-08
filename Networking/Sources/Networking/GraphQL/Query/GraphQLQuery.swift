@@ -14,15 +14,12 @@ import Foundation
 /// }
 /// ```
 public protocol GraphQLQuery: Encodable {
-    /// The entity the root field selects. Its `@Document` selection set is what
-    /// gets pasted into the operation, and it is also the decoded payload.
+    /// The entity the root field selects; its `@Document` selection set is pasted into the
+    /// operation and is also the decoded payload.
     associatedtype ResponseEntity: GraphQLDocumentConvertible, Decodable
 
-    /// The Swift shape of the `"data"` object the server sends back.
-    ///
-    /// The root field is aliased to `result` (see `document`), so the default
-    /// covers every single-root-field operation and conformers can leave it out.
-    /// Override it only for a document that selects more than one root field.
+    /// The Swift shape of the `"data"` object. Defaults to `GraphQLRootPayload<ResponseEntity>`
+    /// since the root field is aliased to `result`; override only for multiple root fields.
     associatedtype Response: Decodable = GraphQLRootPayload<ResponseEntity>
 
     /// The name of the root field in the schema, e.g. `"characters"`.

@@ -12,21 +12,8 @@ import Testing
 import UIKit
 @testable import Episodes
 
-/// SwiftUI bodies are lazy: constructing a view runs no layout, so a crash in a
-/// `body` — a force-unwrap, a `ForEach` over duplicate ids — survives every test
-/// that only builds the value. These host each view in a real
-/// `UIHostingController` on a sized window and force a layout pass, which is
-/// what actually evaluates the bodies.
-///
-/// The sections are driven through the *real* pipeline — stub view model
-/// publishers, real mapper, `.onReceive` — rather than by writing a render model
-/// into the view's `@State`. That is the only way to know the subscription is
-/// wired at all, and it costs nothing but a turn of the main queue.
-///
-/// They stay assertion-light on purpose. Snapshotting pixels would test the
-/// system's rendering rather than this feature's, and the *contents* of every
-/// render model are already pinned by `EpisodesListSectionMapperTests`; what is
-/// left to check is that each of them draws at all.
+/// Hosts each view in a real `UIHostingController` on a sized window and forces layout, since
+/// constructing a SwiftUI view alone never runs its `body`.
 @Suite("Episodes views")
 @MainActor
 struct EpisodesViewTests {
@@ -78,8 +65,6 @@ struct EpisodesViewTests {
         await renderSection(viewModel)
     }
 
-    /// The Retry button is the only escape from a failed load, so it has to
-    /// reach the view model rather than merely exist.
     @Test("the failed empty state retries through the view model")
     func retryReachesTheViewModel() async {
         let viewModel = StubEpisodesListViewModel()
@@ -88,9 +73,7 @@ struct EpisodesViewTests {
 
         await renderSection(viewModel)
 
-        // Driven directly: tapping a `ContentUnavailableView` action means
-        // walking a UIKit hierarchy for a button whose identity SwiftUI does not
-        // promise, which would test the framework rather than this wiring.
+        // Driven directly rather than by tapping the button, whose identity SwiftUI doesn't promise.
         viewModel.retryLoad()
 
         #expect(viewModel.retryCallCount == 1)
@@ -98,48 +81,53 @@ struct EpisodesViewTests {
 
     @Test("a row draws with and without characters")
     func rowDraws() async {
-        await render(List {
+        await renderRows(List {
             EpisodeRowView(episode: .make(name: "Pilot", season: 1, number: 1, characters: .cast))
             EpisodeRowView(episode: .make(name: "Lawnmower Dog", season: 1, number: 2))
             EpisodeRowView(episode: .make(name: "One Crew Over the Crewcoo's Morty",
                                           season: 3, number: 6,
                                           characters: [.init(id: "1",
+                                                             name: "Rick Sanchez",
                                                              image: URL(string: "https://example.com/1.jpeg")!)]))
         })
     }
 
-    /// The button is inside a `List` row, which is the arrangement that breaks
-    /// it: the row is tappable itself, and a `Button` whose body never ran is a
-    /// button nobody would notice was missing until they tried to use it.
     @Test("a row with a link draws its button")
     func linkedRowDraws() async {
-        await render(List {
+        await renderRows(List {
             EpisodeRowView(episode: .make(name: "Pilot", season: 1, number: 1,
                                           characters: .cast,
                                           hboMaxURL: URL(string: "https://play.hbomax.com/video/watch/1")))
         })
     }
 
-    /// The other half: no link, no button, and the row still lays out — the
-    /// details take the full width whether or not anything sits beside them.
     @Test("a row without a link draws no button")
     func unlinkedRowDraws() async {
-        await render(List {
+        await renderRows(List {
             EpisodeRowView(episode: .make(name: "Pilot", season: 1, number: 1, hboMaxURL: nil))
         })
     }
 
-    /// Both kinds of row in one list, which is what the screen actually shows:
-    /// an episode that is not on HBO Max sits between two that are.
     @Test("linked and unlinked rows draw side by side")
     func mixedRowsDraw() async {
-        await render(List {
+        await renderRows(List {
             EpisodeRowView(episode: .make(name: "Pilot", season: 1, number: 1,
                                           hboMaxURL: URL(string: "https://play.hbomax.com/video/watch/1")))
             EpisodeRowView(episode: .make(name: "Lawnmower Dog", season: 1, number: 2))
             EpisodeRowView(episode: .make(name: "Anatomy Park", season: 1, number: 3,
                                           characters: .cast,
                                           hboMaxURL: URL(string: "https://play.hbomax.com/video/watch/2")))
+        })
+    }
+
+    @Test("a row's avatars draw as links, named and unnamed")
+    func avatarsDrawAsLinks() async {
+        await renderRows(List {
+            EpisodeRowView(episode: .make(name: "Pilot", season: 1, number: 1, characters: .cast))
+            EpisodeRowView(episode: .make(name: "Lawnmower Dog", season: 1, number: 2,
+                                          characters: [.init(id: "42",
+                                                             name: nil,
+                                                             image: URL(string: "https://example.com/42.jpeg")!)]))
         })
     }
 
@@ -155,54 +143,82 @@ struct EpisodesViewTests {
         let useCase = StubViewsEpisodesUseCase()
         let viewModel = EpisodesViewModel(episodesUseCase: useCase)
         let screen = EpisodesScreen(
-            makeGraph: { EpisodesScreenGraph(viewModel: viewModel,
+            makeGraph: { EpisodesScreenGraph(navigator: EpisodesNavigator(),
+                                             viewModel: viewModel,
                                              listMapper: EpisodesListSectionMapper(viewModel: viewModel)) },
             makeSection: { graph in
                 EpisodesListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
+            },
+            makeDestination: { route in
+                switch route {
+                case .character(let id):
+                    AnyView(Text(id))
+                }
             }
         )
 
         await render(screen)
 
-        // The screen's `.task` is not guaranteed to have run by the time layout
-        // returns, so the load is driven directly: what is under test here is
-        // that the graph the screen was handed is wired to something that works,
-        // and that the section redraws when it answers.
+        // `.task` is not guaranteed to have run by the time layout returns, so drive it directly.
         await viewModel.loadData()
         await settle()
 
         #expect(viewModel.episodesPublished?.map(\.name) == ["Pilot"])
     }
 
-    /// The factory is the feature's composition root, and every layer it wires
-    /// is constructor-injected — so building the real graph needs nothing but a
-    /// client and a cache store, and a missing edge would be a compile error
-    /// here rather than an empty screen at runtime.
     @Test("the factory builds a working graph and a drawable screen")
     func factoryBuildsTheGraph() async {
         let dependencies = StubEpisodesDependencies()
+        let navigator = EpisodesNavigator()
 
-        let graph = EpisodesFactory.makeGraph(dependencies: dependencies)
+        let graph = EpisodesFactory.makeGraph(dependencies: dependencies, navigator: navigator)
+        // Passed through, not rebuilt: the graph must hand the screen this exact instance.
+        #expect(graph.navigator === navigator)
+        #expect(graph.navigator.path.isEmpty)
         #expect(graph.viewModel.episodesPublished == nil)
         #expect(graph.viewModel.loadingPublished == false)
 
-        await render(EpisodesFactory.build(dependencies: dependencies))
+        await render(EpisodesFactory.build(dependencies: dependencies,
+                                           navigator: navigator,
+                                           external: StubExternalDestinations()))
+    }
+
+    @Test("showing a character pushes it onto the screen's path")
+    func showingACharacterPushesIt() async {
+        let dependencies = StubEpisodesDependencies()
+        let navigator = EpisodesNavigator()
+        let external = StubExternalDestinations()
+
+        await render(EpisodesFactory.build(dependencies: dependencies,
+                                           navigator: navigator,
+                                           external: external))
+
+        navigator.showCharacter(id: "42")
+        #expect(navigator.path == [.character(id: "42")])
+
+        await render(EpisodesFactory.build(dependencies: dependencies,
+                                           navigator: navigator,
+                                           external: external))
+
+        #expect(external.requestedIds.contains("42"))
     }
 
     // MARK: - Hosting
 
     private func renderSection(_ viewModel: StubEpisodesListViewModel) async {
-        await render(EpisodesListSectionView(viewModel: viewModel,
-                                             mapper: EpisodesListSectionMapper(viewModel: viewModel)))
+        await render(NavigationStack {
+            EpisodesListSectionView(viewModel: viewModel,
+                                    mapper: EpisodesListSectionMapper(viewModel: viewModel))
+        })
     }
 
-    /// Hosts `view` on a sized window and forces layout, so its `body` actually
-    /// runs. A hosting controller with no window lays out nothing.
-    ///
-    /// Laid out twice around a turn of the main queue: the render model reaches
-    /// a section through `.receive(on: DispatchQueue.main)`, so the first pass
-    /// draws the initial `.hidden` and the second draws what the mapper
-    /// produced.
+    /// Rows need a `NavigationStack`: avatars are `NavigationLink`s, dead outside one.
+    private func renderRows(_ rows: some View) async {
+        await render(NavigationStack { rows })
+    }
+
+    /// Laid out twice around a turn of the main queue: the first pass draws the initial
+    /// `.hidden`, the second draws what the mapper produced via `.receive(on: .main)`.
     private func render(_ view: some View) async {
         let controller = UIHostingController(rootView: view)
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
@@ -216,8 +232,6 @@ struct EpisodesViewTests {
         window.isHidden = true
     }
 
-    /// Yields the main thread long enough for the main-queue delivery in
-    /// `SectionMapperContract.renderModelPublisher()` to land.
     private func settle() async {
         for _ in 0..<10 {
             await Task.yield()
@@ -227,19 +241,15 @@ struct EpisodesViewTests {
 }
 
 private extension Array where Element == EpisodeCharacterModel {
-    /// A handful of avatars, so the strip has something lazy to build.
     static var cast: [EpisodeCharacterModel] {
         (1...5).map { index in
             EpisodeCharacterModel(id: "\(index)",
+                                  name: "Character \(index)",
                                   image: URL(string: "https://example.com/\(index).jpeg")!)
         }
     }
 }
 
-/// Stands in for the app container. The screen never reaches the network in
-/// these tests, so an endpoint that resolves to nothing is exactly right — the
-/// point is that the factory can be handed the two things it declares and
-/// nothing else.
 private struct StubEpisodesDependencies: EpisodesDependencies {
     let graphQLClient = GraphQLClient(endpoint: URL(string: "https://example.com/graphql")!)
     let justWatchClient = GraphQLClient(endpoint: URL(string: "https://example.com/justwatch")!)
@@ -249,6 +259,16 @@ private struct StubEpisodesDependencies: EpisodesDependencies {
                 .appendingPathComponent(UUID().uuidString, isDirectory: true)
         )
     )
+}
+
+@MainActor
+private final class StubExternalDestinations: EpisodesExternalDestinations {
+    private(set) var requestedIds: [String] = []
+
+    func characterDetail(id: String) -> AnyView {
+        requestedIds.append(id)
+        return AnyView(Text(id))
+    }
 }
 
 private final class StubViewsEpisodesUseCase: EpisodesUseCaseContract, @unchecked Sendable {

@@ -7,18 +7,8 @@
 
 import Networking
 
-/// One page of the `locations` root field.
-///
-/// `page` is the only variable this feature ever sends. The schema does offer a
-/// location filter — name, type, dimension — but this screen has no search: the
-/// carousel is a place to *travel* through 126 locations, not a place to query
-/// them, and a filter argument would be dead weight that also fragmented the
-/// cache key per keystroke for a control that does not exist.
-///
-/// With `page` as the single declared property, `GraphQLPaginatedQuery` emits
-/// `locations(page: $page)` and no `filter: { ... }` argument at all — the
-/// builder drops an empty filter object rather than sending `filter: {}`, which
-/// the server would reject.
+/// One page of the `locations` root field. No filter: the server rejects an empty `filter: {}`,
+/// so `GraphQLPaginatedQuery` omits the argument entirely when only `page` is declared.
 struct LocationsQuery: GraphQLPaginatedQuery {
     typealias ResponseEntity = LocationEntity
 

@@ -48,7 +48,6 @@ final class CharacterEntityMapper: CharacterEntityMapperContract {
                                  dimension: entity.dimension)
     }
 
-    /// Unwraps `value`, or throws `missingProperty` naming the `property` that was absent.
     private func require<T>(_ value: T?, _ property: String) throws -> T {
         guard let value else {
             throw CharacterEntityMapperError.missingProperty(property)

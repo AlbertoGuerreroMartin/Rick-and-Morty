@@ -8,24 +8,12 @@
 import Foundation
 import Synchronization
 
-/// Keeps every cache event and fans each one out to other sinks.
+/// Keeps every cache event and fans each one out to registered sinks — the seam for anything
+/// outside `Storage` that wants to see cache traffic. Same shape as `APILogStore` in Networking,
+/// deliberately duplicated since the two packages cannot share a type without a dependency.
 ///
-/// This is the seam for anything outside `Storage` that wants to see the cache
-/// traffic. A developer-tools screen reads `events` for the history and then
-/// listens to `stream()` for what happens next; the console logger is just
-/// another sink registered through `add(_:)`. ``CodableCacheStore`` only ever
-/// sees a sink, so this store is one possible wiring, not a requirement.
-///
-/// The same shape as `APILogStore` in Networking, deliberately duplicated: the
-/// two packages cannot share a type without one importing the other, and this
-/// is thirty lines of plumbing rather than a design worth inverting a
-/// dependency for.
-///
-/// A class under a `Mutex` rather than an actor, for the same reason as the API
-/// store: `log(_:)` has to be synchronous so a cache read never awaits it, and
-/// an actor would force that call through a detached `Task` — which is
-/// unordered, so two reads of the same key could land out of order. The critical
-/// section is an array append and a handful of yields.
+/// A class under a `Mutex`, not an actor: `log(_:)` must stay synchronous, since an actor would
+/// force it through a detached `Task`, letting two reads of the same key land out of order.
 public final class CacheLogStore: CacheLogSinkContract, Sendable {
     private struct State {
         var events: [CacheLogEvent] = []
@@ -38,10 +26,8 @@ public final class CacheLogStore: CacheLogSinkContract, Sendable {
 
     /// - Parameters:
     ///   - sinks: receive every event from the first one.
-    ///   - capacity: how many events the history keeps; the oldest are dropped
-    ///     past it. Every image the loader draws is a cache read, so a scroll
-    ///     produces events far faster than anyone reads them and an unbounded
-    ///     history would grow for the life of the process.
+    ///   - capacity: how many events the history keeps; oldest are dropped past it, since a
+    ///     scroll produces events far faster than anyone reads them.
     public init(sinks: [any CacheLogSinkContract] = [], capacity: Int = 500) {
         state = Mutex(State(sinks: sinks))
         self.capacity = max(0, capacity)
@@ -75,12 +61,10 @@ public final class CacheLogStore: CacheLogSinkContract, Sendable {
     }
 
     public func log(_ event: CacheLogEvent) {
-        // Sinks run outside the lock: one of them could log back into this
-        // store (a bug, but not one that should deadlock).
+        // Sinks run outside the lock: one could log back into this store without deadlocking.
         let (sinks, continuations) = state.withLock { state in
             state.events.append(event)
-            // Only the history is capped: sinks and live streams have already
-            // been handed the event.
+            // Only the history is capped; sinks/streams already saw the event.
             if state.events.count > capacity {
                 state.events.removeFirst(state.events.count - capacity)
             }

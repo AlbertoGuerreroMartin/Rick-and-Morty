@@ -10,10 +10,8 @@ import Foundation
 import Testing
 @testable import Characters
 
-/// A case-for-case mirror of `CharactersListSectionMapperTests`. The grid has
-/// its own mapper so it can diverge, and this suite is what says it has not:
-/// a user toggling layouts must never meet a spinner in one and an empty state
-/// in the other.
+/// Case-for-case mirror of `CharactersListSectionMapperTests`: the grid has its own mapper
+/// so it can diverge, and this suite checks that it has not.
 @Suite("CharactersGridSectionMapper")
 @MainActor
 struct CharactersGridSectionMapperTests {
@@ -75,9 +73,6 @@ struct CharactersGridSectionMapperTests {
         #expect(footer(for: .end) == .none)
     }
 
-    /// The equivalence the two mappers promise, checked directly rather than
-    /// left to the reader comparing two suites: the same data yields the same
-    /// shape from both, for every kind of outcome.
     @Test("the grid agrees with the list on every outcome")
     func gridAgreesWithList() {
         let cases: [DataModel] = [
@@ -125,8 +120,6 @@ struct CharactersGridSectionMapperTests {
 }
 
 private extension CharactersGridSectionMapper.DataModel {
-    /// Named defaults for "nothing special is going on", so each test states
-    /// only the one thing it is about.
     static func make(isLoading: Bool = false,
                      characters: [CharacterModel]? = [],
                      pagination: CharactersPaginationState = .end,
@@ -148,8 +141,7 @@ private extension CharactersGridSectionMapper.DataModel {
     }
 }
 
-/// The mapper needs a view model to hold, but not to read. The publishers are
-/// here to satisfy the contract and nothing else.
+/// Publishers exist only to satisfy the contract; the mapper never reads them.
 @MainActor
 private final class StubCharactersGridViewModel: CharactersGridSectionViewModelContract {
     var loadingPublisher: AnyPublisher<Bool, Never> { Just(false).eraseToAnyPublisher() }

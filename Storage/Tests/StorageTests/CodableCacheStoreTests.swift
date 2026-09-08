@@ -115,9 +115,8 @@ struct CodableCacheStoreTests {
 
     @Test("removeExpired leaves files it did not write alone and keeps sweeping")
     func removeExpiredIgnoresForeignFiles() async throws {
-        // The disk store is shared: the image cache writes raw bytes through it
-        // under its own namespace. A sweep that deleted whatever it could not
-        // parse would wipe every cached image at launch.
+        // Disk store is shared: image cache writes raw bytes under its own namespace; a sweep
+        // must not delete what it can't parse.
         let directory = TemporaryDirectory()
         defer { directory.remove() }
         let disk = FileDiskStore(root: directory.url)
@@ -146,8 +145,7 @@ struct CodableCacheStoreTests {
         let disk = SpyDiskStore()
         let store = CodableCacheStore(diskStore: disk)
         let key = CacheKey(namespace: "characters", identifier: "1")
-        // Seeded through the disk store directly so the first read is a genuine
-        // miss in memory, the way a fresh launch sees it.
+        // Seeded directly through disk so the first read is a genuine memory miss.
         let seeded = CodableCacheStore(diskStore: disk)
         try await seeded.store(Character(id: "1", name: "Rick"), for: key, lifetime: 60)
 
@@ -165,8 +163,7 @@ struct CodableCacheStoreTests {
         let episodes = CacheKey(namespace: "episodes", identifier: "1")
         try await store.store(Character(id: "1", name: "Rick"), for: characters, lifetime: 60)
         try await store.store(Character(id: "1", name: "Pilot"), for: episodes, lifetime: 60)
-        // Warm the memory layer, so the assertion below proves the memory copy
-        // went too and not just the file.
+        // Warms the memory layer first, so the assertion proves the memory copy went too.
         _ = try await store.entry(for: characters, as: Character.self)
 
         try await store.removeAll(in: "characters")
@@ -191,8 +188,8 @@ struct CodableCacheStoreTests {
     }
 }
 
-/// A clock a test can move. `Mutex` rather than a bare `var` because the store
-/// captures it as a `@Sendable` closure and may read it from any executor.
+/// A clock a test can move; `Mutex` since the store captures it as a `@Sendable` closure
+/// read from any executor.
 private final class MutableClock: Sendable {
     private let date: Mutex<Date>
 
@@ -200,8 +197,7 @@ private final class MutableClock: Sendable {
         date = Mutex(now)
     }
 
-    /// Captures `self` rather than the `Mutex`: a `Mutex` is non-copyable, so it
-    /// cannot be captured by value in a closure.
+    /// Captures `self`, not the `Mutex` — `Mutex` is non-copyable and can't be captured by value.
     var closure: @Sendable () -> Date {
         { self.date.withLock { $0 } }
     }

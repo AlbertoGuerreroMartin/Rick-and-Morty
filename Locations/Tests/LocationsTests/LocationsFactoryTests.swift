@@ -11,10 +11,6 @@ import Storage
 import Testing
 @testable import Locations
 
-/// The factory is the feature's composition root, and every layer it wires is
-/// constructor-injected — so building the real graph needs nothing but a client
-/// and a cache store, and a missing edge is a compile error here rather than an
-/// empty screen at runtime.
 @Suite("LocationsFactory")
 @MainActor
 struct LocationsFactoryTests {
@@ -27,13 +23,9 @@ struct LocationsFactoryTests {
         #expect(graph.viewModel.loadingPublished == false)
         #expect(graph.viewModel.loadFailedPublished == false)
         #expect(graph.viewModel.selectedLocationIdPublished == nil)
-        // Nothing *more* to load before the first page has landed, so the footer
-        // stays out of the way.
         #expect(graph.viewModel.paginationPublished == .end)
     }
 
-    /// Both mappers hang off the same view model. A graph that built two of them
-    /// would give the carousel and the card two selections that could disagree.
     @Test("both section mappers read the same view model")
     func bothMappersShareTheViewModel() {
         let graph = LocationsFactory.makeGraph(dependencies: StubLocationsDependencies())
@@ -42,9 +34,6 @@ struct LocationsFactoryTests {
         #expect(graph.detailMapper.viewModel as AnyObject === graph.viewModel)
     }
 
-    /// The developer-tools screen wipes this feature's cache through the factory,
-    /// which is the only way in from outside the module: the namespace stays
-    /// private, so a caller cannot name — or mistype — it.
     @Test("purging empties the feature's cache")
     func purgeEmptiesTheCache() async throws {
         let directory = TemporaryDirectory()
@@ -60,8 +49,6 @@ struct LocationsFactoryTests {
         #expect(try await dataSource.locationsPage(for: LocationsQuery(page: 2)) == nil)
     }
 
-    /// The namespace is what makes the purge one call *and* what keeps it inside
-    /// this feature: "Clear Locations" must not take the episodes with it.
     @Test("purging leaves a sibling namespace alone")
     func purgeLeavesSiblingsAlone() async throws {
         let directory = TemporaryDirectory()
@@ -79,9 +66,7 @@ struct LocationsFactoryTests {
     }
 }
 
-/// Stands in for the app container. Nothing here reaches the network, so an
-/// endpoint that resolves to nothing is exactly right — the point is that the
-/// factory can be handed the two things it declares and nothing else.
+/// Stands in for the app container; nothing here reaches the network.
 struct StubLocationsDependencies: LocationsDependencies {
     let graphQLClient = GraphQLClient(endpoint: URL(string: "https://example.com/graphql")!)
     let cacheStore: any CacheStoreContract

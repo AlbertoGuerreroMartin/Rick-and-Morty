@@ -8,12 +8,9 @@
 import Foundation
 @testable import Storage
 
-/// In-memory ``DiskStoreContract`` that counts reads.
-///
-/// The point of a spy rather than a real `FileDiskStore` here: the memory layer
-/// is invisible from the outside — both a memory hit and a disk hit return the
-/// same bytes — so the only way to assert it exists is to count how many times
-/// the layer underneath was asked.
+/// In-memory ``DiskStoreContract`` that counts reads, since a memory hit and a disk hit return
+/// identical bytes — counting how often the layer underneath is asked is the only way to assert
+/// the memory layer exists.
 actor SpyDiskStore: DiskStoreContract {
     private(set) var readCount = 0
     private var files: [String: [String: Data]] = [:]

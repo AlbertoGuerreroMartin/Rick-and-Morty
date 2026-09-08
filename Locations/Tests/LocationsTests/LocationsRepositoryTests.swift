@@ -11,9 +11,6 @@ import Storage
 import Testing
 @testable import Locations
 
-/// The repository is where the cache policy lives, so these tests are every
-/// state the two data sources can be in between them — which of the pair answers,
-/// and what the caller gets when one of them fails.
 @Suite("LocationsRepository")
 struct LocationsRepositoryTests {
 
@@ -42,8 +39,6 @@ struct LocationsRepositoryTests {
         #expect(await local.storedPages.first?.results.first?.name == "Abadango")
     }
 
-    /// This is the 429 case: the API throttles, and the user still gets the
-    /// carousel they were looking at last week instead of an error screen.
     @Test("a failed refresh falls back to the stale entry")
     func staleEntrySurvivesAFailedFetch() async throws {
         let local = FakeLocationsLocalDataSource(entries: [1: .expired(page: .make(names: ["Earth"]))])
@@ -82,8 +77,6 @@ struct LocationsRepositoryTests {
         #expect(try await repository.fetchLocations(page: 1).locations.map(\.name) == ["Earth"])
     }
 
-    /// Serving stale data here would hide the fact that the screen went away and
-    /// quietly defeat structured concurrency.
     @Test("cancellation is rethrown rather than answered from a stale entry")
     func cancellationIsRethrown() async {
         let local = FakeLocationsLocalDataSource(entries: [1: .expired(page: .make(names: ["Earth"]))])
@@ -97,7 +90,6 @@ struct LocationsRepositoryTests {
 
     // MARK: - Mapping
 
-    /// One nameless location should not blank twenty circles.
     @Test("one unmappable entity is skipped, not fatal to the page")
     func unmappableEntitiesAreSkipped() async throws {
         let broken = LocationEntity(id: nil, name: nil, type: nil, dimension: nil, residents: nil)
@@ -109,9 +101,6 @@ struct LocationsRepositoryTests {
         #expect(try await repository.fetchLocations(page: 1).locations.map(\.name) == ["Earth"])
     }
 
-    /// The cache stores entities, so the normalisation rules run on every read —
-    /// a week-old entry is mapped by today's mapper rather than by whatever the
-    /// rules were when it was written.
     @Test("a cached entity is mapped on read, not when it was stored")
     func cachedEntitiesAreMappedOnRead() async throws {
         let page = LocationsPageEntity(
@@ -129,9 +118,6 @@ struct LocationsRepositoryTests {
 
     // MARK: - Pagination
 
-    /// `info.next` is the only thing that says whether there is more, and the
-    /// page number is the whole request — so both have to survive the trip
-    /// through the repository untouched.
     @Test("nextPage is passed through from info.next")
     func nextPageIsPassedThrough() async throws {
         let remote = FakeLocationsRemoteDataSource(pages: [
@@ -144,8 +130,6 @@ struct LocationsRepositoryTests {
         #expect(try await repository.fetchLocations(page: 7).nextPage == nil)
     }
 
-    /// Each page addresses its own cache entry and its own request, which is
-    /// what the query built inside `fetchLocations` is for.
     @Test("the requested page reaches the network")
     func theRequestedPageIsAskedFor() async throws {
         let remote = FakeLocationsRemoteDataSource(pages: [
@@ -172,9 +156,7 @@ struct LocationsRepositoryTests {
 
 struct TestError: Error, Equatable {}
 
-/// Keyed on the page number rather than on the query: the repository builds the
-/// query privately, so the page is the only handle a test has on "which request
-/// is this" — and it is exactly the axis pagination is about.
+/// Keyed on page number: the repository builds the query privately, so page is the only handle a test has.
 actor FakeLocationsRemoteDataSource: LocationsRemoteDataSourceContract {
     private let pages: [Int: Result<LocationsPageEntity, any Error>]
     private(set) var requestedPages: [Int] = []
@@ -237,8 +219,6 @@ extension CacheEntry where Value == LocationsPageEntity {
 }
 
 extension LocationEntity {
-    /// Every property defaults to something valid, so a test that is about one
-    /// missing field says only that.
     static func make(id: String? = "1",
                      name: String? = "Earth (C-137)",
                      type: String? = "Planet",

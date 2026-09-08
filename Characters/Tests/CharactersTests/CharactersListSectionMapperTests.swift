@@ -10,10 +10,6 @@ import Foundation
 import Testing
 @testable import Characters
 
-/// The mapper is where "what the view model knows" becomes "what the screen
-/// shows", and the *order* of its rules is the screen's behaviour: a spinner
-/// beating an empty state, a `nil` list never being mistaken for a zero-length
-/// one. Each rule gets a test.
 @Suite("CharactersListSectionMapper")
 @MainActor
 struct CharactersListSectionMapperTests {
@@ -46,8 +42,6 @@ struct CharactersListSectionMapperTests {
                                             canClearFilters: true)))
     }
 
-    /// There is nothing to clear when only the search text is set, and a button
-    /// that cannot help is worse than no button.
     @Test("no results with only a search text cannot clear filters")
     func noMatchesWithoutFieldsHidesTheClearButton() {
         let render = map(.make(characters: [], filter: CharactersFilter(name: "rick")))
@@ -94,8 +88,6 @@ struct CharactersListSectionMapperTests {
 }
 
 private extension CharactersListSectionMapper.DataModel {
-    /// Named defaults for "nothing special is going on", so each test states
-    /// only the one thing it is about.
     static func make(isLoading: Bool = false,
                      characters: [CharacterModel]? = [],
                      pagination: CharactersPaginationState = .end,
@@ -123,9 +115,6 @@ extension CharacterModel {
     }
 }
 
-/// The mapper needs a view model to hold, but not to read: every rule under test
-/// is a pure function of the data model. The publishers are here to satisfy the
-/// contract and nothing else.
 @MainActor
 private final class StubCharactersListViewModel: CharactersListSectionViewModelContract {
     var loadingPublisher: AnyPublisher<Bool, Never> { Just(false).eraseToAnyPublisher() }

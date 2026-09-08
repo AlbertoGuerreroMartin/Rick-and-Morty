@@ -10,11 +10,6 @@ import Foundation
 import Testing
 @testable import Episodes
 
-/// The mapper is where "what the view model knows" becomes "what the screen
-/// shows", and on this screen it is also where the search, the grouping and the
-/// ordering happen. The *order* of its rules is the screen's behaviour — a
-/// spinner beating an empty state, a `nil` list never being mistaken for a
-/// zero-length one — so each rule gets a test.
 @Suite("EpisodesListSectionMapper")
 @MainActor
 struct EpisodesListSectionMapperTests {
@@ -31,9 +26,6 @@ struct EpisodesListSectionMapperTests {
         #expect(map(.make(episodes: nil)) == .hidden)
     }
 
-    /// Nothing was loaded, so the query is *not* named: it matched nothing
-    /// because there was nothing to match, and blaming the user's text would be
-    /// a lie.
     @Test("an empty catalogue is no results, with nothing to blame")
     func emptyCatalogueHasNoQuery() {
         #expect(map(.make(episodes: [])) == .empty(.noMatches(query: nil)))
@@ -46,9 +38,6 @@ struct EpisodesListSectionMapperTests {
         #expect(map(.make(episodes: [], loadFailed: true)) == .empty(.failed))
     }
 
-    /// The catalogue is on the device, so the search is the only reason nothing
-    /// is showing — and saying so is what turns a blank screen into something
-    /// the user can act on.
     @Test("a search that matches nothing quotes the search back")
     func noMatchesNamesTheQuery() {
         let data = DataModel.make(episodes: [.make(name: "Pilot")],
@@ -80,9 +69,6 @@ struct EpisodesListSectionMapperTests {
         #expect(seasons.map(\.id) == [1, 2, 3])
     }
 
-    /// The input arrives in whatever order the server paginated it in, and the
-    /// search then removes rows from the middle of that order. Sorting has to be
-    /// explicit or the grouping reads as arbitrary.
     @Test("episodes inside a season are ordered by number, whatever the input order")
     func episodesAreOrderedWithinASeason() throws {
         let data = DataModel.make(episodes: [.make(season: 1, number: 11),
@@ -93,9 +79,6 @@ struct EpisodesListSectionMapperTests {
         #expect(seasons.first?.episodes.map(\.number) == [1, 2, 11])
     }
 
-    /// Two episodes claiming the same number is malformed data, not a crash —
-    /// but the order still has to be stable, because a list that reshuffled
-    /// between two keystrokes would look like a bug regardless of the cause.
     @Test("a tie on number is broken by code and then id")
     func tiesAreBrokenDeterministically() throws {
         let first = EpisodeModel(id: "a", name: "A", airDate: "2013", code: "S01E01",
@@ -131,9 +114,6 @@ struct EpisodesListSectionMapperTests {
 
     // MARK: - The publisher
 
-    /// The four streams have to actually reach `mapToRenderModel`, and a
-    /// `combineLatest` that dropped one would only show up as a screen that
-    /// never updates.
     @Test("the data publisher combines all four view model streams")
     func dataPublisherCombinesEveryStream() async throws {
         let viewModel = StubEpisodesListViewModel()
@@ -169,8 +149,6 @@ struct EpisodesListSectionMapperTests {
 }
 
 private extension EpisodesListSectionMapper.DataModel {
-    /// Named defaults for "nothing special is going on", so each test states
-    /// only the one thing it is about.
     static func make(isLoading: Bool = false,
                      episodes: [EpisodeModel]? = [],
                      searchQuery: EpisodesSearchQuery = .empty,
@@ -185,8 +163,6 @@ private extension EpisodesListSectionMapper.DataModel {
 // MARK: - Fixtures
 
 extension EpisodeModel {
-    /// The code is derived from the season and the number so a fixture cannot
-    /// describe an episode whose code disagrees with its grouping.
     static func make(id: String? = nil,
                      name: String = "Pilot",
                      airDate: String = "December 2, 2013",
@@ -208,9 +184,7 @@ extension EpisodeModel {
     }
 }
 
-/// The mapper needs a view model to hold, and the publisher test needs it to
-/// actually emit. Everything is a plain stored property replayed through a
-/// `Just`, so a test sets a value and gets one deterministic emission.
+/// Plain stored properties replayed through `Just`, so a test sets a value and gets one emission.
 @MainActor
 final class StubEpisodesListViewModel: EpisodesListSectionViewModelContract {
     var isLoading = false

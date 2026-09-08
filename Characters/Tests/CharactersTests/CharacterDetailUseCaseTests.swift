@@ -9,14 +9,7 @@ import Foundation
 import Testing
 @testable import Characters
 
-/// The use case is where the character and the HBO Max links become one set of
-/// rows, so these tests are that join: what it matches on, what it does when
-/// only one of the two answers arrives, and that it asks for both at once.
-///
-/// The asymmetry between the two failures is the point of most of them. A
-/// character that will not load is the screen; links that will not load are a
-/// missing button, and an unofficial third-party endpoint must never be able to
-/// take the screen down with it.
+/// The use case joins the character and HBO Max links: a character failure throws, a links failure only costs buttons.
 @Suite("CharacterDetailUseCase")
 struct CharacterDetailUseCaseTests {
 
@@ -29,8 +22,6 @@ struct CharacterDetailUseCaseTests {
         #expect(await repository.requestedIDs == ["42"])
     }
 
-    /// The character *is* the screen, so its failure is the one thing here that
-    /// still throws.
     @Test("a repository failure reaches the caller")
     func fetchRethrows() async {
         let useCase = CharacterDetailUseCase(repository: FakeCharacterDetailRepository(error: TestError()))
@@ -42,8 +33,7 @@ struct CharacterDetailUseCaseTests {
 
     // MARK: - The join
 
-    /// Season and number, because they are the only thing the two services
-    /// agree on: JustWatch numbers episodes and rickandmortyapi codes them.
+    /// Season and number: the only thing JustWatch and rickandmortyapi agree on.
     @Test("each episode gets the link for its own season and number")
     func linksAreJoinedByNumber() async throws {
         let repository = FakeCharacterDetailRepository(
@@ -65,8 +55,6 @@ struct CharacterDetailUseCaseTests {
         ])
     }
 
-    /// Everything else about the character is untouched by the join: the links
-    /// only ever attach a URL to a row.
     @Test("the join leaves the rest of the character alone")
     func theJoinChangesNothingElse() async throws {
         let repository = FakeCharacterDetailRepository(
@@ -82,9 +70,6 @@ struct CharacterDetailUseCaseTests {
         #expect(detail.episodes.map(\.name) == ["Pilot"])
     }
 
-    /// An episode HBO Max does not carry is not an error and not a special case:
-    /// it is simply a row with no button, which is also what every row looks
-    /// like when the lookup returns nothing at all.
     @Test("no links at all is a character with no buttons")
     func emptyLinksLeaveEveryEpisodeUnlinked() async throws {
         let repository = FakeCharacterDetailRepository(
@@ -97,8 +82,7 @@ struct CharacterDetailUseCaseTests {
         #expect(detail.episodes.allSatisfy { $0.hboMaxURL == nil })
     }
 
-    /// The whole reason the two fetches are separate calls: JustWatch is
-    /// unofficial and can fail at any time, and the character must load anyway.
+    /// JustWatch is unofficial and can fail anytime; the character must load anyway.
     @Test("a links failure costs the buttons, not the screen")
     func aLinksFailureIsSurvivable() async throws {
         let repository = FakeCharacterDetailRepository(
@@ -112,8 +96,6 @@ struct CharacterDetailUseCaseTests {
         #expect(detail.episodes.allSatisfy { $0.hboMaxURL == nil })
     }
 
-    /// The other half of that asymmetry: the character is the screen, so its
-    /// failure still throws even when the links came back perfectly well.
     @Test("a character failure still throws even when the links arrived")
     func aCharacterFailureStillThrows() async {
         let repository = FakeCharacterDetailRepository(
@@ -126,9 +108,7 @@ struct CharacterDetailUseCaseTests {
         }
     }
 
-    /// Cancellation means the screen went away rather than that JustWatch is
-    /// down, so it is the one links failure that is not swallowed — a task that
-    /// answered anyway would defeat structured concurrency.
+    /// Cancellation means the screen went away, not that JustWatch is down, so it is not swallowed.
     @Test("a cancelled links fetch is not treated as a missing link")
     func cancellationPropagates() async {
         let repository = FakeCharacterDetailRepository(detail: .make(),
@@ -139,10 +119,7 @@ struct CharacterDetailUseCaseTests {
         }
     }
 
-    /// Sequential fetches would add JustWatch's latency to a load the user is
-    /// watching a spinner through, for two answers that need nothing from each
-    /// other. The fake holds the character open until the links fetch has
-    /// started, so this can only finish if both are in flight at once.
+    /// The fake holds the character open until the links fetch has started, so this only passes if both overlap.
     @Test("both fetches are in flight at the same time")
     func bothFetchesRunConcurrently() async throws {
         let repository = FakeCharacterDetailRepository(detail: .make(),
@@ -160,10 +137,7 @@ private actor FakeCharacterDetailRepository: CharactersRepositoryContract {
     private let error: (any Error)?
     private let links: HBOMaxLinks
     private let linksError: (any Error)?
-    /// Makes the two calls prove they overlap: the character cannot finish until
-    /// the links fetch has been entered, which a sequential use case would never
-    /// allow. Bounded, so a use case that stopped fetching both fails on the
-    /// assertions rather than hanging the suite.
+    /// Bounded wait: a use case that stopped fetching both fails the assertion, not the suite.
     private let holdDetailUntilLinksStart: Bool
     private(set) var detailCallCount = 0
     private(set) var linksCallCount = 0
@@ -181,8 +155,7 @@ private actor FakeCharacterDetailRepository: CharactersRepositoryContract {
         self.holdDetailUntilLinksStart = holdDetailUntilLinksStart
     }
 
-    /// Not exercised here: the list has its own suite, and this fake exists to
-    /// stand under the detail use case alone.
+    /// Not exercised here: this fake exists only to stand under the detail use case.
     func fetchCharacters(filter: CharactersFilter, page: Int) async throws -> CharactersPage {
         throw TestError()
     }
@@ -194,8 +167,7 @@ private actor FakeCharacterDetailRepository: CharactersRepositoryContract {
         if holdDetailUntilLinksStart {
             for _ in 0..<10_000 {
                 if linksCallCount > 0 { break }
-                // An actor is reentrant, so suspending here lets the links call
-                // in — which is exactly what is being asserted.
+                // The actor is reentrant, so suspending here lets the links call in.
                 await Task.yield()
             }
         }

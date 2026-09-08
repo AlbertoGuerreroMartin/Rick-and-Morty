@@ -9,10 +9,7 @@ import Foundation
 import Testing
 @testable import Characters
 
-/// The mapper is where the screen decides what it cannot be drawn without, so
-/// these tests are that decision, field by field: six things are required, four
-/// are optional for four different reasons, and the filmography is the one place
-/// a failure costs a row rather than the screen.
+/// Pins field-by-field what the mapper requires vs. tolerates; a bad episode costs a row, not the screen.
 @Suite("CharacterDetailEntityMapper")
 struct CharacterDetailEntityMapperTests {
 
@@ -78,8 +75,6 @@ struct CharacterDetailEntityMapperTests {
         }
     }
 
-    /// The picture is the whole top half of this screen, so a character without
-    /// one has nothing to draw rather than a gap to draw around.
     @Test("a missing image fails the character")
     func missingImageThrows() {
         #expect(throws: CharacterDetailEntityMapperError.self) {
@@ -87,9 +82,6 @@ struct CharacterDetailEntityMapperTests {
         }
     }
 
-    /// The API sends some of these upper camel cased and some lowercased, and it
-    /// may grow a value this app has never heard of — so neither enum rejects a
-    /// spelling, and a *present* status or gender can never fail the screen.
     @Test("status and gender are read leniently", arguments: [
         ("Alive", "Male"), ("alive", "male"), ("ALIVE", "MALE")
     ])
@@ -110,8 +102,7 @@ struct CharacterDetailEntityMapperTests {
 
     // MARK: - type
 
-    /// The API sends `""` rather than `null` for a character with no subtype,
-    /// and an empty string would draw a labelled row with nothing after it.
+    /// The API sends `""` rather than `null` for a character with no subtype.
     @Test("a blank type becomes nil", arguments: ["", " ", "   \n "])
     func blankTypeIsNil(type: String) throws {
         #expect(try CharacterDetailEntityMapper().map(.make(type: type)).type == nil)
@@ -137,9 +128,6 @@ struct CharacterDetailEntityMapperTests {
         #expect(detail.location == nil)
     }
 
-    /// A place with no name is no place at all: the name is the only part of it
-    /// the screen shows on its own, and a row reading "· Planet" would be worse
-    /// than one line fewer.
     @Test("a place with no name is nil")
     func namelessPlaceIsNil() throws {
         let place = CharacterDetailPlace(id: "1", name: nil, type: "Planet", dimension: "C-137")
@@ -147,9 +135,7 @@ struct CharacterDetailEntityMapperTests {
         #expect(try CharacterDetailEntityMapper().map(.make(origin: place)).origin == nil)
     }
 
-    /// The API's own word for "we do not know", and it is a *name*: rewriting it
-    /// into `nil` would throw away the difference between "the API says unknown"
-    /// and "the API has no record", and only the first is worth showing.
+    /// The API's own word for "we do not know", kept verbatim rather than becoming `nil`.
     @Test("the API's literal unknown is kept verbatim")
     func unknownPlaceNameIsKept() throws {
         let place = CharacterDetailPlace(id: nil, name: "unknown", type: nil, dimension: nil)
@@ -199,8 +185,6 @@ struct CharacterDetailEntityMapperTests {
         #expect(episode.hboMaxURL == nil)
     }
 
-    /// The schema promises a format, not a casing, and a lowercase code
-    /// describes exactly the same episode.
     @Test("a lowercase code is accepted", arguments: ["s01e05", "S01e05", "s01E05"])
     func lowercaseCodeIsAccepted(code: String) throws {
         let entity = CharacterDetailEntity.make(episodes: [
@@ -228,9 +212,7 @@ struct CharacterDetailEntityMapperTests {
         #expect(episode.number == 103)
     }
 
-    /// A code that will not parse cannot be keyed to an HBO Max offer, and
-    /// guessing at one would put a play button on the wrong episode — which the
-    /// user cannot tell is wrong until they are watching it.
+    /// Guessing at an unparseable code would put a play button on the wrong episode.
     @Test("an episode with an unparseable code is skipped, not guessed at", arguments: [
         "Season 1", "S01", "E01", "S01E", "SxxExx", "1x01", "", " S01E01 "
     ])
@@ -252,8 +234,6 @@ struct CharacterDetailEntityMapperTests {
         #expect(try CharacterDetailEntityMapper().map(.make(episodes: [episode])).episodes.isEmpty)
     }
 
-    /// The asymmetry that makes the whole screen survivable: a bad episode is
-    /// one row, and the character it belongs to still loads.
     @Test("a bad episode costs its own row and nothing else")
     func aBadEpisodeDoesNotFailTheCharacter() throws {
         let entity = CharacterDetailEntity.make(episodes: [
@@ -268,9 +248,6 @@ struct CharacterDetailEntityMapperTests {
         #expect(detail.episodes.map(\.name) == ["Pilot", "Anatomy Park"])
     }
 
-    /// The API lists a character's episodes in broadcast order, which is the
-    /// order a filmography reads in. Sorting an answer that is already sorted is
-    /// only a chance to get it wrong.
     @Test("the API's order is preserved")
     func orderIsPreserved() throws {
         let entity = CharacterDetailEntity.make(episodes: [

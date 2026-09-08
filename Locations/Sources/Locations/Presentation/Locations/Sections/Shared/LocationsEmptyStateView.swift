@@ -7,16 +7,7 @@
 
 import SwiftUI
 
-/// Nothing to draw, and why.
-///
-/// `ContentUnavailableView` rather than a hand-rolled `VStack` so the copy gets
-/// the system's own layout, metrics and Dynamic Type behaviour for free — and so
-/// this state looks like every other "nothing here" in iOS rather than like
-/// something this app invented.
-///
-/// The retry arrives as a closure because this is a leaf: it draws a reason and
-/// nothing else, and the section that owns a view model is the one that knows
-/// what retrying means.
+/// Nothing to draw, and why. `onRetry` is a closure because this is a leaf view with no view model.
 struct LocationsEmptyStateView: View {
     let reason: LocationsSectionEmptyReason
     let onRetry: () -> Void
@@ -27,9 +18,7 @@ struct LocationsEmptyStateView: View {
             ContentUnavailableView {
                 Label("No locations", systemImage: "mappin.slash")
             } description: {
-                // No Retry here: the API answered, and it answered correctly.
-                // A button that re-asked a question already answered would
-                // suggest the user did something wrong.
+                // No Retry: the API answered correctly, there's just nothing to show.
                 Text("There are no locations to show.")
             }
         case .failed:

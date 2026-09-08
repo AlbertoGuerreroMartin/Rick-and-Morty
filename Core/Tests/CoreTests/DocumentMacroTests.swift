@@ -14,8 +14,7 @@ import Testing
 
 private let macros: [String: MacroSpec] = ["Document": MacroSpec(type: DocumentMacro.self)]
 
-/// Bridges swift-syntax's framework-agnostic assertion onto Swift Testing, so a
-/// mismatch shows up as a normal `Issue` instead of an XCTest failure.
+/// Bridges swift-syntax's assertion onto Swift Testing, so a mismatch shows as an `Issue`.
 private func expand(
     _ original: String,
     into expected: String,
@@ -54,8 +53,7 @@ private func expand(
 }
 
 // swiftlint:disable line_length
-/// Optionals and arrays are peeled off so the runtime check sees the element
-/// type — `[Episode]?` has to resolve against `Episode`, not against the array.
+/// Optionals and arrays are peeled off so the check sees the element type.
 @Test func peelsOptionalsAndArraysDownToTheBaseType() {
     expand(
         """
@@ -113,8 +111,7 @@ private func expand(
     )
 }
 
-/// The `as [String?]` annotation is what keeps this case compiling: a bare `[]`
-/// literal has no element type to infer.
+/// `as [String?]` keeps this compiling: a bare `[]` literal has no element type to infer.
 @Test func emitsAValidEmptyDocumentForATypeWithoutStoredProperties() {
     expand(
         """

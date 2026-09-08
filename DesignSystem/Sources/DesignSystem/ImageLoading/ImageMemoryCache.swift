@@ -1,14 +1,10 @@
 import Foundation
 import UIKit
 
-/// Thread-safe store of decoded, downsampled images keyed by URL and target size.
-///
-/// This deliberately lives *outside* ``ImageLoader``'s actor isolation. A cache
-/// read has to be answerable synchronously from the main thread: that is what
-/// lets ``CachedAsyncImage`` render an already-loaded image on its very first
-/// frame instead of flashing a placeholder every time a recycled row scrolls
-/// back into view. `NSCache` is documented as thread-safe, so the unchecked
-/// conformance is honest rather than a papering-over.
+/// Thread-safe store of decoded, downsampled images keyed by URL and target size. Lives outside
+/// ``ImageLoader``'s actor isolation so a read is answerable synchronously from the main thread,
+/// letting ``CachedAsyncImage`` render on its first frame. `NSCache` is documented thread-safe,
+/// so the unchecked conformance is honest.
 final class ImageMemoryCache: @unchecked Sendable {
     private let storage = NSCache<NSString, UIImage>()
 
@@ -32,10 +28,8 @@ final class ImageMemoryCache: @unchecked Sendable {
     }
 }
 
-/// Identifies a decoded image. The pixel size is part of the identity because
-/// the same URL downsampled for a 64pt avatar and for a full-width header are
-/// two different bitmaps, and returning one where the other was asked for would
-/// silently ship a blurry or oversized image.
+/// Identifies a decoded image. Pixel size is part of the identity: the same URL downsampled
+/// for an avatar vs. a full-width header are different bitmaps.
 struct ImageKey: Hashable, Sendable {
     let url: URL
     let maxPixelSize: Int
@@ -51,8 +45,7 @@ struct ImageKey: Hashable, Sendable {
 }
 
 private extension UIImage {
-    /// Bytes the bitmap actually occupies, which is what the cache should be
-    /// budgeting — not the size of the compressed file it came from.
+    /// Bytes the bitmap occupies — not the compressed file size it came from.
     var decodedByteCount: Int {
         guard let cgImage else { return 0 }
         return cgImage.bytesPerRow * cgImage.height

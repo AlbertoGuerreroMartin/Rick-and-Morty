@@ -8,25 +8,16 @@
 import Combine
 import SwiftUI
 
-/// The strip of capsules under the search bar.
-///
-/// It is always on screen, even with nothing applied, because it is the only
-/// entry point to the filter sheet: a bar that appeared once a filter existed
-/// would have no way of letting the user set the first one.
+/// The strip of capsules under the search bar; always visible, as the only entry point to the filter sheet.
 struct CharactersFilterBarSectionView: View {
-    /// Held as the contract, not observed. Exactly as in the list section, the
-    /// view model is here so the chips have something to call — the render
-    /// pipeline is still publishers -> mapper -> `@State`.
+    /// Held as the contract, not observed directly.
     let viewModel: any CharactersFilterBarSectionViewModelContract
 
     private let renderModelPublisher: AnyPublisher<CharactersFilterBarRenderModel, Never>
 
     @State private var renderModel: CharactersFilterBarRenderModel = .empty
 
-    /// Presentation is the *view's* state, not the view model's: nothing outside
-    /// this bar can open the sheet, and routing a boolean through a publisher
-    /// would make the view model responsible for a piece of UI it never needs to
-    /// reason about.
+    /// The view's own state: nothing outside this bar opens the sheet.
     @State private var isPresentingFilters = false
 
     init(viewModel: any CharactersFilterBarSectionViewModelContract,
@@ -57,17 +48,14 @@ struct CharactersFilterBarSectionView: View {
             renderModel = $0
         }
         .sheet(isPresented: $isPresentingFilters) {
-            // Seeded from the applied filter every time it opens, so the sheet
-            // can never show a draft the list is not already reflecting.
+            // Seeded from the applied filter every time it opens.
             CharactersFilterSheet(initial: renderModel.filter) { filter in
                 viewModel.apply(filter)
             }
         }
     }
 
-    /// The count lives in the label rather than in a badge overlay: it has to
-    /// survive Dynamic Type and be read out by VoiceOver, and "Filters, 2" is
-    /// exactly what a badge would be trying to say.
+    /// The count lives in the label, not a badge, so it survives Dynamic Type and reads via VoiceOver.
     private var filtersButton: some View {
         Button {
             isPresentingFilters = true

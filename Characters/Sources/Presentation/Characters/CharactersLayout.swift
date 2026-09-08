@@ -5,14 +5,8 @@
 //  Created by Alberto Guerrero Martin on 07/09/2026.
 //
 
-/// How the characters screen lays its results out.
-///
-/// Screen state, not view model state. The list and the grid draw the same
-/// data — same rows, same footer, same empty states — so the choice between
-/// them changes nothing about what is loaded, filtered or paginated. Routing it
-/// through a publisher would make the view model responsible for a piece of UI
-/// it never needs to reason about, exactly as with the filter sheet's
-/// presentation flag.
+/// How the characters screen lays its results out. Screen state, not view model state: the
+/// list and grid draw the same data, so the choice changes nothing about loading or filtering.
 enum CharactersLayout: Equatable, Sendable {
     case list
     case grid
@@ -24,8 +18,7 @@ enum CharactersLayout: Equatable, Sendable {
         }
     }
 
-    /// The toggle button shows the layout the tap *leads to*, not the current
-    /// one, which is how the grid/list buttons in Files and Photos behave.
+    /// Shows the layout the tap leads to, not the current one (as in Files and Photos).
     var toggleSystemImage: String {
         switch self {
         case .list: "square.grid.2x2"

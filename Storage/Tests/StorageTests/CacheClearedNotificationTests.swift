@@ -10,8 +10,6 @@ import Synchronization
 import Testing
 @testable import Storage
 
-/// The notification is the whole contract between a tool that clears caches and
-/// the screens that show them, so the name and the payload are pinned down.
 @Suite("CacheClearedNotification")
 @MainActor
 struct CacheClearedNotificationTests {

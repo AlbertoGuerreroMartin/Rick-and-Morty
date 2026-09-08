@@ -12,9 +12,6 @@ import Testing
 
 // MARK: - Store reads
 
-/// The outcome of a read is the whole payload of a cache log: a reader looking
-/// at "why did this screen hit the network" needs to see a miss where they
-/// expected a hit, and which layer answered when it was a hit.
 @Suite("CodableCacheStore logging")
 struct CodableCacheStoreLoggingTests {
 
@@ -46,8 +43,7 @@ struct CodableCacheStoreLoggingTests {
         defer { directory.remove() }
         let disk = FileDiskStore(root: directory.url)
         let sink = SpyCacheSink()
-        // Written through a different instance, so the reader's memory layer is
-        // empty — which is what a relaunch looks like.
+        // Written through a different instance so the reader's memory layer starts empty.
         try await CodableCacheStore(diskStore: disk).store(Character(id: "1", name: "Rick"),
                                                            for: key, lifetime: 60)
         let store = CodableCacheStore(diskStore: disk, logger: sink)
@@ -57,9 +53,6 @@ struct CodableCacheStoreLoggingTests {
         #expect(sink.events.map(\.outcome) == [.hit(layer: .disk, isExpired: false)])
     }
 
-    /// An expired entry is still an entry: the store hands it back and the
-    /// repository decides. Logging it as a miss would hide the stale-while-error
-    /// path entirely.
     @Test("an expired entry is logged as a hit that is expired")
     func expiredHit() async throws {
         let directory = TemporaryDirectory()
@@ -90,8 +83,6 @@ struct CodableCacheStoreLoggingTests {
         #expect(sink.events.first?.key == key)
     }
 
-    /// A shape change reads as nothing at all, so it logs as nothing at all.
-    /// The store line that preceded it is what tells the two apart in the log.
     @Test("an entry that no longer decodes is logged as a miss")
     func undecodableIsAMiss() async throws {
         let directory = TemporaryDirectory()
@@ -182,8 +173,6 @@ struct CacheLogStoreTests {
         #expect(sink.events == [first, second])
     }
 
-    /// Every avatar on screen is a cache read, so the history has to stay
-    /// bounded or a scroll grows it for the life of the process.
     @Test("the history drops the oldest events past its capacity")
     func capsTheHistory() {
         let store = CacheLogStore(capacity: 3)
@@ -199,8 +188,6 @@ struct CacheLogStoreTests {
 
 // MARK: - Formatter
 
-/// The console format is a contract with whoever reads the Xcode console, so it
-/// is asserted as a whole line rather than "contains the namespace".
 @Suite("CacheLogFormatter")
 struct CacheLogFormatterTests {
     private let formatter = CacheLogFormatter(timeZone: TimeZone(identifier: "UTC")!)
@@ -233,8 +220,6 @@ struct CacheLogFormatterTests {
                 == #"🗂️ 14:20:37.360 > [Cache] HIT (expired, memory) episodes › episodes|def456|{"page":2}"#)
     }
 
-    /// The identifier is printed verbatim — the on-disk name is a one-way hash,
-    /// so this is the only thing that connects a line to what asked for it.
     @Test("a miss prints the key it missed on")
     func miss() {
         #expect(string(namespace: "images",
@@ -243,9 +228,7 @@ struct CacheLogFormatterTests {
                 == "🗂️ 14:20:37.360 > [Cache] MISS images › https://rickandmortyapi.com/api/character/avatar/1.jpeg")
     }
 
-    /// Nothing asserts on the output — `os.Logger` writes where a test cannot
-    /// read it — but the sink still has to build its line without trapping, and
-    /// the console logger is otherwise never exercised at all.
+    // os.Logger output isn't readable in tests; this only checks the sink doesn't trap.
     @Test("the console logger accepts every outcome")
     func consoleLoggerRuns() {
         let logger = ConsoleCacheLogger(subsystem: "StorageTests",
@@ -265,8 +248,8 @@ struct CacheLogFormatterTests {
 
 // MARK: - Doubles
 
-/// Records what the store told it, so a test can assert on outcomes it has no
-/// other way to observe: a memory hit and a disk hit return identical values.
+/// Records events for assertions the store's return value can't distinguish (e.g. memory vs
+/// disk hit).
 final class SpyCacheSink: CacheLogSinkContract, @unchecked Sendable {
     private let storage = Mutex<[CacheLogEvent]>([])
 
@@ -279,8 +262,8 @@ final class SpyCacheSink: CacheLogSinkContract, @unchecked Sendable {
     }
 }
 
-/// A clock a test can move. `Mutex` rather than a bare `var` because the store
-/// captures it as a `@Sendable` closure and may read it from any executor.
+/// A clock a test can move; `Mutex` since the store captures it as a `@Sendable` closure
+/// read from any executor.
 private final class MutableTestClock: Sendable {
     private let date: Mutex<Date>
 

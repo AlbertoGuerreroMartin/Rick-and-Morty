@@ -1,9 +1,8 @@
 import Foundation
 import Synchronization
 
-/// Intercepts requests made by a `URLSession` configured with it, so the image
-/// tests never touch the network and can count exactly how many requests a URL
-/// received — which is how request coalescing gets verified.
+/// Intercepts requests from a `URLSession` configured with it, so tests never touch the network
+/// and can count how many requests a URL received (used to verify coalescing).
 final class StubURLProtocol: URLProtocol, @unchecked Sendable {
     struct Stub: Sendable {
         var statusCode: Int = 200

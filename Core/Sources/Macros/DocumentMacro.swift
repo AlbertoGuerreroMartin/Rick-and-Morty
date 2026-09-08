@@ -21,9 +21,8 @@ public struct DocumentMacro: MemberMacro {
             .filter { !$0.modifiers.contains { $0.name.text == "static" || $0.name.text == "class" } }
             .flatMap { decl in
                 decl.bindings.compactMap { binding -> String? in
-                    // drop computed properties, and properties whose type is
-                    // inferred rather than written out — there is no type syntax
-                    // to hand to `GraphQLField.resolve`.
+                    // drop computed properties and inferred (unwritten) types — no type syntax
+                    // to resolve.
                     guard binding.accessorBlock == nil,
                           let name = binding.pattern.as(IdentifierPatternSyntax.self)?.identifier.text,
                           let type = binding.typeAnnotation?.type
@@ -43,9 +42,7 @@ public struct DocumentMacro: MemberMacro {
         ]
     }
 
-    /// Peels optionals and arrays off a property's type, so `[Episode]?` resolves
-    /// against `Episode`. Whether that base type is a document type is decided at
-    /// runtime by `GraphQLField`; the macro cannot know it here.
+    /// Peels optionals and arrays off a type, so `[Episode]?` resolves against `Episode`.
     private static func baseType(of type: TypeSyntax) -> String {
         var type = type
         while true {

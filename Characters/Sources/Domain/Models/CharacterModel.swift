@@ -16,16 +16,13 @@ struct CharacterModel: Sendable, Hashable {
     let location: CharacterLocation
 }
 
-/// `CaseIterable` so the filter sheet's picker can list the statuses without a
-/// second, hand-maintained array that could drift from the enum.
 enum CharacterStatus: String, Sendable, Hashable, CaseIterable {
     case alive
     case dead
     case unknown
 
     init?(rawValue: String) {
-        // API sends some values upper camel cased, and some lowercased. Lowercase by default to avoid false parsing errors.
-        // Also fallback to unknown case to cover from new values.
+        // API sends mixed casing; unrecognized values fall back to .unknown.
         switch rawValue.lowercased() {
         case "alive": self = .alive
         case "dead": self = .dead

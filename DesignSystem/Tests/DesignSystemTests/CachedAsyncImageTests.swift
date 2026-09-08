@@ -13,8 +13,8 @@ import Testing
 import UIKit
 @testable import DesignSystem
 
-/// SwiftUI bodies are lazy, so the view is hosted on a sized window and laid out
-/// — building the value alone would run neither `body` nor the `.task`.
+/// SwiftUI bodies are lazy: the view must be hosted on a sized window and laid out to run
+/// `body` and `.task`.
 @Suite("CachedAsyncImage", .serialized)
 @MainActor
 struct CachedAsyncImageTests {
@@ -31,9 +31,8 @@ struct CachedAsyncImageTests {
         #expect(cache.outcomes == [.miss])
     }
 
-    /// The synchronous read in `init` now adopts the bitmap *and* falls through
-    /// to the loader, so a warm appearance still logs its hit — the busiest path
-    /// in the app used to be invisible in the inspector.
+    // init's synchronous read now falls through to the loader too, so a warm appearance still
+    // logs its hit.
     @Test("a warm appearance still logs its memory hit")
     func warmAppearanceLogsAHit() async throws {
         let url = URL(string: "https://example.com/cached-async-warm.png")!
@@ -84,8 +83,7 @@ struct CachedAsyncImageTests {
         )
     }
 
-    /// Hosts `view` on a sized window and forces layout, so its `body` runs and
-    /// its `.task` starts. A hosting controller with no window lays out nothing.
+    /// Hosts `view` on a sized window and forces layout, so its `body` runs and its `.task` starts.
     private func render(_ view: some View) async {
         let controller = UIHostingController(rootView: view)
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
@@ -93,8 +91,7 @@ struct CachedAsyncImageTests {
         window.isHidden = false
         window.layoutIfNeeded()
 
-        // The `.task` is asynchronous and goes through the loader's actor and a
-        // detached download, so layout returning is not enough.
+        // `.task` goes through the loader's actor and a detached download; layout alone isn't enough.
         for _ in 0..<20 {
             await Task.yield()
         }

@@ -53,9 +53,7 @@ struct ImageDiskCacheTests {
 
     @Test("the size cap sweeps the oldest entries first")
     func sweepRemovesOldestEntries() async throws {
-        // Dates are set explicitly rather than taken from the filesystem: real
-        // writes land in the same millisecond and their order would be a
-        // coin flip.
+        // Dates set explicitly, not from the filesystem: real writes land in the same millisecond.
         let disk = FakeDiskStore()
         for index in 0..<10 {
             await disk.seed(
@@ -65,8 +63,7 @@ struct ImageDiskCacheTests {
                 in: "images"
             )
         }
-        // 1000 bytes stored against a 500-byte cap: the sweep must trim to 375
-        // (75% of the cap), which means dropping the seven oldest files.
+        // 1000 bytes vs. a 500-byte cap: sweep trims to 375 (75%), dropping the seven oldest.
         let cache = ImageDiskCache(diskStore: disk, capacity: 500)
 
         _ = try await cache.data(for: URL(string: "https://example.com/anything.jpeg")!)

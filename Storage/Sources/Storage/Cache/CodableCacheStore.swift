@@ -8,30 +8,17 @@
 import Foundation
 
 /// The default ``CacheStoreContract``: JSON envelopes on a ``DiskStoreContract``.
-///
-/// Every value is wrapped in an ``Envelope`` before it is written, so the dates
-/// travel with the payload in one file. The alternative — a sidecar index of
-/// expiry dates — needs its own write, its own corruption story, and goes out of
-/// sync the moment the OS purges a file from under it. One self-describing file
-/// per key has none of those failure modes.
-///
 /// An actor: the in-memory layer is mutable state shared by every caller.
 public actor CodableCacheStore: CacheStoreContract {
 
-    /// What actually lands on disk.
     private struct Envelope<Value: Codable & Sendable>: Codable, Sendable {
         let storedAt: Date
         let expiresAt: Date
         let value: Value
     }
 
-    /// The date fields of an ``Envelope`` with `value` left undecoded.
-    ///
-    /// `removeExpired` runs over every file in the cache and only needs to know
-    /// whether each one is stale. Decoding through this instead of the full
-    /// envelope means the sweep never has to know the value's type — which it
-    /// could not, the files are type-erased on disk — and never pays to
-    /// materialise a payload it is about to delete.
+    /// ``Envelope``'s date fields with `value` left undecoded, so the expiry sweep never
+    /// materializes a payload it is about to delete.
     private struct EnvelopeHeader: Decodable {
         let storedAt: Date
         let expiresAt: Date
@@ -43,23 +30,17 @@ public actor CodableCacheStore: CacheStoreContract {
     private let decoder: JSONDecoder
     private let logger: any CacheLogSinkContract
 
-    /// Encoded envelopes, not decoded values: the payload type is only known at
-    /// the call site, so caching decoded values would need one heterogeneous box
-    /// per type. Holding the bytes keeps this layer type-agnostic and still
-    /// removes the file read, which is the expensive part — a value read twice in
-    /// one session touches the disk once.
+    /// Encoded envelopes, not decoded values: keeps this layer type-agnostic and still avoids
+    /// the file read on a repeat lookup.
     private var memory: [CacheKey: Data] = [:]
-    /// Insertion order, so the layer can stay bounded with a plain FIFO drop.
-    /// A cache of a cache does not deserve an LRU.
+    /// Insertion order, for a plain FIFO eviction.
     private var memoryOrder: [CacheKey] = []
     private let memoryCountLimit: Int
 
     /// - Parameters:
-    ///   - now: injectable clock. Expiry is the one behaviour here that cannot be
-    ///     tested without waiting for real time, so it is a dependency.
+    ///   - now: injectable clock; expiry can't otherwise be tested without waiting on real time.
     ///   - memoryCountLimit: how many encoded envelopes to keep in memory.
-    ///   - logger: told the outcome of every read. Defaults to a no-op so
-    ///     nothing but the composition root has to know logging exists.
+    ///   - logger: defaults to a no-op.
     public init(
         diskStore: any DiskStoreContract,
         now: @escaping @Sendable () -> Date = Date.init,
@@ -83,9 +64,7 @@ public actor CodableCacheStore: CacheStoreContract {
         as type: Value.Type
     ) async throws -> CacheEntry<Value>? {
         let data: Data
-        // The layer is captured here rather than derived later because it is
-        // only knowable at this point: `remember` puts a disk read into memory,
-        // so by the time the envelope is decoded both layers hold the bytes.
+        // Captured here, not derived later: `remember` puts a disk read into memory before decode.
         let layer: CacheLogEvent.Layer
         if let cached = memory[key] {
             data = cached
@@ -101,21 +80,13 @@ public actor CodableCacheStore: CacheStoreContract {
         }
 
         guard let envelope = try? decoder.decode(Envelope<Value>.self, from: data) else {
-            // A miss, not a throw. The stored shape changes whenever a model
-            // gains a field, and an app that refused to launch — or a screen that
-            // refused to load — because last week's JSON no longer decodes would
-            // be a cache turning itself into a bug. Drop it and re-fetch.
+            // A miss, not a throw: an out-of-date shape must re-fetch rather than crash the app.
             try? await remove(key)
-            // Logged as a miss too, for the same reason: what the caller got is
-            // nothing, and the read that follows will be a real fetch. The line
-            // above it in the log — a store, then a miss on the same key — is
-            // what identifies it as a shape change rather than an empty cache.
             logger.log(CacheLogEvent(key: key, outcome: .miss))
             return nil
         }
 
-        // Evaluated on read rather than stored: a value written before the
-        // app was backgrounded for a day must come back expired.
+        // Evaluated on read, not stored, so backgrounded time counts toward expiry.
         let isExpired = now() >= envelope.expiresAt
         logger.log(CacheLogEvent(key: key, outcome: .hit(layer: layer, isExpired: isExpired)))
 
@@ -149,8 +120,7 @@ public actor CodableCacheStore: CacheStoreContract {
     }
 
     public func removeAll(in namespace: String) async throws {
-        // Keys are known here, unlike in the sweep below, so the memory layer
-        // can be trimmed to exactly the namespace rather than dropped wholesale.
+        // Keys are known here, unlike in the sweep below, so memory can be trimmed to this namespace.
         for key in memory.keys where key.namespace == namespace {
             forget(key)
         }
@@ -165,23 +135,15 @@ public actor CodableCacheStore: CacheStoreContract {
                 try? await diskStore.remove(fileNamed: entry.fileName, in: namespace)
             }
         }
-        // The sweep deletes files whose keys it cannot reconstruct, so the memory
-        // layer cannot be invalidated selectively. It is small and rebuilt from
-        // disk on demand, so dropping all of it is both correct and cheap.
+        // Keys can't be reconstructed from deleted files, so memory is dropped wholesale
+        // rather than invalidated selectively.
         memory.removeAll()
         memoryOrder.removeAll()
     }
 
-    /// - Returns: `true` only for a file that is positively an expired envelope.
-    ///
-    ///   A file that cannot be read, or does not decode as an envelope, is left
-    ///   alone. The disk store is shared with other layers — the image cache
-    ///   writes raw JPEG bytes through the same `DiskStoreContract` under its own
-    ///   namespace — and the sweep cannot tell "corrupt envelope" from "someone
-    ///   else's file". Deleting on doubt once wiped every cached avatar at launch.
-    ///   A genuinely corrupt envelope is still collected, on the next read of its
-    ///   key (see `entry(for:as:)`); and one unreadable file never aborts the
-    ///   sweep for every other namespace.
+    /// - Returns: `true` only for a file that is positively an expired envelope. An unreadable or
+    ///   non-envelope file is left alone: the disk store is shared with other layers (e.g. the
+    ///   image cache) writing their own files under it, so deleting on doubt is unsafe.
     private func isExpired(_ entry: DiskStoreEntry, in namespace: String, at now: Date) async throws -> Bool {
         guard let data = try? await diskStore.data(fileNamed: entry.fileName, in: namespace),
               let header = try? decoder.decode(EnvelopeHeader.self, from: data) else {

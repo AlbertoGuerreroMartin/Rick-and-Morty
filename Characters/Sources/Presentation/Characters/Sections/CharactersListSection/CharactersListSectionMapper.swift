@@ -11,8 +11,7 @@ import Foundation
 
 enum CharactersListRenderModel: Equatable {
     case hidden
-    /// `highlight` is the substring to emphasise in each row's name, or `nil`
-    /// when there is no search text.
+    /// `highlight` is `nil` when there is no search text.
     case visible(characters: [CharacterModel], footer: CharactersSectionFooter, highlight: String?)
     case empty(CharactersSectionEmptyReason)
 }
@@ -38,11 +37,7 @@ final class CharactersListSectionMapper: CharactersListSectionMapperContract {
         self.viewModel = viewModel
     }
 
-    /// Five publishers through two `combineLatest`s: Combine's operator tops out
-    /// at four streams, so the pair is nested rather than the view model growing
-    /// a single pre-combined "state" publisher — which would defeat the point of
-    /// per-property publishers, since every section would then wake for every
-    /// change.
+    /// Nested `combineLatest`s: Combine's operator tops out at four streams for five publishers.
     func dataPublisher(_ viewModel: ViewModel) -> AnyPublisher<DataModel, Never> {
         let list = viewModel.loadingPublisher
             .combineLatest(viewModel.charactersPublisher, viewModel.paginationPublisher)
@@ -60,15 +55,12 @@ final class CharactersListSectionMapper: CharactersListSectionMapperContract {
             .eraseToAnyPublisher()
     }
 
-    /// The order of these rules *is* the screen's behaviour, so they are written
-    /// as one straight line of early returns rather than a nest of conditions.
     func mapToRenderModel(_ data: DataModel) -> CharactersListRenderModel {
         guard !data.isLoading else {
             return .hidden
         }
 
-        // `nil` is "no page has ever landed", which is not the same as "zero
-        // results" and must not draw an empty state.
+        // `nil` means no page has landed yet; not the same as zero results.
         guard let characters = data.characters else {
             return .hidden
         }

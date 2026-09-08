@@ -7,32 +7,13 @@
 
 import SwiftUI
 
-/// The last stop on the carousel *is* the pagination trigger.
-///
-/// This is `CharactersPaginationFooterView` turned on its side. It only works
-/// inside a lazy container — here the carousel's `LazyHStack` — which builds its
-/// children as they approach the visible region, so this view is only
-/// instantiated, and its `.task` only runs, when the user has scrolled to the
-/// end of what is loaded. That replaces the "is the focus within N items of the
-/// end?" arithmetic with the framework's own laziness, exactly as the list and
-/// grid on the characters screen do. Drawn as a plain footer under the carousel
-/// it would be on screen from the first frame and either chain-load every page
-/// or spin forever over nothing, which is why it is an item in the row instead.
-///
-/// `id: loadedCount` re-fires the task when a page lands while this item is
-/// still on screen — a short page, or a user who scrolled onto the spinner
-/// itself — instead of leaving it sitting there waiting for a scroll that never
-/// comes. `.loadMore` and `.loading` are one branch on purpose: separate
-/// branches would give SwiftUI two identities and cancel the very task that
-/// moved the state from one to the other.
-///
-/// It is an empty circle, the same yellow sphere as every other stop, so the
-/// end of the loaded catalogue reads as "one more coming" rather than as a
-/// different kind of thing appearing in the row.
+/// The last stop on the carousel is the pagination trigger: an item in the lazy `LazyHStack`,
+/// so it's instantiated (and its `.task` runs) only once scrolled into view. `id: loadedCount`
+/// re-fires the task if a page lands while it's still on screen. `.loadMore` and `.loading`
+/// share one branch so SwiftUI doesn't cancel the task by treating them as different identities.
 struct LocationsCarouselPaginationItemView: View {
 
-    /// The scroll position id of this item. Never a location's id, so the
-    /// section can tell "the spinner is centred" from "a location is centred".
+    /// Never a location's id, so the section can tell the spinner apart from a real location.
     static let id = "locations-carousel-pagination"
 
     let footer: LocationsSectionFooter
@@ -78,8 +59,6 @@ struct LocationsCarouselPaginationItemView: View {
             LocationsCarouselCircleView(isFocused: false)
             content()
         }
-        // Same reason as `LocationsCarouselItemView`: the frame on the stack is
-        // what makes the retry copy wrap inside the circle.
         .frame(width: LocationsCarouselItemView.diameter, height: LocationsCarouselItemView.diameter)
     }
 }

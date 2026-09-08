@@ -12,27 +12,8 @@ import Testing
 import UIKit
 @testable import Locations
 
-/// SwiftUI bodies are lazy: constructing a view runs no layout, so a crash in a
-/// `body` — a force-unwrap, an index past the end of an array, a `ForEach` over
-/// duplicate ids — survives every test that only builds the value. These host
-/// each view in a real `UIHostingController` on a sized window and force a
-/// layout pass, which is what actually evaluates the bodies.
-///
-/// That matters more here than on a plain list screen. The carousel writes its
-/// own `@State` from three `onChange`s while a scroll view is reading the same
-/// value back, and the unused `SpiralNavigator` indexes its items array from a
-/// continuous offset; both are exactly the kind of code that is correct until an
-/// empty list, or a list that got shorter, reaches it.
-///
-/// The sections are driven through the *real* pipeline — stub view model
-/// publishers, real mapper, `.onReceive` — rather than by writing a render model
-/// into the view's `@State`. That is the only way to know the subscription is
-/// wired at all, and it costs nothing but a turn of the main queue.
-///
-/// They stay assertion-light on purpose. Snapshotting pixels would test the
-/// system's rendering rather than this feature's, and the *contents* of every
-/// render model are already pinned by the two mapper suites; what is left to
-/// check is that each of them draws at all.
+/// Sections are driven through the real pipeline (stub view model, real mapper, `.onReceive`),
+/// not by writing a render model into `@State` directly, so the subscription wiring is checked too.
 @Suite("Locations views")
 @MainActor
 struct LocationsViewTests {
@@ -64,8 +45,6 @@ struct LocationsViewTests {
         await renderCarousel(viewModel)
     }
 
-    /// The interesting case: enough items that the row scrolls, with a selection
-    /// somewhere other than the first one so the external focus move runs too.
     @Test("the carousel draws a full row with a selection")
     func carouselDrawsAFullRow() async {
         let viewModel = StubLocationsCarouselViewModel()
@@ -76,8 +55,6 @@ struct LocationsViewTests {
         await renderCarousel(viewModel)
     }
 
-    /// One item is where the horizontal insets are larger than the content and
-    /// where "the last three items" is also the first one.
     @Test("the carousel draws a single item")
     func carouselDrawsASingleItem() async {
         let viewModel = StubLocationsCarouselViewModel()
@@ -87,11 +64,6 @@ struct LocationsViewTests {
         await renderCarousel(viewModel)
     }
 
-    /// A name is laid out *inside* the circle, never across it. The stack's
-    /// frame is what proposes the circle's width to the text; without it a
-    /// long name runs on one line straight past the rim, which is exactly the
-    /// bug this pins. Measured through the hosting controller with the safe
-    /// area off, so the answer is the item's own size.
     @Test("a long name stays inside the circle")
     func longNameStaysInsideTheCircle() {
         let sizes = [
@@ -107,14 +79,11 @@ struct LocationsViewTests {
             #expect(size.height == LocationsCarouselItemView.diameter)
         }
 
-        // The retry copy has the same constraint.
         let retry = hostedSize(LocationsCarouselPaginationItemView(footer: .retry, loadedCount: 1, loadNextPage: {}))
         #expect(retry.width == LocationsCarouselItemView.diameter)
         #expect(retry.height == LocationsCarouselItemView.diameter)
     }
 
-    /// A name long enough to need all three lines and the scale factor under
-    /// them, which is the case the circle's padding has to survive.
     @Test("the carousel draws a location with a very long name")
     func carouselDrawsALongName() async {
         let viewModel = StubLocationsCarouselViewModel()
@@ -139,8 +108,6 @@ struct LocationsViewTests {
         }
     }
 
-    /// The Retry button is the only escape from a failed load, so it has to
-    /// reach the view model rather than merely exist.
     @Test("the failed empty state retries through the view model")
     func retryReachesTheViewModel() async {
         let viewModel = StubLocationsCarouselViewModel()
@@ -149,17 +116,12 @@ struct LocationsViewTests {
 
         await renderCarousel(viewModel)
 
-        // Driven directly: tapping a `ContentUnavailableView` action means
-        // walking a UIKit hierarchy for a button whose identity SwiftUI does not
-        // promise, which would test the framework rather than this wiring.
+        // Driven directly rather than by tapping the ContentUnavailableView action.
         viewModel.retryLoad()
 
         #expect(viewModel.retryCallCount == 1)
     }
 
-    /// The carousel claims a focus as soon as items arrive, without waiting for
-    /// a scroll — otherwise the card below would sit blank under a circle the
-    /// user is already looking at.
     @Test("the carousel reports its focus once items arrive")
     func theCarouselAnnouncesItsFocus() async {
         let viewModel = StubLocationsCarouselViewModel()
@@ -170,9 +132,6 @@ struct LocationsViewTests {
         #expect(viewModel.selectedIds.first == "1")
     }
 
-    /// A selection decided elsewhere — page 1 auto-selecting, a reload picking a
-    /// new first location — moves the carousel rather than being overwritten by
-    /// it. The reported focus is the selection, not item one.
     @Test("the carousel follows a selection it did not make")
     func theCarouselFollowsTheSelection() async {
         let viewModel = StubLocationsCarouselViewModel()
@@ -216,8 +175,6 @@ struct LocationsViewTests {
         await renderDetail(viewModel)
     }
 
-    /// No type and no dimension is the state where the rows stack collapses
-    /// entirely, leaving a name and a strip.
     @Test("the detail draws a location with no rows")
     func detailDrawsARowlessLocation() async {
         let viewModel = StubLocationDetailViewModel()
@@ -229,8 +186,6 @@ struct LocationsViewTests {
 
     // MARK: - Leaves
 
-    /// The circle on its own, in both of the states it has and with a name that
-    /// needs every one of its three lines.
     @Test("the carousel item draws focused, unfocused and overfull")
     func carouselItemDraws() async {
         await render(LocationsCarouselItemView(title: "Earth (C-137)", isFocused: true))
@@ -260,12 +215,6 @@ struct LocationsViewTests {
         }
     }
 
-    /// `.loadMore` and `.loading` are one spinner, as on the characters footer:
-    /// the item only exists once the lazy row has built it, so its being on
-    /// screen already means a page is about to be — or is being — asked for.
-    /// Asserted by walking the hosted hierarchy for the activity indicator
-    /// `ProgressView` is backed by, which is the one thing about this view a
-    /// layout pass alone cannot tell.
     @Test("the pagination item spins for a page waiting or in flight, and not otherwise")
     func paginationItemSpins() async {
         #expect(await hostsSpinner(LocationsCarouselPaginationItemView(footer: .loadMore, loadedCount: 1, loadNextPage: {})))
@@ -274,9 +223,6 @@ struct LocationsViewTests {
         #expect(await !hostsSpinner(LocationsCarouselPaginationItemView(footer: .none, loadedCount: 1, loadNextPage: {})))
     }
 
-    /// The item *is* the trigger: appearing is what asks for the page. A failed
-    /// page must not — that is the Retry button's job, not something the row
-    /// silently retries in a loop.
     @Test("the pagination item asks for the next page when it appears, unless it failed")
     func paginationItemLoadsOnAppearance() async {
         let calls = CallCounter()
@@ -288,10 +234,6 @@ struct LocationsViewTests {
         #expect(retryCalls.count == 0)
     }
 
-    /// Through the whole section: a short first page leaves the pagination item
-    /// inside the visible row from the first frame, so the lazy stack builds it
-    /// and it asks for page two on its own — the carousel's version of the list
-    /// footer's `.task(id: count)`.
     @Test("a short page asks for the next one without a scroll")
     func aShortPageLoadsTheNextOne() async {
         let viewModel = StubLocationsCarouselViewModel()
@@ -304,7 +246,6 @@ struct LocationsViewTests {
         #expect(viewModel.loadNextPageCallCount >= 1)
     }
 
-    /// The end of the catalogue draws no item and asks for nothing.
     @Test("the end of the list asks for nothing")
     func theEndAsksForNothing() async {
         let viewModel = StubLocationsCarouselViewModel()
@@ -317,8 +258,6 @@ struct LocationsViewTests {
         #expect(viewModel.loadNextPageCallCount == 0)
     }
 
-    /// The card's preview shape draws the same content the section does, so it
-    /// is worth a layout pass of its own.
     @Test("the detail preview card draws")
     func previewCardDraws() async {
         await render(LocationDetailSectionView.PreviewCard(content: LocationDetailContent(
@@ -352,10 +291,7 @@ struct LocationsViewTests {
 
         await render(screen)
 
-        // The screen's `.task` is not guaranteed to have run by the time layout
-        // returns, so the load is driven directly: what is under test here is
-        // that the graph the screen was handed is wired to something that works,
-        // and that the sections redraw when it answers.
+        // `.task` isn't guaranteed to have run by the time layout returns, so the load is driven directly.
         await viewModel.loadData()
         await settle()
 
@@ -363,19 +299,11 @@ struct LocationsViewTests {
         #expect(viewModel.selectedLocationIdPublished == "1-0")
     }
 
-    /// The whole screen through the factory — carousel at its natural height,
-    /// card underneath — on a repository that answers without a network. This is
-    /// the one test that draws the two sections against each other in the frames
-    /// they really get.
     @Test("the factory's screen draws both sections stacked")
     func factoryScreenDraws() async {
         await render(LocationsFactory.previewScreen(repository: StubViewsLocationsRepository()))
     }
 
-    /// The public entry point, wired all the way down to a real repository over
-    /// a real cache store. It reaches no network — the endpoint resolves to
-    /// nothing — which is the point: what is under test is that the app's one
-    /// call into this feature produces something that lays out.
     @Test("the feature's public entry point draws")
     func factoryBuildDraws() async {
         await render(LocationsFactory.build(dependencies: StubLocationsDependencies()))
@@ -394,13 +322,8 @@ struct LocationsViewTests {
         await render(LocationDetailSectionView(mapper: LocationDetailSectionMapper(viewModel: viewModel)))
     }
 
-    /// Hosts `view` on a sized window and forces layout, so its `body` actually
-    /// runs. A hosting controller with no window lays out nothing.
-    ///
-    /// Laid out twice around a turn of the main queue: the render model reaches
-    /// a section through `.receive(on: DispatchQueue.main)`, so the first pass
-    /// draws the initial `.hidden` and the second draws what the mapper
-    /// produced.
+    /// Laid out three times: the initial `.hidden` state, what the mapper produces after the
+    /// render model arrives on the main queue, and the focus an `onChange` claims once laid out.
     private func render(_ view: some View) async {
         let controller = UIHostingController(rootView: view)
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
@@ -412,21 +335,13 @@ struct LocationsViewTests {
 
         window.layoutIfNeeded()
 
-        // A third pass, after another turn: the carousel's focus is claimed by
-        // an `onChange` that runs once the items have been laid out, and the
-        // `selectLocation` it triggers is the thing these tests assert on.
         await settle()
 
         window.layoutIfNeeded()
         window.isHidden = true
     }
 
-    /// Hosts `view` and reports whether a `UIActivityIndicatorView` — what
-    /// `ProgressView` is backed by on iOS — ended up in the hierarchy.
-    /// The size `view` asks for at a phone's width, measured through the
-    /// hosting controller rather than its `UIView` and with the safe area off,
-    /// so the answer is the SwiftUI view's own size and not the window's insets
-    /// added to it.
+    /// Safe area off, so the size is the view's own rather than the window's insets added in.
     private func hostedSize(_ view: some View) -> CGSize {
         let controller = UIHostingController(rootView: view)
         controller.safeAreaRegions = []
@@ -450,8 +365,6 @@ struct LocationsViewTests {
         return window
     }
 
-    /// Yields the main thread long enough for the main-queue delivery in
-    /// `SectionMapperContract.renderModelPublisher()` to land.
     private func settle() async {
         for _ in 0..<10 {
             await Task.yield()
@@ -461,8 +374,7 @@ struct LocationsViewTests {
 }
 
 private extension Array where Element == LocationModel {
-    /// Twelve locations: more than fit across the screen at once, so the
-    /// carousel really scrolls and the last-three rule has room to be false.
+    /// More than fit on screen at once, so the carousel actually scrolls.
     static var catalogue: [LocationModel] {
         (1...12).map { index in
             LocationModel.make(id: "\(index)",
@@ -484,13 +396,11 @@ private struct StubViewsLocationsRepository: LocationsRepositoryContract {
 }
 
 private extension UIView {
-    /// Depth-first over the whole hierarchy, `self` included.
     func contains(where predicate: (UIView) -> Bool) -> Bool {
         predicate(self) || subviews.contains { $0.contains(where: predicate) }
     }
 }
 
-/// A call count the test can read back from a `@Sendable` closure.
 @MainActor
 final class CallCounter {
     private(set) var count = 0

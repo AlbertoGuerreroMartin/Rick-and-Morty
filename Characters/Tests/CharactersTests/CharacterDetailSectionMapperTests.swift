@@ -10,9 +10,7 @@ import Foundation
 import Testing
 @testable import Characters
 
-/// The header is the section that occupies the screen while there is nothing on
-/// it, so its rules *are* what the user sees between the tap and the character:
-/// a spinner, an error with a Retry, or the picture.
+/// The header occupies the screen while nothing else has loaded: spinner, error with Retry, or the picture.
 @Suite("CharacterDetailHeaderSectionMapper")
 @MainActor
 struct CharacterDetailHeaderSectionMapperTests {
@@ -23,9 +21,7 @@ struct CharacterDetailHeaderSectionMapperTests {
 
         #expect(mapper.mapToRenderModel(.init(isLoading: true, detail: nil, loadFailed: false)) == .hidden)
         #expect(mapper.mapToRenderModel(.init(isLoading: true, detail: .make(), loadFailed: false)) == .hidden)
-        // A retry raises the spinner before it clears the flag, and a header
-        // that showed the previous error for the length of the new request would
-        // look like the retry had done nothing.
+        // A retry raises the spinner before clearing the failed flag.
         #expect(mapper.mapToRenderModel(.init(isLoading: true, detail: nil, loadFailed: true)) == .hidden)
     }
 
@@ -34,8 +30,6 @@ struct CharacterDetailHeaderSectionMapperTests {
         #expect(makeMapper().mapToRenderModel(.init(isLoading: false, detail: nil, loadFailed: true)) == .failed)
     }
 
-    /// `nil` is "nothing has landed", which on this screen is the state before
-    /// the `.task` has even run. It is a spinner, not an error.
     @Test("no character yet is hidden, not failed")
     func nilDetailIsHidden() {
         #expect(makeMapper().mapToRenderModel(.init(isLoading: false, detail: nil, loadFailed: false)) == .hidden)
@@ -55,9 +49,7 @@ struct CharacterDetailHeaderSectionMapperTests {
         )))
     }
 
-    /// The whole pipeline, not just the transform: the mapper has to be
-    /// subscribed to three publishers at once, and a `combineLatest` that is
-    /// missing one of them simply never emits.
+    /// The whole pipeline: a `combineLatest` missing one of its three publishers never emits.
     @Test("the render model arrives through the publisher")
     func theRenderModelIsPublished() async throws {
         let viewModel = StubCharacterDetailSectionViewModel()
@@ -85,10 +77,7 @@ struct CharacterDetailHeaderSectionMapperTests {
     }
 }
 
-/// The card's copy is baked in the mapper rather than interpolated in a `Text`,
-/// which is what makes it something a test can read. So these assert the strings
-/// themselves: the labels, the joined place lines, the formatted date, and every
-/// row that is dropped rather than drawn empty.
+/// The card's copy is baked in the mapper rather than interpolated in a `Text`, so these tests assert the strings.
 @Suite("CharacterDetailInfoSectionMapper")
 @MainActor
 struct CharacterDetailInfoSectionMapperTests {
@@ -98,9 +87,6 @@ struct CharacterDetailInfoSectionMapperTests {
         #expect(makeMapper().mapToRenderModel(.init(isLoading: true, detail: .make())) == .hidden)
     }
 
-    /// The header owns the spinner and the Retry, so a card with no character is
-    /// simply not there — a skeleton under a spinner would be two loading
-    /// indicators for one request.
     @Test("no character is no card")
     func nilDetailHidesTheCard() {
         #expect(makeMapper().mapToRenderModel(.init(isLoading: false, detail: nil)) == .hidden)
@@ -124,8 +110,6 @@ struct CharacterDetailInfoSectionMapperTests {
         #expect(rows.first { $0.label == "Gender" }?.value == "Male")
     }
 
-    /// A labelled row with nothing after the colon is worse than one line fewer,
-    /// so every optional the API leaves out simply is not drawn.
     @Test("the rows the API has nothing for are not drawn")
     func absentRowsAreDropped() throws {
         let detail = CharacterDetailModel.make(type: nil, origin: nil, location: nil)
@@ -149,16 +133,14 @@ struct CharacterDetailInfoSectionMapperTests {
         (CharacterDetailPlaceModel(name: "Earth", type: nil, dimension: nil), "Earth"),
         (CharacterDetailPlaceModel(name: "Earth", type: "Planet", dimension: nil), "Earth · Planet"),
         (CharacterDetailPlaceModel(name: "Earth", type: nil, dimension: "C-137"), "Earth · C-137"),
-        // The API's own word for "we do not know", kept verbatim rather than
-        // rewritten into something this app made up.
+        // The API's own word for "we do not know", kept verbatim.
         (CharacterDetailPlaceModel(name: "unknown", type: nil, dimension: nil), "unknown")
     ])
     func placesJoinWhatTheyHave(place: CharacterDetailPlaceModel, expected: String) throws {
         #expect(try rows(for: .make(location: place)).first { $0.label == "Location" }?.value == expected)
     }
 
-    /// The label doubles as the row's identity, so two rows sharing one would
-    /// make `ForEach` drop or shuffle a line of the card.
+    /// The label doubles as the row's identity, so a duplicate would make `ForEach` drop or shuffle a row.
     @Test("every row has a distinct identity")
     func rowIdentitiesAreDistinct() throws {
         let rows = try rows(for: .make(type: "Parasite"))
@@ -180,9 +162,7 @@ struct CharacterDetailInfoSectionMapperTests {
     }
 }
 
-/// Three states, and the one that earns the enum is `empty`: "we have not asked
-/// yet" and "we asked, and there are none" look identical in a list with no rows
-/// in it, and only the second is something to say out loud.
+/// `.empty` distinguishes "asked and got none" from "haven't asked yet", which look identical in an empty list.
 @Suite("CharacterDetailEpisodesSectionMapper")
 @MainActor
 struct CharacterDetailEpisodesSectionMapperTests {
@@ -192,8 +172,6 @@ struct CharacterDetailEpisodesSectionMapperTests {
         #expect(makeMapper().mapToRenderModel(.init(isLoading: true, detail: .make())) == .hidden)
     }
 
-    /// The header is already drawing a spinner; a second one here would be two
-    /// indicators for one request.
     @Test("no character is hidden, not empty")
     func nilDetailIsHidden() {
         #expect(makeMapper().mapToRenderModel(.init(isLoading: false, detail: nil)) == .hidden)
@@ -204,9 +182,7 @@ struct CharacterDetailEpisodesSectionMapperTests {
         #expect(makeMapper().mapToRenderModel(.init(isLoading: false, detail: .make(episodes: []))) == .empty)
     }
 
-    /// No grouping and no sorting: this is one character's filmography, already
-    /// in broadcast order, and re-ordering an answer that is right is only a
-    /// chance to get it wrong.
+    /// Already in broadcast order; the mapper does not re-sort.
     @Test("the episodes are passed through in the order they arrived")
     func episodesArePassedThrough() {
         let episodes: [CharacterDetailEpisodeModel] = [
@@ -220,9 +196,7 @@ struct CharacterDetailEpisodesSectionMapperTests {
         #expect(render == .visible(episodes: episodes))
     }
 
-    /// The link rides on the episode rather than arriving as a stream of its
-    /// own, so what this pins is that the mapper does not rebuild the rows and
-    /// drop it on the way.
+    /// Pins that the mapper does not rebuild the rows and drop the link on the way.
     @Test("the HBO Max link reaches the section")
     func theLinkReachesTheSection() {
         let episodes: [CharacterDetailEpisodeModel] = [
@@ -247,9 +221,7 @@ struct CharacterDetailEpisodesSectionMapperTests {
 
 // MARK: - Test doubles
 
-/// One stub for all three sections, because all three contracts are satisfied by
-/// the one view model on the real screen — and a stub per contract would be
-/// three places to forget to publish something.
+/// One stub for all three sections: they share one view model on the real screen.
 @MainActor
 final class StubCharacterDetailSectionViewModel: CharacterDetailHeaderSectionViewModelContract,
                                                  CharacterDetailInfoSectionViewModelContract,

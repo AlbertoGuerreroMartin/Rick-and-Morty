@@ -1,23 +1,16 @@
 import Foundation
 
-/// Assembles the operation text every query in this package sends.
-///
-/// Both `GraphQLQuery` and `GraphQLPaginatedQuery` produce the same skeleton and
-/// differ only in what fills two holes: the root field's `arguments` and the
-/// `selection` set. Keeping the skeleton here is what stops the two default
-/// implementations from drifting apart — in particular the `result:` alias,
-/// which is a contract with `GraphQLRootPayload` and has to be spelled the same
-/// way by every builder.
+/// Assembles the operation text every query in this package sends. Shared here so
+/// `GraphQLQuery` and `GraphQLPaginatedQuery` can't drift apart on the `result:` alias, which
+/// is a contract with `GraphQLRootPayload`.
 enum GraphQLOperation {
 
     static func document(rootField: String,
                          variableDefinitions: String,
                          arguments: String,
                          selection: String) -> String {
-        // `result:` is a field *alias*: it renames the root field in the response,
-        // so `data` is always `{ "result": ... }` no matter which field was asked
-        // for. Aliases are a client-side feature of the spec, nothing to enable
-        // server-side. See `GraphQLRootPayload`.
+        // `result:` aliases the root field, so `data` is always `{ "result": ... }` regardless
+        // of which field was asked for.
         """
         query\(parenthesized(variableDefinitions)) {
           result: \(rootField)\(parenthesized(arguments)) {
@@ -27,10 +20,8 @@ enum GraphQLOperation {
         """
     }
 
-    /// A selection set arrives as its own multi-line string, so only its first
-    /// line lands on the indentation of the interpolation point. GraphQL ignores
-    /// whitespace entirely — this is purely so the document reads as written when
-    /// you look at it in the query inspector.
+    /// Only the first line of a multi-line selection lands on the interpolation point's
+    /// indentation; this re-indents the rest purely for readability in the inspector.
     private static func indented(_ selection: String) -> String {
         selection.split(separator: "\n", omittingEmptySubsequences: false)
                  .joined(separator: "\n    ")

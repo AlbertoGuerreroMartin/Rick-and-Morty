@@ -14,9 +14,8 @@ public protocol GraphQLDocumentConvertible {
 }
 
 extension GraphQLDocumentConvertible {
-    /// How deep a selection set is expanded by default. GraphQL schemas are
-    /// cyclic — `Character -> Episode -> Character` — so an unbounded expansion
-    /// never terminates. Three levels covers every screen in this app.
+    /// GraphQL schemas are cyclic (`Character -> Episode -> Character`), so unbounded expansion
+    /// never terminates; three levels covers every screen in this app.
     public static var defaultDepth: Int { 3 }
 
     public static var document: String {

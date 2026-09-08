@@ -7,15 +7,7 @@
 
 import SwiftUI
 
-/// The four non-search constraints, edited together.
-///
-/// It works on a **draft** and applies once, on Done. Applying each control as
-/// it changed would mean a request per tap — four requests to set four fields,
-/// against an API that answers 429 to a client that asks too often — and would
-/// make swiping the sheet away an ambiguous gesture instead of a plain cancel.
-///
-/// The draft carries the applied `name` through untouched, so going through the
-/// sheet can never drop what the user typed into the search bar.
+/// The four non-search constraints, edited as a draft and applied once on Done, since each request risks a 429.
 struct CharactersFilterSheet: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -48,9 +40,8 @@ struct CharactersFilterSheet: View {
                 }
 
                 Section {
-                    // Free text. Trimming happens on Done, not per keystroke:
-                    // trimming as the user types would eat the space in
-                    // "Poopybutthole Sr" the instant it was pressed.
+                    // Trimmed on Done, not per keystroke, so a trailing space typed
+                    // mid-word isn't eaten immediately.
                     TextField("Species", text: text(\.species), prompt: Text("e.g. Human, Alien"))
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
@@ -65,8 +56,6 @@ struct CharactersFilterSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    // Resets the four fields only. `name` is not a field, so the
-                    // search text survives a reset by construction.
                     Button("Reset") {
                         draft = draft.clearingFields()
                     }
@@ -74,9 +63,6 @@ struct CharactersFilterSheet: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
-                        // Normalized here, at the one moment it becomes a real
-                        // constraint: a filter carrying "   " would send an
-                        // empty string to the server and match nothing.
                         onApply(draft.normalized())
                         dismiss()
                     }
@@ -87,11 +73,7 @@ struct CharactersFilterSheet: View {
         .presentationDetents([.medium, .large])
     }
 
-    /// A `String` binding over an optional field.
-    ///
-    /// `TextField` needs a non-optional `String`, and the filter needs `nil` for
-    /// "unconstrained". Doing the conversion in one place means neither side has
-    /// to know about the other's representation.
+    /// A `String` binding over an optional filter field, for `TextField`.
     private func text(_ keyPath: WritableKeyPath<CharactersFilter, String?>) -> Binding<String> {
         Binding(
             get: { draft[keyPath: keyPath] ?? "" },

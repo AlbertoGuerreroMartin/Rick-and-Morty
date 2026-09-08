@@ -11,9 +11,6 @@ import Storage
 import Testing
 @testable import Characters
 
-/// The repository is where the cache policy lives, so these tests are the
-/// policy: which of the two data sources answers, in each of the states the
-/// pair can be in.
 @Suite("CharactersRepository")
 struct CharactersRepositoryTests {
 
@@ -44,8 +41,6 @@ struct CharactersRepositoryTests {
 
     @Test("a failed refresh falls back to the stale entry")
     func staleEntrySurvivesAFailedFetch() async throws {
-        // This is the 429 case: the API throttles, and the user still gets the
-        // list they were looking at yesterday instead of an error screen.
         let local = FakeCharactersLocalDataSource(entry: .expired(page: .make(names: ["Yesterday"])))
         let remote = FakeCharactersRemoteDataSource(result: .failure(TestError()))
         let repository = makeRepository(remote: remote, local: local)
@@ -91,8 +86,6 @@ struct CharactersRepositoryTests {
 
     @Test("cancellation is rethrown rather than answered from a stale entry")
     func cancellationIsRethrown() async {
-        // Serving stale data here would hide the fact that the screen went away
-        // and quietly defeat structured concurrency.
         let local = FakeCharactersLocalDataSource(entry: .expired(page: .make(names: ["Yesterday"])))
         let remote = FakeCharactersRemoteDataSource(result: .failure(CancellationError()))
         let repository = makeRepository(remote: remote, local: local)
@@ -126,8 +119,6 @@ struct CharactersRepositoryTests {
         #expect(try await repository.fetchCharacters(filter: .empty, page: 1).characters.map(\.name) == ["Rick Sanchez"])
     }
 
-    /// The filter has to reach the query, or every constraint the user sets is
-    /// silently dropped and the list quietly lies about what it is showing.
     @Test("every filter field reaches the query")
     func filterFieldsReachTheQuery() async throws {
         let local = FakeCharactersLocalDataSource(entry: nil)
@@ -150,11 +141,7 @@ struct CharactersRepositoryTests {
         #expect(query.gender == .female)
     }
 
-    /// The identity of an *unfiltered* page must not change now that filters
-    /// exist: the cache key is derived from the document and the encoded
-    /// variables, and both drop `nil` optionals, so the pages already on disk
-    /// stay addressable instead of ageing out on the first launch after this
-    /// feature ships.
+    /// The cache key drops `nil` optionals, so an unfiltered query's identity is unchanged.
     @Test("an empty filter builds exactly the unfiltered query")
     func emptyFilterKeepsTheUnfilteredCacheIdentity() async throws {
         let local = FakeCharactersLocalDataSource(entry: nil)
@@ -180,10 +167,6 @@ struct CharactersRepositoryTests {
 
 // MARK: - The character detail
 
-/// The detail runs on the very same four steps as a page — the policy is
-/// extracted, not copied — so these walk the same branches once more against the
-/// one request that has no fallback: a detail that does not arrive is the whole
-/// screen, not one row of it.
 @Suite("CharactersRepository: the character detail")
 struct CharactersRepositoryDetailTests {
 
@@ -269,8 +252,6 @@ struct CharactersRepositoryDetailTests {
         }
     }
 
-    /// The id has to reach the query, or every detail on the screen is whichever
-    /// character the server happens to answer with.
     @Test("the id reaches the query")
     func theIdReachesTheQuery() async throws {
         let local = FakeCharactersLocalDataSource()
@@ -283,9 +264,6 @@ struct CharactersRepositoryDetailTests {
         #expect(await remote.lastDetailQuery?.id == "42")
     }
 
-    /// The one place the detail is stricter than the list. An unmappable
-    /// character in a page is a skipped row; here it is the entire screen, and a
-    /// half-drawn page would be worse than an error the user can retry.
     @Test("a detail that cannot be mapped throws rather than rendering half a screen")
     func unmappableDetailThrows() async {
         let local = FakeCharactersLocalDataSource(detailEntry: .fresh(detail: .make(image: nil)))
@@ -298,9 +276,6 @@ struct CharactersRepositoryDetailTests {
         }
     }
 
-    /// The episodes are the exception inside the exception: one that will not
-    /// map costs its own row and nothing else, because a filmography missing an
-    /// entry is invisible while a blank screen is not.
     @Test("one unmappable episode is skipped, not fatal to the detail")
     func unmappableEpisodesAreSkipped() async throws {
         let entity = CharacterDetailEntity.make(episodes: [
@@ -318,10 +293,6 @@ struct CharactersRepositoryDetailTests {
 
 // MARK: - The HBO Max links
 
-/// The third request through the same four steps, and the only one that goes to
-/// a server this app has no relationship with. The policy does not change for
-/// it; what changes is what the caller does with a failure, and that is the use
-/// case's business rather than this layer's.
 @Suite("CharactersRepository: the HBO Max links")
 struct CharactersRepositoryHBOMaxLinksTests {
 
@@ -410,9 +381,6 @@ struct CharactersRepositoryHBOMaxLinksTests {
         }
     }
 
-    /// A response with nothing usable in it is not a failure: it is a screen
-    /// with no play buttons, which is exactly what an episode HBO Max does not
-    /// carry looks like.
     @Test("an unhelpful response is an empty set of links, not an error")
     func anEmptyResponseIsEmptyLinks() async throws {
         let local = FakeCharactersLocalDataSource(offersEntry: .fresh(offers: JustWatchShowEntity(seasons: nil)))
@@ -425,9 +393,6 @@ struct CharactersRepositoryHBOMaxLinksTests {
 
 struct TestError: Error, Equatable {}
 
-/// Built here rather than inline in each suite: the repository now takes six
-/// collaborators, and four of them are the same real mappers in every test —
-/// the policy is what is under test, not the mapping.
 func makeCharactersRepository(
     remote: FakeCharactersRemoteDataSource = FakeCharactersRemoteDataSource(result: .failure(TestError())),
     local: FakeCharactersLocalDataSource = FakeCharactersLocalDataSource(),
@@ -446,9 +411,6 @@ actor FakeCharactersRemoteDataSource: CharactersRemoteDataSourceContract {
     private let detailResult: Result<CharacterDetailEntity, any Error>
     private(set) var callCount = 0
     private(set) var detailCallCount = 0
-    /// The query as the repository built it. Recording it is the only way to
-    /// check the filter mapping without reaching into the repository: the query
-    /// is a private local, and the network is where it becomes observable.
     private(set) var lastQuery: CharactersQuery?
     private(set) var lastDetailQuery: CharacterDetailQuery?
 
@@ -474,8 +436,7 @@ actor FakeCharactersRemoteDataSource: CharactersRemoteDataSourceContract {
 actor FakeCharactersLocalDataSource: CharactersLocalDataSourceContract {
     private let entry: CacheEntry<CharactersPageEntity>?
     private let detailEntry: CacheEntry<CharacterDetailEntity>?
-    /// There is only ever one offers entry — the lookup is one request for the
-    /// whole show — so it needs no key.
+    /// One offers entry, unkeyed: the lookup is one request for the whole show.
     private let offersEntry: CacheEntry<JustWatchShowEntity>?
     private let readError: (any Error)?
     private let writeError: (any Error)?
@@ -532,8 +493,6 @@ actor FakeCharactersLocalDataSource: CharactersLocalDataSourceContract {
     }
 }
 
-/// One canned answer, because the lookup is one request: there is no page, no
-/// filter and no second call to tell apart.
 actor FakeCharactersHBOMaxLinksRemoteDataSource: HBOMaxLinksRemoteDataSourceContract {
     private let result: Result<JustWatchShowEntity, any Error>
     private(set) var callCount = 0
@@ -581,8 +540,7 @@ extension CacheEntry where Value == JustWatchShowEntity {
 }
 
 extension JustWatchShowEntity {
-    /// Season 1, episode 1, on HBO Max at `link`. The policy tests only ever
-    /// need to tell one answer from another.
+    /// Season 1, episode 1, on HBO Max at `link`.
     static func oneEpisode(link: String) -> JustWatchShowEntity {
         .make(episodes: [.make(season: 1, number: 1, offers: [.max(link)])])
     }
@@ -610,8 +568,6 @@ extension GraphQLPageResponse where ResponseEntity == CharacterEntity {
 }
 
 extension CharacterDetailEntity {
-    /// Every property defaults to something valid, so a test that is about one
-    /// missing field says only that.
     static func make(id: String? = "1",
                      name: String? = "Rick Sanchez",
                      status: String? = "Alive",

@@ -9,9 +9,8 @@ import Foundation
 import Testing
 @testable import Networking
 
-/// `cacheIdentifier` is the whole basis of the disk cache: two calls that ask
-/// the server for the same thing must land on the same file, and two that do not
-/// must never collide. Everything below is one of those two statements.
+/// `cacheIdentifier`: two calls for the same thing must share a file; two that differ must
+/// never collide.
 @Suite("GraphQLQuery cache identity")
 struct GraphQLQueryCacheIdentifierTests {
 
@@ -41,8 +40,7 @@ struct GraphQLQueryCacheIdentifierTests {
 
     @Test("the order the encoder emits variables in does not matter")
     func variableOrderIsIrrelevant() {
-        // Same values, encoded with the keys written out in opposite orders.
-        // `variablesJSON` sorts keys, so both must normalise to one string.
+        // `variablesJSON` sorts keys, so opposite emission order must still normalize identically.
         let natural = ShuffledVariablesTestQuery(id: "1", name: "Rick", reverseKeyOrder: false)
         let reversed = ShuffledVariablesTestQuery(id: "1", name: "Rick", reverseKeyOrder: true)
 
@@ -51,10 +49,8 @@ struct GraphQLQueryCacheIdentifierTests {
 
     @Test("changing the entity's selection set changes the identifier")
     func documentIsPartOfIdentity() {
-        // Same root field, same variables — only the selection set differs, which
-        // is what happens when a property is added to an entity's `@Document`.
-        // The old entries must stop being addressed rather than be decoded into
-        // the new shape and fail.
+        // Only the selection set differs, as when @Document gains a field — old entries must
+        // not decode into the new shape.
         let narrow = CharactersTestQuery(page: 1, name: nil)
         let wide = WideCharactersTestQuery(page: 1, name: nil)
 
@@ -109,10 +105,7 @@ private struct WideEntity: GraphQLDocumentConvertible, Codable, Sendable {
     }
 }
 
-/// The two endpoints the app talks to are built here and nowhere else, and one
-/// of them is a third party. A typo in either is a request that leaves the
-/// device for the wrong host — so the URLs are asserted rather than trusted to
-/// review.
+/// Endpoints are asserted rather than trusted to review — a typo sends requests to the wrong host.
 @Suite("GraphQLClient endpoints")
 struct GraphQLClientEndpointTests {
 
@@ -126,16 +119,13 @@ struct GraphQLClientEndpointTests {
         #expect(GraphQLClient.justWatch().endpoint.absoluteString == "https://apis.justwatch.com/graphql")
     }
 
-    /// Two clients, two endpoints. They are built from the same factory type and
-    /// differ in exactly one thing, which is the mistake worth guarding.
     @Test("the two clients are not the same endpoint")
     func endpointsDiffer() {
         #expect(GraphQLClient.rickAndMorty().endpoint != GraphQLClient.justWatch().endpoint)
     }
 
-    /// The logger is the whole reason the JustWatch client is built by the app
-    /// rather than by the feature: a third-party request that did not reach the
-    /// log would go out unseen by the console and the request inspector alike.
+    // The logger is why JustWatch is built by the app, not the feature — an unlogged request
+    // would be invisible in the inspector.
     @Test("the JustWatch client keeps the logger it is given")
     func justWatchKeepsItsLogger() {
         let store = APILogStore()
@@ -172,8 +162,7 @@ private struct CharacterDetailTestQuery: GraphQLQuery {
     let id: String
 }
 
-/// Encodes its two variables in a caller-chosen order, so the test can prove the
-/// identifier depends on the values and not on emission order.
+/// Encodes its two variables in either order, to prove identity depends on values, not order.
 private struct ShuffledVariablesTestQuery: GraphQLQuery {
     typealias ResponseEntity = NarrowEntity
 
@@ -181,8 +170,8 @@ private struct ShuffledVariablesTestQuery: GraphQLQuery {
 
     let id: String
     let name: String
-    /// Never encoded; it only steers `encode(to:)`. It is still a stored
-    /// property, so it appears identically in both documents and cancels out.
+    /// Not encoded — only steers `encode(to:)`; being a stored property, it cancels out of the
+    /// cache identity.
     let reverseKeyOrder: Bool
 
     private enum CodingKeys: String, CodingKey {

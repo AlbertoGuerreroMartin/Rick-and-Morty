@@ -10,26 +10,14 @@ import Core
 import Foundation
 
 enum CharacterDetailEpisodesRenderModel: Equatable {
-    /// Nothing has landed. The header is drawing the spinner, so this section
-    /// draws nothing at all rather than a second one.
     case hidden
-    /// The character loaded and appears in no episodes. Rare, and worth saying
-    /// out loud: an absent section would be indistinguishable from a section
-    /// that failed to render, and this one cannot fail.
+    /// Distinguishes "no episodes" from a failed render, since this section cannot fail.
     case empty
     case visible(episodes: [CharacterDetailEpisodeModel])
 }
 
 protocol CharacterDetailEpisodesSectionMapperContract: SectionMapperContract {}
 
-/// The character's filmography, in the API's own order.
-///
-/// There is deliberately no grouping, no sorting and no search here, all of
-/// which the Episodes screen does. The reason is the input: this is the list of
-/// episodes *one character appears in*, already in broadcast order, and it is
-/// tens of rows rather than the whole catalogue. Grouping it by season would
-/// turn a short readable list into a set of one- and two-row groups, and sorting
-/// an answer that is already sorted is a chance to get it wrong.
 @MainActor
 final class CharacterDetailEpisodesSectionMapper: CharacterDetailEpisodesSectionMapperContract {
     typealias ViewModel = CharacterDetailEpisodesSectionViewModelContract
@@ -58,8 +46,7 @@ final class CharacterDetailEpisodesSectionMapper: CharacterDetailEpisodesSection
             return .hidden
         }
 
-        // The distinction the whole enum exists for: `nil` is "we have not
-        // asked yet" and an empty array is "we asked, and there are none".
+        // nil is "not asked yet"; an empty array is "asked, and there are none".
         guard !detail.episodes.isEmpty else {
             return .empty
         }

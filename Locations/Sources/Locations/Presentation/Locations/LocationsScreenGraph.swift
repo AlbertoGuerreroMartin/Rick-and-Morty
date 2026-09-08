@@ -5,14 +5,8 @@
 //  Created by Alberto Guerrero Martin on 08/09/2026.
 //
 
-/// The object graph owned by a `LocationsScreen` instance.
-///
-/// Built exactly once per screen identity and held by the screen through
-/// `Owned`. It carries the view model *and* both section mappers so each section
-/// receives the very same publisher instance on each parent body evaluation,
-/// avoiding re-subscription churn — which matters more here than on a list
-/// screen, because a re-subscribed carousel would re-run its "items arrived"
-/// announcement and yank the focus back to the first location.
+/// The object graph owned by a `LocationsScreen`, built once per screen identity via `Owned`.
+/// Carries both mappers so re-subscribing on each body evaluation can't yank the carousel focus back.
 @MainActor
 struct LocationsScreenGraph {
     let viewModel: LocationsViewModel

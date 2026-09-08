@@ -12,21 +12,7 @@ import Testing
 import UIKit
 @testable import Characters
 
-/// SwiftUI bodies are lazy: constructing a view runs no layout, so a crash in a
-/// `body` — a force-unwrap, a `ForEach` over duplicate ids — survives every test
-/// that only builds the value. These host each view in a real
-/// `UIHostingController` on a sized window and force a layout pass, which is
-/// what actually evaluates the bodies.
-///
-/// The sections are driven through the *real* pipeline — stub view model
-/// publishers, real mapper, `.onReceive` — rather than by writing a render model
-/// into the view's `@State`. That is the only way to know the subscription is
-/// wired at all, and it costs nothing but a turn of the main queue.
-///
-/// They stay assertion-light on purpose. Snapshotting pixels would test the
-/// system's rendering rather than this feature's, and the *contents* of every
-/// render model are already pinned by the mapper suites; what is left to check
-/// is that each of them draws at all.
+/// SwiftUI bodies are lazy, so views are hosted and laid out to actually evaluate them.
 @Suite("Character detail views")
 @MainActor
 struct CharacterDetailViewTests {
@@ -57,8 +43,6 @@ struct CharacterDetailViewTests {
         await renderHeader(viewModel)
     }
 
-    /// A very long name has to scale down rather than push the status line off
-    /// the picture, and a dead character draws a different dot.
     @Test("the header draws a long name and a dead character")
     func headerDrawsAnAwkwardCharacter() async {
         let viewModel = StubCharacterDetailSectionViewModel()
@@ -69,8 +53,6 @@ struct CharacterDetailViewTests {
         await renderHeader(viewModel)
     }
 
-    /// The Retry button is the only escape from a failed load, so it has to
-    /// reach the view model rather than merely exist.
     @Test("the failed header retries through the view model")
     func retryReachesTheViewModel() async {
         let viewModel = StubCharacterDetailSectionViewModel()
@@ -78,9 +60,6 @@ struct CharacterDetailViewTests {
 
         await renderHeader(viewModel)
 
-        // Driven directly: tapping a `ContentUnavailableView` action means
-        // walking a UIKit hierarchy for a button whose identity SwiftUI does not
-        // promise, which would test the framework rather than this wiring.
         viewModel.retryLoad()
 
         #expect(viewModel.retryCallCount == 1)
@@ -101,8 +80,6 @@ struct CharacterDetailViewTests {
         await renderInfo(viewModel)
     }
 
-    /// The other shape the card takes: four rows instead of seven, with the
-    /// optional ones dropped rather than drawn empty.
     @Test("the info card draws a character the API knows little about")
     func infoCardDrawsASparseCharacter() async {
         let viewModel = StubCharacterDetailSectionViewModel()
@@ -140,8 +117,6 @@ struct CharacterDetailViewTests {
         await renderEpisodes(viewModel)
     }
 
-    /// The button is the piece most easily lost: a `Button` whose body never ran
-    /// is one nobody would notice was missing until they tried to use it.
     @Test("a row with a link draws its button")
     func linkedRowDraws() async {
         await render(CharacterDetailEpisodeRowView(
@@ -150,8 +125,6 @@ struct CharacterDetailViewTests {
         ))
     }
 
-    /// The other half: no link, no button, and the row still lays out — the
-    /// details take the full width whether or not anything sits beside them.
     @Test("a row without a link draws no button")
     func unlinkedRowDraws() async {
         await render(CharacterDetailEpisodeRowView(episode: .make(name: "Pilot", season: 1, number: 1)))
@@ -183,36 +156,24 @@ struct CharacterDetailViewTests {
 
         await render(screen)
 
-        // The screen's `.task` is not guaranteed to have run by the time layout
-        // returns, so the load is driven directly: what is under test here is
-        // that the graph the screen was handed is wired to something that works,
-        // and that the sections redraw when it answers.
+        // `.task` is not guaranteed to have run by the time layout returns.
         await viewModel.loadData()
         await settle()
 
         #expect(viewModel.detailPublished?.name == "Rick Sanchez")
     }
 
-    /// The factory is the screen's composition root, and every layer it wires is
-    /// constructor-injected — so building the real graph needs nothing but two
-    /// clients and a cache store, and a missing edge would be a compile error
-    /// here rather than a blank screen at runtime.
     @Test("the detail factory builds a drawable screen")
     func factoryBuildsADrawableScreen() async {
         let dependencies = StubCharactersDependencies()
 
         await render(NavigationStack {
-            CharacterDetailFactory.build(dependencies: dependencies,
-                                         route: CharacterDetailRoute(id: "1"))
+            CharacterDetailFactory.build(dependencies: dependencies, id: "1")
         })
     }
 
     // MARK: - The list and the grid, now that their rows are links
 
-    /// Both results sections wrap their rows in a `NavigationLink(value:)`, and
-    /// a `NavigationLink` outside a navigation stack is a runtime complaint and
-    /// a row that does nothing — so both are hosted inside one here, which is
-    /// also where the real screen puts them.
     @Test("the list section still draws with its rows as links")
     func listSectionDrawsWithLinks() async {
         let viewModel = StubCharactersSectionViewModel()
@@ -238,12 +199,10 @@ struct CharacterDetailViewTests {
         })
     }
 
-    /// The route value is what the two sections and the destination agree on, so
-    /// it has to be the same value for the same character however it was built.
     @Test("a route is identified by its character")
     func routesAreValues() {
-        #expect(CharacterDetailRoute(id: "1") == CharacterDetailRoute(id: "1"))
-        #expect(CharacterDetailRoute(id: "1") != CharacterDetailRoute(id: "2"))
+        #expect(CharactersRoute.detail(id: "1") == CharactersRoute.detail(id: "1"))
+        #expect(CharactersRoute.detail(id: "1") != CharactersRoute.detail(id: "2"))
     }
 
     // MARK: - Hosting
@@ -267,13 +226,7 @@ struct CharacterDetailViewTests {
         ))
     }
 
-    /// Hosts `view` on a sized window and forces layout, so its `body` actually
-    /// runs. A hosting controller with no window lays out nothing.
-    ///
-    /// Laid out twice around a turn of the main queue: the render model reaches
-    /// a section through `.receive(on: DispatchQueue.main)`, so the first pass
-    /// draws the initial `.hidden` and the second draws what the mapper
-    /// produced.
+    /// Laid out twice: `.receive(on: .main)` delivers a turn late, so the first pass draws `.hidden`.
     private func render(_ view: some View) async {
         let controller = UIHostingController(rootView: view)
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
@@ -287,8 +240,6 @@ struct CharacterDetailViewTests {
         window.isHidden = true
     }
 
-    /// Yields the main thread long enough for the main-queue delivery in
-    /// `SectionMapperContract.renderModelPublisher()` to land.
     private func settle() async {
         for _ in 0..<10 {
             await Task.yield()
@@ -299,8 +250,6 @@ struct CharacterDetailViewTests {
 
 // MARK: - Test doubles
 
-/// The list and the grid share their requirements, so one stub satisfies both —
-/// exactly as the real `CharactersViewModel` does.
 @MainActor
 final class StubCharactersSectionViewModel: CharactersListSectionViewModelContract,
                                             CharactersGridSectionViewModelContract {

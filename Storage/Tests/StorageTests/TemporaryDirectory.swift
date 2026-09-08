@@ -7,12 +7,8 @@
 
 import Foundation
 
-/// A unique directory per test.
-///
-/// The store's default root is a real, shared path under `Library/Caches`. A
-/// suite pointed at it would leak files into the host app, and — worse — tests
-/// would see each other's entries and pass or fail depending on execution
-/// order. A fresh UUID directory makes each test hermetic.
+/// A unique directory per test. The store's default root is a shared `Library/Caches` path;
+/// a suite pointed at it would leak files and let tests see each other's entries.
 struct TemporaryDirectory {
     let url: URL
 

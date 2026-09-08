@@ -9,8 +9,8 @@ import Foundation
 import Testing
 @testable import Storage
 
-/// Every test gets its own root directory (see ``TemporaryDirectory``), so the
-/// suite can run in parallel and no test inherits another's files.
+/// Every test gets its own root directory (see ``TemporaryDirectory``), so the suite can run
+/// in parallel.
 @Suite("FileDiskStore")
 struct FileDiskStoreTests {
 

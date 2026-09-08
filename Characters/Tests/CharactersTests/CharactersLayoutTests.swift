@@ -18,8 +18,6 @@ struct CharactersLayoutTests {
         #expect(CharactersLayout.list.toggled.toggled == .list)
     }
 
-    /// The button describes where a tap leads, so the two layouts must never
-    /// share an icon or a title — otherwise the toggle reads as a no-op.
     @Test("the toggle button differs per layout")
     func toggleButtonIsDistinct() {
         #expect(CharactersLayout.list.toggleSystemImage != CharactersLayout.grid.toggleSystemImage)

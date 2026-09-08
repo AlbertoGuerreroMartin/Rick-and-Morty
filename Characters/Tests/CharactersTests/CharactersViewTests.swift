@@ -12,38 +12,47 @@ import Testing
 import UIKit
 @testable import Characters
 
-/// The list screen's own views, hosted the way `CharacterDetailViewTests` hosts
-/// the detail's: a `UIHostingController` on a sized window with a forced layout
-/// pass, because a SwiftUI `body` is lazy and a crash in one survives any test
-/// that only builds the value.
-///
-/// They were worth adding now rather than earlier for one reason in particular:
-/// both results sections have just grown a `NavigationLink` around every row,
-/// and a link is the kind of change that compiles perfectly and then does
-/// nothing — or draws every cell tinted blue — until something actually lays it
-/// out inside a navigation stack.
 @Suite("Characters views")
 @MainActor
 struct CharactersViewTests {
 
     // MARK: - The screen
 
-    /// The whole screen through its real factory: the stack, the toolbar, the
-    /// search bar, the chip bar and one of the two results sections, with the
-    /// `navigationDestination` the rows push into. Everything below the factory
-    /// is constructor-injected, so a missing edge is a compile error here rather
-    /// than a blank tab at runtime.
     @Test("the screen draws through its factory")
     func screenDrawsThroughTheFactory() async {
-        await render(CharactersFactory.build(dependencies: StubCharactersDependencies()))
+        await render(CharactersFactory.build(dependencies: StubCharactersDependencies(),
+                                             navigator: CharactersNavigator()))
     }
 
-    /// The graph is what the screen owns for its identity, so its initial state
-    /// is what the sections first subscribe to.
+    @Test("the detail draws as a view pushed by someone else's stack")
+    func detailDrawsInAForeignStack() async {
+        await render(NavigationStack {
+            CharactersFactory.buildCharacterDetail(dependencies: StubCharactersDependencies(),
+                                                   id: "1")
+        })
+    }
+
+    @Test("showing a character puts its route on the screen's path")
+    func showingACharacterPushesIt() async {
+        let navigator = CharactersNavigator()
+
+        await render(CharactersFactory.build(dependencies: StubCharactersDependencies(),
+                                             navigator: navigator))
+
+        navigator.showCharacter(id: "42")
+        #expect(navigator.path == [.detail(id: "42")])
+
+        // Re-render to confirm the pushed route resolves to an actual destination.
+        await render(CharactersFactory.build(dependencies: StubCharactersDependencies(),
+                                             navigator: navigator))
+    }
+
     @Test("the screen's graph starts empty and unfiltered")
     func graphStartsEmpty() async {
-        let graph = CharactersFactory.makeGraph(dependencies: StubCharactersDependencies())
+        let graph = CharactersFactory.makeGraph(dependencies: StubCharactersDependencies(),
+                                                navigator: CharactersNavigator())
 
+        #expect(graph.navigator.path.isEmpty)
         #expect(graph.viewModel.charactersPublished == nil)
         #expect(graph.viewModel.paginationPublished == .end)
         #expect(graph.viewModel.filterPublished == .empty)
@@ -56,9 +65,6 @@ struct CharactersViewTests {
         await renderFilterBar(StubCharactersFilterBarViewsViewModel())
     }
 
-    /// The bar with something in it: a chip per active field, a count on the
-    /// button and the "Clear all" that only appears when there is something to
-    /// clear.
     @Test("the chip bar draws a chip per active field")
     func chipBarDrawsItsChips() async {
         let viewModel = StubCharactersFilterBarViewsViewModel()
@@ -71,10 +77,6 @@ struct CharactersViewTests {
         await renderFilterBar(viewModel)
     }
 
-    /// The sheet is a `Form` of pickers and text fields over a *draft*, and it
-    /// is the one view in this feature that owns editable state of its own —
-    /// which is exactly the kind of body that is never evaluated by a test that
-    /// only constructs it.
     @Test("the filter sheet draws, empty and populated")
     func filterSheetDraws() async {
         await render(CharactersFilterSheet(initial: .empty, onApply: { _ in }))
@@ -88,9 +90,7 @@ struct CharactersViewTests {
 
     // MARK: - The shared leaves
 
-    /// Both empty states, and both shapes of the first one: "no results for
-    /// <filter>" with a Clear filters button, and the same copy without it when
-    /// there is no filter to clear and the button would be a dead end.
+    /// Both shapes of the no-matches state: with and without a Clear filters button.
     @Test("every empty state draws")
     func emptyStatesDraw() async {
         await render(CharactersEmptyStateView(reason: .noMatches(summary: "“rick” with Alive · Human",
@@ -101,10 +101,8 @@ struct CharactersViewTests {
         await render(CharactersEmptyStateView(reason: .failed, onClearFilters: {}, onRetry: {}))
     }
 
-    /// All four footers. `.loadMore` and `.loading` draw the same spinner on
-    /// purpose — two branches would give SwiftUI two identities and cancel the
-    /// very task that moved one state to the other — so both are drawn here to
-    /// keep that pair honest.
+    /// `.loadMore` and `.loading` draw the same spinner on purpose: two identities would
+    /// cancel the very task that moves one state to the other.
     @Test("every pagination footer draws", arguments: [
         CharactersSectionFooter.loadMore,
         .loading,
@@ -145,8 +143,6 @@ struct CharactersViewTests {
         await renderList(viewModel)
     }
 
-    /// Rows with a highlighted match and a footer waiting for the next page —
-    /// the shape the screen is in for most of its life.
     @Test("the list section draws rows with a highlight and a footer")
     func listDrawsRows() async {
         let viewModel = StubCharactersSectionViewModel()
@@ -186,9 +182,8 @@ struct CharactersViewTests {
 
     // MARK: - Hosting
 
-    /// Both results sections are hosted inside a `NavigationStack`: their rows
-    /// are `NavigationLink`s now, and a link outside a stack is a row that does
-    /// nothing.
+    /// Hosted inside a `NavigationStack`: their rows are `NavigationLink`s now, and a
+    /// link outside a stack is a row that does nothing.
     private func renderList(_ viewModel: StubCharactersSectionViewModel) async {
         await render(NavigationStack {
             CharactersListSectionView(viewModel: viewModel,
@@ -210,12 +205,8 @@ struct CharactersViewTests {
         ))
     }
 
-    /// Hosts `view` on a sized window and forces layout, so its `body` actually
-    /// runs. A hosting controller with no window lays out nothing.
-    ///
-    /// Laid out twice around a turn of the main queue: the render model reaches
-    /// a section through `.receive(on: DispatchQueue.main)`, so the first pass
-    /// draws the initial state and the second draws what the mapper produced.
+    /// Hosts `view` on a sized window and forces layout twice: once for the initial
+    /// state, once after the mapper's `.receive(on: .main)` delivers.
     private func render(_ view: some View) async {
         let controller = UIHostingController(rootView: view)
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
@@ -233,9 +224,7 @@ struct CharactersViewTests {
 
 // MARK: - Test doubles
 
-/// Named for this suite: `CharactersFilterBarSectionMapperTests` declares a
-/// file-private stub of its own, and this one has to be visible to the hosting
-/// helper below.
+/// internal, not private: also used by `CharactersFilterBarSectionMapperTests`.
 @MainActor
 final class StubCharactersFilterBarViewsViewModel: CharactersFilterBarSectionViewModelContract {
     @Published var filter: CharactersFilter = .empty

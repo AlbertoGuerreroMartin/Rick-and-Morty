@@ -1,19 +1,11 @@
 import Foundation
 import Synchronization
 
-/// Keeps every event and fans each one out to other sinks.
+/// Keeps every event and fans each one out to registered sinks — the seam for anything outside
+/// `Networking` that wants to see the traffic.
 ///
-/// This is the seam for anything outside `Networking` that wants to see the
-/// traffic. A developer-tools screen reads `events` for the history and then
-/// listens to `stream()` for what happens next; the console logger is just
-/// another sink registered through `add(_:)`. `GraphQLClient` only ever sees a
-/// sink, so the store is one possible wiring, not a requirement.
-///
-/// A class under a `Mutex` rather than an actor, deliberately. `log(_:)` has to
-/// be synchronous so the client never awaits it, and an actor would force that
-/// call through a detached `Task` — which is unordered, so a call's `.response`
-/// could land in the history before its `.request`. The critical section is an
-/// array append and a handful of yields, far too short for the mutex to matter.
+/// A class under a `Mutex`, not an actor: `log(_:)` must stay synchronous, since an actor would
+/// force it through a detached `Task`, letting a call's `.response` land before its `.request`.
 public final class APILogStore: APILogSinkContract, Sendable {
     private struct State {
         var events: [APILogEvent] = []
@@ -26,13 +18,8 @@ public final class APILogStore: APILogSinkContract, Sendable {
 
     /// - Parameters:
     ///   - sinks: receive every event from the first one.
-    ///   - capacity: how many events the history keeps; the oldest are dropped
-    ///     past it. A bound is necessary because images log through this store
-    ///     too — a scroll through the characters grid is hundreds of events in
-    ///     seconds, each holding its response body, and an unbounded history
-    ///     would grow until the app was killed. 500 is roughly a minute of
-    ///     heavy use, far more than anyone reads in the inspector, and the
-    ///     console sink has already seen everything that falls off the end.
+    ///   - capacity: how many events the history keeps; oldest are dropped past it. Images log
+    ///     through this store too, so an unbounded history would grow until the app was killed.
     public init(sinks: [any APILogSinkContract] = [], capacity: Int = 500) {
         state = Mutex(State(sinks: sinks))
         self.capacity = max(0, capacity)
@@ -66,13 +53,10 @@ public final class APILogStore: APILogSinkContract, Sendable {
     }
 
     public func log(_ event: APILogEvent) {
-        // Sinks run outside the lock: one of them could log back into this
-        // store (a bug, but not one that should deadlock).
+        // Sinks run outside the lock: one could log back into this store without deadlocking.
         let (sinks, continuations) = state.withLock { state in
             state.events.append(event)
-            // Only the history is capped. Sinks and live streams have already
-            // been handed the event, so a consumer that is keeping its own list
-            // — the inspector does — never loses anything to the cap.
+            // Only the history is capped; sinks/streams already saw the event.
             if state.events.count > capacity {
                 state.events.removeFirst(state.events.count - capacity)
             }

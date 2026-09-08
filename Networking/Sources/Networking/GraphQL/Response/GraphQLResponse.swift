@@ -1,8 +1,7 @@
 import Foundation
 
-/// Every GraphQL response is this envelope: an optional `data` object and an
-/// optional `errors` array. Both can be present at once — GraphQL supports
-/// *partial* results, where some fields resolved and others failed.
+/// `data` and `errors` can both be present: GraphQL supports partial results, where some
+/// fields resolved and others failed.
 struct GraphQLResponse<Payload: Decodable>: Decodable {
     let data: Payload?
     let errors: [GraphQLServerError]?

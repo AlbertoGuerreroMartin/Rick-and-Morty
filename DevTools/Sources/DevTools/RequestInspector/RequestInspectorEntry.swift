@@ -9,18 +9,8 @@ import Foundation
 import Networking
 import Storage
 
-/// One row of the inspector: an API call, an image download, or a cache read,
-/// flattened into the same shape.
-///
-/// Three sources with three different event types become one list here rather
-/// than three parallel lists, because the question the screen answers is
-/// chronological — "what happened when this screen loaded" — and an answer split
-/// across three tabs cannot show that a cache miss is what caused the request
-/// underneath it.
-///
-/// The texts are pre-rendered by the packages' own formatters rather than built
-/// here. The console and the inspector then cannot disagree about what a request
-/// looked like, which they would the moment one of them grew a second formatter.
+/// One row of the inspector: an API call, an image download, or a cache read, flattened
+/// into the same shape so the list can be one chronological feed.
 struct RequestInspectorEntry: Identifiable, Equatable, Sendable {
 
     enum Kind: String, Sendable {
@@ -30,8 +20,7 @@ struct RequestInspectorEntry: Identifiable, Equatable, Sendable {
     }
 
     enum Status: Equatable, Sendable {
-        /// A request that has left but whose response has not arrived. Also what
-        /// a request whose response never arrives stays as.
+        /// Also what a request whose response never arrives stays as.
         case pending
         case success(Int)
         case failure(Int)
@@ -40,34 +29,27 @@ struct RequestInspectorEntry: Identifiable, Equatable, Sendable {
         case cacheMiss
     }
 
-    /// Shared with the network records, which is how a `.response` finds the
-    /// `.request` it belongs to.
+    /// Shared with the network record, so a `.response` finds its `.request`.
     let id: UUID
     let timestamp: Date
     let kind: Kind
     /// `[METHOD] url` for traffic, `namespace › identifier` for a cache read.
     let title: String
     let status: Status
-    /// Round-trip time, once a response has arrived.
     let duration: TimeInterval?
     let requestText: String
-    /// `nil` until the response lands. A cache read has none — there is one
-    /// line and it is the whole event, so it goes in `requestText`.
+    /// `nil` until the response lands. A cache read has none: it's one line, in `requestText`.
     let responseText: String?
 }
 
 extension RequestInspectorEntry {
 
-    /// Everything the detail screen would show, in one string, for the search
-    /// field. The whole text rather than the title alone: the reason to search
-    /// a network log is almost never the URL — every GraphQL call has the same
-    /// one — but a character's name in a response body, a variable in a query,
-    /// or a status code.
+    /// Full text for the search field: a body match (a name, a variable) is more useful
+    /// than the URL alone, since every GraphQL call shares one.
     var searchableText: String {
         [title, requestText, responseText].compactMap { $0 }.joined(separator: "\n")
     }
 
-    /// A request that has just left, with nothing filled in below the fold yet.
     init(request: APIRequestRecord, formatter: APILogFormatter) {
         self.init(
             id: request.id,
@@ -81,13 +63,10 @@ extension RequestInspectorEntry {
         )
     }
 
-    /// The same entry with its response filled in.
     func completed(with response: APIResponseRecord, formatter: APILogFormatter) -> RequestInspectorEntry {
         RequestInspectorEntry(
             id: id,
-            // The request's timestamp is kept on purpose: the list is ordered by
-            // when a call *started*, so an entry does not jump to the top of the
-            // list the moment a slow response lands.
+            // Kept, not replaced: the list orders by when a call started, not when it finished.
             timestamp: timestamp,
             kind: kind,
             title: title,
@@ -98,13 +77,7 @@ extension RequestInspectorEntry {
         )
     }
 
-    /// A response whose request is not in the list.
-    ///
-    /// It happens for real: the store's cap drops the oldest events, so an
-    /// inspector opened mid-scroll sees responses to requests that fell off the
-    /// end. Showing them as their own row is better than dropping them — the
-    /// response carries the URL and the status, which is most of what a reader
-    /// wanted from the pair.
+    /// A response whose request fell off the log's capped storage before it arrived.
     init(orphanResponse response: APIResponseRecord, formatter: APILogFormatter) {
         self.init(
             id: response.id,
@@ -154,10 +127,7 @@ extension RequestInspectorEntry.Status {
         }
     }
 
-    /// What the trailing edge of a row shows. Short enough to sit beside a URL
-    /// without pushing it off screen, which is why an expired hit is
-    /// "HIT (expired)" rather than naming its layer too — the layer is in the
-    /// detail view.
+    /// Trailing-edge label; kept short to fit beside a URL, so an expired hit omits its layer.
     var text: String {
         switch self {
         case .pending:

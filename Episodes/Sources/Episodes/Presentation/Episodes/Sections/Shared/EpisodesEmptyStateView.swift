@@ -7,16 +7,6 @@
 
 import SwiftUI
 
-/// Nothing to draw, and why.
-///
-/// `ContentUnavailableView` rather than a hand-rolled `VStack` so the copy gets
-/// the system's own layout, metrics and Dynamic Type behaviour for free — and so
-/// this state looks like every other "nothing here" in iOS rather than like
-/// something this app invented.
-///
-/// The retry arrives as a closure because this is a leaf: it draws a reason and
-/// nothing else, and the section that owns a view model is the one that knows
-/// what retrying means.
 struct EpisodesEmptyStateView: View {
     let reason: EpisodesSectionEmptyReason
     let onRetry: () -> Void
@@ -27,9 +17,6 @@ struct EpisodesEmptyStateView: View {
             ContentUnavailableView {
                 Label("No episodes found", systemImage: "magnifyingglass")
             } description: {
-                // Quoting the text back is the difference between a dead end and
-                // an explanation: with the whole catalogue on the device, what
-                // was typed is the only reason nothing is showing.
                 Text(query.map { "No results for \u{201C}\($0)\u{201D}." }
                      ?? "There are no episodes to show.")
             }

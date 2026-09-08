@@ -36,8 +36,7 @@ struct ImageLoaderTests {
     @Test("concurrent requests for the same image share one download")
     func coalescesConcurrentRequests() async throws {
         let url = URL(string: "https://example.com/c.png")!
-        // The delay keeps the first request in flight long enough for the rest
-        // to arrive, which is the situation a fast scroll actually creates.
+        // Delay keeps the first request in flight long enough for the rest to arrive.
         StubURLProtocol.stub(url, with: .init(data: makePNG(sideLength: 256), delay: 0.3))
         let loader = makeLoader()
 
@@ -72,12 +71,10 @@ struct ImageLoaderTests {
         let small = try await loader.image(for: url, maxPixelSize: 64)
         let large = try await loader.image(for: url, maxPixelSize: 256)
 
-        // Reusing the 64px bitmap for the 256px request would ship a blurry
-        // image, so the second request must genuinely re-decode.
+        // Reusing the 64px bitmap would ship a blurry image, so this must re-decode.
         #expect(small.cgImage?.width == 64)
         #expect(large.cgImage?.width == 256)
-        // Re-decode, not re-download: the encoded bytes are on disk after the
-        // first request, and both sizes are decoded from that same file.
+        // Re-decode, not re-download: bytes are on disk after the first request.
         #expect(StubURLProtocol.requestCount(for: url) == 1)
     }
 
@@ -140,8 +137,7 @@ struct ImageLoaderTests {
         _ = try await first.image(for: url, maxPixelSize: 64)
         let downloads = StubURLProtocol.requestCount(for: url)
 
-        // A second loader over the same directory is what a relaunch looks like:
-        // empty memory cache, the bytes still on disk.
+        // Simulates a relaunch: empty memory cache, bytes still on disk.
         let second = makeLoader(diskCache: makeDiskCache(root: directory.url))
         let image = try await second.image(for: url, maxPixelSize: 64)
 
@@ -153,8 +149,7 @@ struct ImageLoaderTests {
     func survivesDiskCacheFailure() async throws {
         let url = URL(string: "https://example.com/nodisk.png")!
         StubURLProtocol.stub(url, with: .init(data: makePNG(sideLength: 256)))
-        // A full disk, a revoked container, a corrupt directory: the image still
-        // has to arrive. The cache is an optimisation, not a dependency.
+        // A full disk or corrupt directory must not block the image — cache is optional.
         let loader = makeLoader(diskCache: FailingImageDiskCache())
 
         let image = try await loader.image(for: url, maxPixelSize: 64)
@@ -164,15 +159,12 @@ struct ImageLoaderTests {
 
     // MARK: - Helpers
 
-    /// - Parameter diskCache: defaults to a cache rooted in a directory of this
-    ///   test's own. The loader's production disk cache is a real, shared path
-    ///   under `Library/Caches`, and suites pointed at it would see each other's
-    ///   files and pass or fail depending on execution order.
+    /// - Parameter diskCache: defaults to a directory unique to this test, so suites don't
+    ///   share production's `Library/Caches` path and see each other's files.
     private func makeLoader(diskCache: (any ImageDiskCacheContract)? = nil) -> ImageLoader {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [StubURLProtocol.self]
-        // No URL-level caching here: these tests are about the loader's own
-        // layers, and a URLCache hit would mask a missing one of those.
+        // No URL-level caching: a URLCache hit would mask a missing loader layer.
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         return ImageLoader(

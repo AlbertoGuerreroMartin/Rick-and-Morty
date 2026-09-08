@@ -8,9 +8,7 @@
 import Testing
 @testable import Characters
 
-/// `CharactersFilter` is the value the whole feature agrees on — the request,
-/// the cache key and the chips are all derived from it — so its normalization
-/// and its idea of "active" are worth pinning down on their own.
+/// `CharactersFilter` drives the request, cache key and chips, so normalization and "active" are pinned here.
 @Suite("CharactersFilter")
 struct CharactersFilterTests {
 
@@ -23,8 +21,6 @@ struct CharactersFilterTests {
         #expect(CharactersFilter.normalized("  rick  ") == "rick")
     }
 
-    /// A filter carrying `"  "` would send an empty string to the server and
-    /// match nothing, so the initializer is where that becomes impossible.
     @Test("the initializer trims every free-text field")
     func initializerNormalizesFreeText() {
         let filter = CharactersFilter(name: "  Rick  ", species: "   ", type: " Parasite ")

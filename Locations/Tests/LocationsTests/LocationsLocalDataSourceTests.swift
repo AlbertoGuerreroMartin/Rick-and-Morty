@@ -11,10 +11,8 @@ import Storage
 import Testing
 @testable import Locations
 
-/// Run against the real `CodableCacheStore` on a real `FileDiskStore`: the thing
-/// worth checking here is that an entity survives a JSON round trip through the
-/// actual encoder and the actual filesystem, which a fake store would not
-/// exercise at all.
+/// Run against a real `CodableCacheStore` on a real `FileDiskStore` to exercise the actual
+/// JSON round trip and filesystem, not a fake store.
 @Suite("LocationsLocalDataSource")
 struct LocationsLocalDataSourceTests {
 
@@ -43,9 +41,6 @@ struct LocationsLocalDataSourceTests {
         #expect(try await dataSource.locationsPage(for: LocationsQuery(page: 9)) == nil)
     }
 
-    /// The bug this guards against is the expensive one: a single "locations"
-    /// key would have page 2 overwrite page 1, and the carousel would then grow
-    /// the same twenty circles seven times over.
     @Test("two pages of the same query are two entries")
     func pagesGetDifferentKeys() async throws {
         let directory = TemporaryDirectory()
@@ -75,9 +70,6 @@ struct LocationsLocalDataSourceTests {
         #expect(try await dataSource.locationsPage(for: LocationsQuery(page: 2)) == nil)
     }
 
-    /// Not a tautology: seven days is a deliberate choice against the characters
-    /// feature's twenty-four hours, and a careless edit back would spend a
-    /// request every morning to be told the same 126 rows.
     @Test("the lifetime is a week")
     func lifetimeIsSevenDays() {
         #expect(LocationsLocalDataSource.lifetime == 7 * 24 * 60 * 60)
@@ -88,8 +80,7 @@ struct LocationsLocalDataSourceTests {
     }
 }
 
-/// A unique directory per test, so the suite never reads the app's real cache
-/// and tests cannot see each other's files.
+/// A unique directory per test, isolated from the app's real cache.
 struct TemporaryDirectory {
     let url: URL
 

@@ -12,9 +12,6 @@ import Testing
 import UIKit
 @testable import DesignSystem
 
-/// The logs are what a developer reads to answer "why did this avatar come from
-/// the network again", so what matters is that each of the three paths — memory,
-/// disk, network — produces exactly one distinguishable event.
 @Suite("ImageLoader logging")
 struct ImageLoaderLoggingTests {
 
@@ -62,8 +59,6 @@ struct ImageLoaderLoggingTests {
         #expect(network.requests.count == requestsAfterFirstLoad)
     }
 
-    /// A fresh loader over the same directory is what a relaunch looks like:
-    /// nothing in memory, the bytes still on disk.
     @Test("a relaunch logs a disk hit and no request")
     func diskHitLogsNoRequest() async throws {
         let url = URL(string: "https://example.com/log-disk.png")!
@@ -84,8 +79,7 @@ struct ImageLoaderLoggingTests {
         #expect(network.requests.isEmpty)
     }
 
-    /// The response is logged *before* the status is turned into an error, so a
-    /// failed load shows a finished entry rather than one stuck on PENDING.
+    // Logged before the status becomes an error, so a failed load still shows a finished entry.
     @Test("a non-2xx status is logged as a failure response")
     func failureIsLogged() async throws {
         let url = URL(string: "https://example.com/log-missing.png")!
@@ -112,8 +106,7 @@ struct ImageLoaderLoggingTests {
         try await makeLoader(diskCache: diskCache).clearDiskCache()
         #expect(try await diskCache.data(for: url) == nil)
 
-        // A third loader, so the assertion is about the disk and not about a
-        // memory cache that would have answered anyway.
+        // Third loader: proves the disk was cleared, not just answered from memory.
         let network = SpyAPISink()
         let cache = SpyImageCacheSink()
         _ = try await makeLoader(diskCache: makeDiskCache(root: directory.url),
@@ -125,8 +118,7 @@ struct ImageLoaderLoggingTests {
         #expect(network.requests.count == 1)
     }
 
-    /// The loggers are installed after construction, because `ImageLoader.shared`
-    /// exists before the app container does.
+    // Installed after construction: `ImageLoader.shared` exists before the app container does.
     @Test("setLoggers redirects an already-built loader")
     func setLoggersAppliesToTheSharedLoader() async throws {
         let url = URL(string: "https://example.com/log-setloggers.png")!

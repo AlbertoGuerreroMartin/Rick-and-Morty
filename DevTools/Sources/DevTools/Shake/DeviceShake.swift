@@ -17,25 +17,15 @@ public extension Notification.Name {
 
 /// Turns the shake gesture into a notification.
 ///
-/// An override on `UIWindow` because SwiftUI has no motion event of its own:
-/// `motionEnded` arrives through the responder chain, and the window is the one
-/// responder that exists no matter which screen is on top. A
-/// `UIViewControllerRepresentable` would have to be somewhere in the hierarchy
-/// and would stop working the moment it was covered by a sheet.
+/// An override on `UIWindow`, not a `UIViewControllerRepresentable`: `motionEnded` reaches the
+/// window through the responder chain regardless of which screen or sheet is on top.
 ///
-/// A notification rather than a callback for the same reason — the shake is
-/// caught at the window and has to reach a view that knows nothing about it.
-///
-/// - Important: an extension on a UIKit class applies process-wide, and the app
-///   links this package in every configuration — only the `import` is behind
-///   `#if DEBUG`. The override itself is therefore compiled only for debug
-///   builds: a release build carries no method swizzle for a screen it cannot
-///   open, and the modifier below simply never fires there.
+/// - Important: only the `import` is behind `#if DEBUG`; the app links this package in every
+///   configuration, so the override itself must stay conditional too or it would swizzle in release.
 #if DEBUG
 extension UIWindow {
     open override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
-        // Called first, so nothing else that listens for a motion event — the
-        // system's own shake-to-undo included — stops working because of this.
+        // super called first so other motion listeners (shake-to-undo included) still work.
         super.motionEnded(motion, with: event)
         guard motion == .motionShake else { return }
         NotificationCenter.default.post(name: .devToolsDeviceDidShake, object: nil)
@@ -44,19 +34,7 @@ extension UIWindow {
 #endif
 
 public extension View {
-    /// Presents ``DevToolsScreen`` when the device is shaken.
-    ///
-    /// Shake rather than a button or a corner tap: it needs no space in a UI
-    /// that ships, it cannot be found by accident, and it works from any screen
-    /// including one that has covered everything else with a sheet.
-    ///
-    /// In the simulator the gesture is **Device ▸ Shake** (⌃⌘Z).
-    ///
-    /// - Parameters:
-    ///   - caches: what the screen offers to clear, supplied by the app's
-    ///     container — see `AppContainer.devToolsCaches`.
-    ///   - apiLog: the store the GraphQL client and the image loader write to.
-    ///   - cacheLog: the store the cache store and the image loader write to.
+    /// Presents ``DevToolsScreen`` when the device is shaken. In the simulator: Device ▸ Shake (⌃⌘Z).
     func devToolsOnShake(
         caches: [DevToolsCache],
         apiLog: APILogStore,
@@ -76,8 +54,7 @@ struct DevToolsShakeModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onReceive(NotificationCenter.default.publisher(for: .devToolsDeviceDidShake)) { _ in
-                // Toggled rather than set, so a second shake dismisses the sheet
-                // — the gesture is the only way in and should be the way out.
+                // Toggled, not set: a second shake dismisses the sheet too.
                 isPresented.toggle()
             }
             .sheet(isPresented: $isPresented) {

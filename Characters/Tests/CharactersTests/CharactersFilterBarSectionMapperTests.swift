@@ -9,9 +9,6 @@ import Combine
 import Testing
 @testable import Characters
 
-/// "How a status becomes the word Alive" is presentation logic, and this is the
-/// test that can check it without a view hierarchy — which is the reason the bar
-/// has a mapper at all.
 @Suite("CharactersFilterBarSectionMapper")
 @MainActor
 struct CharactersFilterBarSectionMapperTests {
@@ -25,8 +22,6 @@ struct CharactersFilterBarSectionMapperTests {
         #expect(render.filter == .empty)
     }
 
-    /// The search text is not a field, so it must never grow a chip the user
-    /// could tap to remove something the search bar owns.
     @Test("the search text never becomes a chip")
     func theSearchTextIsNotAChip() {
         let render = map(CharactersFilter(name: "rick"))
@@ -47,8 +42,7 @@ struct CharactersFilterBarSectionMapperTests {
 
         #expect(render.activeCount == 4)
         #expect(render.chips.map(\.field) == [.status, .species, .type, .gender])
-        // `type` is the one field that carries its label: a free-text sub-species
-        // is indistinguishable from a species at a glance.
+        // `type` carries its label: a free-text sub-species is indistinguishable from a species.
         #expect(render.chips.map(\.title) == ["Alive", "Human", "Type: parasite", "Female"])
     }
 
@@ -60,8 +54,6 @@ struct CharactersFilterBarSectionMapperTests {
         #expect(render.chips.map(\.title) == ["Dead", "Genderless"])
     }
 
-    /// The bar seeds the sheet from the applied filter, so the value has to
-    /// travel with the chips rather than being reconstructed from their titles.
     @Test("the applied filter travels with the render model")
     func theFilterIsCarriedThrough() {
         let filter = CharactersFilter(name: "rick", status: .alive)
@@ -75,8 +67,6 @@ struct CharactersFilterBarSectionMapperTests {
     }
 }
 
-/// Held by the mapper, never read by it: every rule under test is a pure
-/// function of the filter.
 @MainActor
 private final class StubCharactersFilterBarViewModel: CharactersFilterBarSectionViewModelContract {
     var filterPublisher: AnyPublisher<CharactersFilter, Never> { Just(.empty).eraseToAnyPublisher() }

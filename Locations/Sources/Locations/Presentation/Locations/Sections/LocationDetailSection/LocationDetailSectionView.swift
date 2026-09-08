@@ -8,11 +8,8 @@
 import Combine
 import SwiftUI
 
-/// Everything under the carousel: what the circle at the focus actually is.
-///
-/// It has no view model. There is nothing for this section to call — the
-/// carousel above owns the Retry and the pagination, and a card with no location
-/// simply is not there — so it takes a mapper and draws what comes out of it.
+/// Everything under the carousel: what the circle at the focus actually is. No view model —
+/// the carousel owns retry and pagination — so this just draws what the mapper produces.
 struct LocationDetailSectionView: View {
 
     private let renderModelPublisher: AnyPublisher<LocationDetailRenderModel, Never>
@@ -36,11 +33,7 @@ struct LocationDetailSectionView: View {
         case .visible(let content):
             card(content)
         case .hidden:
-            // A `Color.clear` and not an `EmptyView`: this section is the rest
-            // of a `VStack` whose top is a carousel taking its natural height,
-            // and a zero-height sibling would let that carousel drift down to
-            // the middle of the screen and jump back up when the card arrived.
-            // Holding the space is what keeps the layout still.
+            // `Color.clear`, not `EmptyView`: holds the space so the carousel above doesn't drift.
             Color.clear
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -81,8 +74,6 @@ struct LocationDetailSectionView: View {
                 .font(.subheadline.weight(.medium))
                 .multilineTextAlignment(.trailing)
         }
-        // One element per row: "Dimension, C-137" is the fact, and hearing the
-        // label and the value as two stops would double the swipes for nothing.
         .accessibilityElement(children: .combine)
         .accessibilityLabel(row.label)
         .accessibilityValue(row.value)
@@ -113,12 +104,7 @@ struct LocationDetailSectionView: View {
 }
 
 extension LocationDetailSectionView {
-    /// The card on its own, with no publisher behind it.
-    ///
-    /// The section needs a mapper to exist, and a mapper needs a view model —
-    /// which is three objects to stand up for a canvas that only wants to look
-    /// at a layout. This draws the same `card(_:)` the section does, so the
-    /// preview cannot drift from what ships.
+    /// The card with no publisher behind it, for previews that don't want to stand up a view model.
     struct PreviewCard: View {
         let content: LocationDetailContent
 

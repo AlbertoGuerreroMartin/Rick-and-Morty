@@ -10,33 +10,17 @@ import DesignSystem
 import SwiftUI
 
 struct CharactersListSectionView: View {
-    /// The avatar's rendered edge, in points.
     private static let avatarSize: CGFloat = 56
 
-    /// The screen's pixels per point. Read from the SwiftUI environment rather
-    /// than `UITraitCollection.current`: UIKit only populates the latter while
-    /// it is calling into UIKit code (layout, drawing), so inside a SwiftUI body
-    /// it can be the default trait collection whose scale is 0 — and a 0px
-    /// decode target would turn every avatar into a 1px smear.
+    /// Read from the environment, not `UITraitCollection.current`, which can report scale 0
+    /// outside UIKit's own layout/drawing calls, decoding avatars down to a 1px smear.
     @Environment(\.displayScale) private var displayScale
 
-    /// The avatar edge in *pixels*, which is what the downsampler decodes to.
-    /// Decoding at point size would be soft on every device shipped this decade;
-    /// decoding at the source's own size would hold a full-resolution bitmap per
-    /// row.
+    /// Pixel size for the downsampler.
     private var avatarPixelSize: CGFloat {
         Self.avatarSize * displayScale
     }
 
-    /// Held as the contract, not as a closure: "load the next page" is a
-    /// capability of the view model the section is already bound to, and routing
-    /// it through an escaping closure would hide that from the type system while
-    /// adding a second thing to wire up in the factory and in every preview.
-    ///
-    /// This is *not* observation — the view never reads a property on it. The
-    /// render pipeline is unchanged (publishers -> mapper -> `@State`); the view
-    /// model is here only so the footer and the empty states have something to
-    /// call.
     let viewModel: any CharactersListSectionViewModelContract
 
     private let renderModelPublisher: AnyPublisher<CharactersListRenderModel, Never>
@@ -71,9 +55,8 @@ struct CharactersListSectionView: View {
         }
     }
 
-    /// The footer is the last row of the `List`, which builds its rows lazily —
-    /// see `CharactersPaginationFooterView` for why that is what makes it a
-    /// pagination trigger, and why `List` rather than `onScrollVisibilityChange`.
+    /// Footer is the `List`'s last row. See `CharactersPaginationFooterView` for why `List`
+    /// over `onScrollVisibilityChange`.
     @ViewBuilder
     func charactersList(characters: [CharacterModel],
                         footer: CharactersSectionFooter,
@@ -90,17 +73,11 @@ struct CharactersListSectionView: View {
         }
     }
 
-    /// The row is a `NavigationLink` carrying a *value*, not a destination.
-    ///
-    /// The destination is built by the screen's `navigationDestination(for:)`,
-    /// which means the detail is constructed when the push happens rather than
-    /// once per visible row — a `NavigationLink(destination:)` would build a
-    /// whole screen graph for every row the list lays out. It also keeps this
-    /// section ignorant of what a character detail even is: it names a route
-    /// value and nothing else.
+    /// Value-based `NavigationLink`: the destination is built by the screen's
+    /// `navigationDestination(for:)`, not once per visible row.
     @ViewBuilder
     func characterRow(character: CharacterModel, highlight: String?) -> some View {
-        NavigationLink(value: CharacterDetailRoute(id: character.id)) {
+        NavigationLink(value: CharactersRoute.detail(id: character.id)) {
             characterRowContent(character: character, highlight: highlight)
         }
     }
@@ -108,10 +85,7 @@ struct CharactersListSectionView: View {
     @ViewBuilder
     func characterRowContent(character: CharacterModel, highlight: String?) -> some View {
         HStack(spacing: 12) {
-            // `CachedAsyncImage` rather than `AsyncImage`: it keeps the decoded
-            // bitmap and the downloaded bytes, so a row scrolling back into view
-            // draws immediately instead of flashing a placeholder and
-            // re-decoding — and a relaunch costs no requests at all.
+            // Keeps the decoded bitmap and bytes, so a row scrolling back or a relaunch doesn't re-decode.
             CachedAsyncImage(url: character.image, maxPixelSize: avatarPixelSize) { image in
                 image.resizable().scaledToFill()
             } placeholder: {
@@ -123,10 +97,7 @@ struct CharactersListSectionView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(CharactersNameHighlighter.highlighted(character.name, matching: highlight))
                     .font(.headline)
-                    // The plain name, always: an `AttributedString` read aloud
-                    // would announce nothing about the emphasis anyway, and the
-                    // highlight is a visual aid to a sighted user scanning a
-                    // list, not information.
+                    // Plain name: the highlight is a visual aid, not information VoiceOver needs.
                     .accessibilityLabel(character.name)
                 HStack(spacing: 5) {
                     Circle()

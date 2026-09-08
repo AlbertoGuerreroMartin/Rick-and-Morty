@@ -9,37 +9,34 @@ import SwiftUI
 
 @MainActor
 public enum EpisodesFactory {
-    /// Returns a screen *description*, not a built graph: the closures below are
-    /// only invoked once per screen identity (see `EpisodesScreen`), so the
-    /// parent re-evaluating its body no longer rebuilds — and throws away — the
-    /// view model.
-    public static func build(dependencies: any EpisodesDependencies) -> some View {
+    /// Closures below are invoked once per screen identity; see `EpisodesScreen`.
+    public static func build(dependencies: any EpisodesDependencies,
+                             navigator: EpisodesNavigator,
+                             external: any EpisodesExternalDestinations) -> some View {
         EpisodesScreen(
-            makeGraph: { makeGraph(dependencies: dependencies) },
+            makeGraph: { makeGraph(dependencies: dependencies, navigator: navigator) },
             makeSection: { graph in
                 EpisodesListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
+            },
+            // Exhaustive switch: adding an `EpisodesRoute` case is a compile error here.
+            makeDestination: { route in
+                switch route {
+                case .character(let id):
+                    external.characterDetail(id: id)
+                }
             }
         )
     }
 
-    /// Drops every page this feature has cached.
-    ///
-    /// On the factory rather than exposed as a data source, because the cache
-    /// namespace is the feature's own private business: a developer-tools screen
-    /// gets to say "clear Episodes" without learning the string, and no caller
-    /// outside this module can reach a namespace that is not theirs.
+    /// On the factory, not a data source, so the cache namespace stays private to this feature.
     public static func purgeCache(dependencies: any EpisodesDependencies) async throws {
         try await EpisodesLocalDataSource(cacheStore: dependencies.cacheStore).removeAll()
     }
 
-    /// The feature's composition root: every layer is wired here by constructor
-    /// injection, from the infrastructure the app provides down to the screen.
-    static func makeGraph(dependencies: any EpisodesDependencies) -> EpisodesScreenGraph {
+    static func makeGraph(dependencies: any EpisodesDependencies,
+                          navigator: EpisodesNavigator) -> EpisodesScreenGraph {
         let entityMapper = EpisodeEntityMapper()
         let remoteDataSource = EpisodesRemoteDataSource(client: dependencies.graphQLClient)
-        // The one place the two clients are told apart. Everything downstream
-        // takes a contract, so nothing else in the feature can hand a JustWatch
-        // query to rickandmortyapi.
         let linksRemoteDataSource = HBOMaxLinksRemoteDataSource(client: dependencies.justWatchClient)
         let localDataSource = EpisodesLocalDataSource(cacheStore: dependencies.cacheStore)
         let repository = EpisodesRepository(remoteDataSource: remoteDataSource,
@@ -50,6 +47,6 @@ public enum EpisodesFactory {
         let useCase = EpisodesUseCase(repository: repository)
         let viewModel = EpisodesViewModel(episodesUseCase: useCase)
         let listMapper = EpisodesListSectionMapper(viewModel: viewModel)
-        return EpisodesScreenGraph(viewModel: viewModel, listMapper: listMapper)
+        return EpisodesScreenGraph(navigator: navigator, viewModel: viewModel, listMapper: listMapper)
     }
 }

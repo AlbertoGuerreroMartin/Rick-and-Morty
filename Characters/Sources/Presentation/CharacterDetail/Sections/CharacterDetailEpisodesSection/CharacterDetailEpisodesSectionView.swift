@@ -8,14 +8,9 @@
 import Combine
 import SwiftUI
 
-/// Every episode the character appears in, under a heading.
-///
-/// A `LazyVStack` rather than a `List`: the whole screen is one `ScrollView`
-/// with the header and the info card above this, and a `List` inside a
-/// `ScrollView` would need a fixed height chosen by hand and would scroll
-/// independently of everything above it. Lazy anyway, because a long-running
-/// character appears in fifty episodes and there is no reason to build the rows
-/// nobody has scrolled to.
+/// Every episode the character appears in, under a heading. `LazyVStack`, not `List`: the
+/// whole screen is one `ScrollView`, and a nested `List` would need a fixed height and
+/// scroll independently.
 struct CharacterDetailEpisodesSectionView: View {
     private static let horizontalPadding: CGFloat = 16
 
@@ -23,9 +18,7 @@ struct CharacterDetailEpisodesSectionView: View {
 
     @State var renderModel: CharacterDetailEpisodesRenderModel = .hidden
 
-    /// No view model: like the info card, this section has nothing to call. The
-    /// header owns the Retry, and the play buttons open a URL through the
-    /// environment.
+    /// No view model: this section has nothing to call. The header owns the Retry.
     init(mapper: CharacterDetailEpisodesSectionMapper) {
         self.renderModelPublisher = mapper.renderModelPublisher()
     }
@@ -69,8 +62,7 @@ struct CharacterDetailEpisodesSectionView: View {
         }
     }
 
-    /// The heading and the padding, shared by both drawn states so the empty one
-    /// sits exactly where the list would have.
+    /// Shared by both drawn states so the empty one sits exactly where the list would have.
     @ViewBuilder
     private func section<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {

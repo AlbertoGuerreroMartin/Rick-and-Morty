@@ -11,13 +11,8 @@ import Storage
 import SwiftUI
 
 struct LocationsScreen<Content: View>: View {
-    // The graph lives in `Owned` rather than the view model living directly in
-    // `@StateObject`: `@StateObject` is what keeps the graph alive for the
-    // screen's identity, but it also observes. An observable view model would
-    // fire `objectWillChange` on every `@Published` write and re-evaluate this
-    // whole body, while the architecture wants only the sections to re-render
-    // (view model publishers -> mapper -> section `@State`). `Owned` never
-    // publishes anything, so we get the ownership without the observation.
+    // `Owned`, not the view model directly in `@StateObject`: keeps the graph alive without
+    // observing it, so a `@Published` write re-renders only the sections, not this body.
     @StateObject private var graph: Owned<LocationsScreenGraph>
     private let makeSection: (LocationsScreenGraph) -> Content
 
@@ -31,12 +26,7 @@ struct LocationsScreen<Content: View>: View {
         NavigationStack {
             makeSection(graph.value)
                 .navigationTitle("Locations")
-                // A cache wiped behind this screen's back — from the developer
-                // tools — is announced through `Storage`, and the screen answers
-                // by loading again from scratch. Neither side knows the other
-                // exists: the tool does not know this screen, and this screen
-                // does not know the tool; the notification is the only thing
-                // they share. See `CacheClearedNotification`.
+                // Reloads on a cache clear announced via `Storage` (e.g. from developer tools).
                 .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
                     Task { await graph.value.viewModel.reloadFromScratch() }
                 }
@@ -51,13 +41,8 @@ struct LocationsScreen<Content: View>: View {
     LocationsFactory.previewScreen(repository: PreviewLocationsRepository())
 }
 
-/// Stubbed at the repository seam rather than the data-source one: the preview
-/// wants canned domain models, and standing in for the repository skips the
-/// cache, the network and the mapper in one substitution.
-///
-/// It serves three pages so the canvas reaches the two things a single page
-/// cannot show: a carousel long enough that the focus can settle inside the last
-/// three items, and the footer that appears when it does.
+/// Stubbed at the repository seam so the preview skips cache, network and mapper.
+/// Serves three pages so the canvas shows the end-of-list footer too.
 private struct PreviewLocationsRepository: LocationsRepositoryContract {
     private static let names = ["Earth (C-137)", "Abadango", "Citadel of Ricks",
                                 "Worldender's lair", "Anatomy Park"]
@@ -67,9 +52,7 @@ private struct PreviewLocationsRepository: LocationsRepositoryContract {
             let id = "\(page)-\(index + 1)"
             return LocationModel(id: id,
                                  name: "\(name) \(page)",
-                                 // Every third location has no type, so the
-                                 // canvas shows a card with a row missing as
-                                 // well as a complete one.
+                                 // Every third location has no type, so the canvas shows both row shapes.
                                  type: index.isMultiple(of: 3) ? nil : "Planet",
                                  dimension: index.isMultiple(of: 2) ? "Dimension C-137" : "unknown",
                                  residents: (0..<10).map { resident in

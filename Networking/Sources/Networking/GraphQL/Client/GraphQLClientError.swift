@@ -8,9 +8,7 @@ public enum GraphQLClientError: LocalizedError {
     case httpStatus(Int)
     /// The JSON came back, but it did not match the `Response` type.
     case decoding(DecodingError)
-    /// The server ran the operation and reported failures in the `errors` array.
-    /// Note this arrives with HTTP **200 OK**, which is the single biggest
-    /// difference from REST error handling.
+    /// Failures reported in the `errors` array; arrives with HTTP 200 OK.
     case server([GraphQLServerError])
     /// `data` was null and there were no errors — a malformed response.
     case emptyPayload

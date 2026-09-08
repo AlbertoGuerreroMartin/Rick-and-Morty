@@ -7,35 +7,20 @@
 
 import Foundation
 
-/// One read of the cache, as seen by someone trying to explain why a screen
-/// went to the network.
-///
-/// A read is the only event worth logging. A write is never a surprise — it is
-/// the direct consequence of a fetch that has already been logged as a request
-/// — while a miss on a key the caller was sure it had stored is exactly the
-/// thing that needs explaining, and the answer is always in the key.
-///
-/// Plain values, like ``APIRequestRecord`` in Networking: whoever renders this
-/// knows nothing about envelopes, files or expiry dates, so the event carries
-/// only what such a consumer can show.
+/// One read of the cache. Only reads are logged — a write is never a surprise, but a miss on a
+/// key the caller expected to have found is what needs explaining. Plain values, like
+/// ``APIRequestRecord`` in Networking, so a consumer needs no knowledge of envelopes or files.
 public struct CacheLogEvent: Sendable, Equatable, Identifiable {
 
-    /// Which layer answered a hit.
-    ///
-    /// The distinction is the whole reason the memory layer exists: a read that
-    /// says `disk` when the previous read of the same key said `memory` is a
-    /// memory layer that is evicting more than it should.
+    /// Which layer answered a hit. A `disk` answer right after a `memory` one for the same key
+    /// means the memory layer is evicting more than it should.
     public enum Layer: String, Sendable {
         case memory
         case disk
     }
 
-    /// What the read found.
-    ///
-    /// An expired hit is a hit, not a miss: the entry was there and the store
-    /// handed it back, and whether stale data is acceptable is the repository's
-    /// call (see ``CacheEntry``). Logging it as a miss would hide the one case
-    /// where the cache did its job and the caller chose to refetch anyway.
+    /// An expired hit is a hit, not a miss: the entry was there, and whether stale data is
+    /// acceptable is the repository's call (see ``CacheEntry``).
     public enum Outcome: Sendable, Equatable {
         case hit(layer: Layer, isExpired: Bool)
         case miss

@@ -9,11 +9,6 @@ import SwiftUI
 import UIKit
 
 /// One entry in full: the same text the Xcode console would have shown.
-///
-/// Monospaced and selectable, and with a copy button, because the thing a
-/// developer does with a failing request is paste it into a bug report or a
-/// `curl`. Reformatting the body would defeat that — what is shown has to be
-/// what crossed the wire.
 struct RequestDetailView: View {
     let entry: RequestInspectorEntry
 
@@ -39,8 +34,6 @@ struct RequestDetailView: View {
         }
     }
 
-    /// Both halves together: a request without its response, or the other way
-    /// round, is rarely enough to explain anything.
     var copyText: String {
         [entry.requestText, entry.responseText]
             .compactMap { $0 }

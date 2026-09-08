@@ -16,9 +16,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/SimplyDanny/SwiftLintPlugins", exact: "0.65.1"),
         .package(path: "../Storage"),
-        // Image downloads are logged through Networking's records rather than a
-        // parallel set of their own: they are HTTP requests, and one inspector
-        // showing both is the whole point.
+        // Image downloads log through Networking's records, not a parallel set of their own.
         .package(path: "../Networking"),
     ],
     targets: [

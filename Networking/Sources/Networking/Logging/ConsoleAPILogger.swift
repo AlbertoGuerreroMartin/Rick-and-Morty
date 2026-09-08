@@ -1,28 +1,17 @@
 import Foundation
 import os
 
-/// Writes every event to the unified logging system, which Xcode shows in its
-/// console.
-///
-/// The text is built by `APILogFormatter` so the format is testable without
-/// capturing output; this type only decides *where* the text goes. `os.Logger`
-/// rather than `print`, because of how the Xcode console filters: stdout is
-/// consumed line by line, so a filter on "API Request" keeps only the first
-/// line of each log and drops the headers and body underneath. A unified-log
-/// message is one entry no matter how many lines it spans, so the whole log
-/// matches or none of it does.
-///
-/// The message is logged as public. Everything in it is already on the wire
-/// and the sink is only ever attached in debug builds; `<private>` in place of
-/// the body would defeat the purpose.
+/// Writes every event to the unified logging system (`os.Logger`), which Xcode shows in its
+/// console. `os.Logger`, not `print`, so a multi-line log is one entry a console filter matches
+/// wholesale rather than just its first line. Logged as public: the sink is debug-only, and the
+/// content already traveled on the wire.
 public struct ConsoleAPILogger: APILogSinkContract {
     private let formatter: APILogFormatter
     private let logger: Logger
 
     /// - Parameters:
-    ///   - subsystem: the unified-logging subsystem, typically the app's bundle
-    ///     identifier, so the entries can be filtered by app in Console.app.
-    ///   - category: the unified-logging category, shown as a column in Xcode.
+    ///   - subsystem: typically the app's bundle identifier, for filtering in Console.app.
+    ///   - category: shown as a column in Xcode.
     public init(
         subsystem: String = "Networking",
         category: String = "API",
@@ -37,43 +26,9 @@ public struct ConsoleAPILogger: APILogSinkContract {
     }
 }
 
-/// Turns a log event into the text the console shows.
-///
-/// ```
-/// ♦️ 14:20:37.360 > [PENDING] API Request: [POST] https://rickandmortyapi.com/graphql
-/// [Method]: POST
-/// [Headers]:
-///     Accept: application/json
-///     Content-Type: application/json
-/// [Body]:
-///     query:
-///         query Characters($page: Int) {
-///           result: characters(page: $page) {
-///             ...
-///           }
-///         }
-///     variables:
-///         {
-///           "page" : 1
-///         }
-///
-/// ♦️ 14:20:37.577 > [Done] API Request: [POST] https://rickandmortyapi.com/graphql
-/// [Response]: Success ✅
-/// Status Code: 200
-/// [Headers]:
-///     Content-Type: application/json; charset=utf-8
-/// Response Length: 4321
-/// Response body: {"data":{...}}
-/// ```
-///
-/// Headers are sorted by name so the same response always prints the same way;
-/// a dictionary would otherwise reorder them between runs.
-///
-/// The request body is unpacked because the interesting part of a GraphQL
-/// request — the document — travels as one JSON string, newlines escaped, and
-/// is unreadable in that form. The response body is printed as the wire
-/// carried it: it is what the decoder saw, and a formatter reflowing it would
-/// hide exactly the kind of mismatch the log is there to reveal.
+/// Turns a log event into the text the console shows. Headers are sorted by name for deterministic
+/// output. Request bodies are unpacked since a GraphQL document travels as one escaped JSON string;
+/// response bodies print exactly as the wire sent them, so a decoding mismatch stays visible.
 public struct APILogFormatter: Sendable {
     private let timeFormatter: DateFormatter
 
@@ -129,10 +84,7 @@ public struct APILogFormatter: Sendable {
         timeFormatter.string(from: date)
     }
 
-    /// The only thing that changes between an API call and an image download.
-    /// It is on the header line rather than a separate field because that line
-    /// is what a console filter matches on: "Image Request" alone narrows the
-    /// output to the image traffic, which is the reason the kind exists.
+    /// On the header line, not a separate field, because that's what a console filter matches on.
     private func header(_ kind: APILogKind) -> String {
         switch kind {
         case .api:
@@ -148,10 +100,8 @@ public struct APILogFormatter: Sendable {
             .map { "    \($0.key): \($0.value)" }
     }
 
-    /// A GraphQL request body as `query:` with the document verbatim — the
-    /// builders already lay it out one field per line, see
-    /// `GraphQLField.selection` — and `variables:` as indented JSON. Anything else is printed raw, on the
-    /// `[Body]:` line, so a body that is not what the client sends still shows.
+    /// GraphQL bodies print the document verbatim and variables as indented JSON; anything else
+    /// is printed raw on the `[Body]:` line.
     private func requestBodyLines(_ body: Data?) -> [String] {
         guard let body,
               let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
@@ -183,8 +133,7 @@ public struct APILogFormatter: Sendable {
         return text.split(separator: "\n", omittingEmptySubsequences: false).map { indent + $0 }
     }
 
-    /// The body as the wire carried it. Bytes that are not UTF-8 are described
-    /// rather than dumped, so a stray binary response cannot flood the console.
+    /// Non-UTF-8 bytes are described, not dumped, so a binary response can't flood the console.
     private func text(_ body: Data?) -> String {
         guard let body, !body.isEmpty else { return "<empty>" }
         return String(data: body, encoding: .utf8) ?? "<\(body.count) bytes of non-UTF-8 data>"

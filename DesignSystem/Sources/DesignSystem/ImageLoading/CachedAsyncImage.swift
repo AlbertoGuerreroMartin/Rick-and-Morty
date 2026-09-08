@@ -1,18 +1,9 @@
 import SwiftUI
 
-/// Drop-in replacement for `AsyncImage` backed by ``ImageLoader``.
-///
-/// The difference that matters in a `List` or `LazyVStack`: this view asks the
-/// memory cache for the image in its *initializer*, so a row scrolling back
-/// into view draws its image immediately instead of resetting to a placeholder
-/// and re-decoding — which is what `AsyncImage` does every time SwiftUI
-/// recreates a recycled row.
-///
-/// The read in the initializer is deliberately not logged as a cache hit: it is
-/// the same load as the `.task` that follows a moment later, and counting it
-/// would double every hit in the inspector for no new information. The `.task`
-/// always goes through ``ImageLoader/image(for:maxPixelSize:)``, so one
-/// appearance is one event.
+/// Drop-in replacement for `AsyncImage` backed by ``ImageLoader``. Checks the memory cache in
+/// `init` too, so a recycled row in a `List`/`LazyVStack` draws immediately instead of resetting
+/// to a placeholder. That initializer read is not logged as a hit — the `.task` that follows logs
+/// the same load, so counting both would double every hit in the inspector.
 public struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     private let url: URL?
     private let maxPixelSize: CGFloat
@@ -24,12 +15,8 @@ public struct CachedAsyncImage<Content: View, Placeholder: View>: View {
 
     /// - Parameters:
     ///   - url: image to load; `nil` renders the placeholder.
-    ///   - maxPixelSize: longest edge, **in pixels**, to decode at. Pass the
-    ///     rendered size multiplied by the display scale — a 64pt avatar on a
-    ///     3x screen wants roughly 192. Oversizing wastes memory; undersizing
-    ///     looks soft.
-    ///   - loader: defaults to ``ImageLoader/shared`` so every feature module
-    ///     pools one cache.
+    ///   - maxPixelSize: longest edge in pixels to decode at (rendered size × display scale).
+    ///   - loader: defaults to ``ImageLoader/shared`` so every feature module pools one cache.
     public init(
         url: URL?,
         maxPixelSize: CGFloat,
@@ -66,16 +53,9 @@ public struct CachedAsyncImage<Content: View, Placeholder: View>: View {
             return
         }
 
-        // Re-check the cache here as well as in `init`: SwiftUI reuses a view's
-        // `@State` when only the URL changes, so `image` may still hold the
-        // previous row's picture. A hit adopts it immediately, which is what
-        // keeps a recycled row from flashing a placeholder — but it does *not*
-        // return: the load below answers from the same memory cache without
-        // touching the disk or the network, and going through it is what makes
-        // every appearance produce exactly one cache event. Returning early
-        // here would leave the busiest path in the app — a scroll over rows
-        // that are already cached — invisible in the inspector, which is the
-        // one place someone looks to find out why an image did not appear.
+        // Re-checked here too (not just `init`): SwiftUI reuses `@State` across URL changes, so
+        // a hit adopts it immediately without returning early — the load below still runs so
+        // every appearance produces one cache event, keeping cached rows visible in the inspector.
         if let cached = loader.cachedImage(for: url, maxPixelSize: maxPixelSize) {
             image = Image(uiImage: cached)
         } else {
@@ -83,8 +63,8 @@ public struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         }
 
         guard let loaded = try? await loader.image(for: url, maxPixelSize: maxPixelSize) else { return }
-        // The load outlives cancellation on purpose (see `ImageLoader.image`),
-        // so check before touching state that may belong to a recycled row.
+        // Load outlives cancellation (see `ImageLoader.image`); check before touching state
+        // that may belong to a recycled row.
         guard !Task.isCancelled else { return }
         image = Image(uiImage: loaded)
     }
@@ -121,10 +101,8 @@ public extension CachedAsyncImage where Content == Image, Placeholder == ImagePl
     }
 }
 
-/// Neutral fill shown while an image loads, or when it fails to.
-///
-/// Deliberately inert: a spinner per row reads as chaos while scrolling, and a
-/// shimmer animating on twenty offscreen cells is wasted work.
+/// Neutral fill shown while loading or on failure. Deliberately inert — a spinner or shimmer
+/// per row is wasted work while scrolling.
 public struct ImagePlaceholder: View {
     public init() {}
 

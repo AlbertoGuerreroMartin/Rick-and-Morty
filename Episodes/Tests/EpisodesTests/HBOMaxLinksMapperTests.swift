@@ -9,10 +9,6 @@ import Foundation
 import Testing
 @testable import Episodes
 
-/// The mapper is the one place that decides what "the HBO Max link for episode
-/// 5" means, out of a dozen offers per episode from four different services. It
-/// is also the only mapper in the app that cannot fail, so half of these tests
-/// are the malformed shapes it has to *survive* rather than reject.
 @Suite("HBOMaxLinksMapper")
 struct HBOMaxLinksMapperTests {
 
@@ -30,11 +26,6 @@ struct HBOMaxLinksMapperTests {
                 == "https://play.hbomax.com/video/watch/ef7d1c40-2ecc-471a-81a5-7fe06400240a")
     }
 
-    /// Everything else in an episode's offers belongs to a service this feature
-    /// does not link to — including the two that look like HBO Max and are not:
-    /// `amazonhbomax` deeplinks into Prime Video, and the legacy `hbomax`
-    /// package still carries dead `urn:hbo:episode:` links from before the
-    /// rebrand.
     @Test("offers from other packages are ignored", arguments: [
         ("netflix", "https://www.netflix.com/watch/80098733"),
         ("amazon", "https://app.primevideo.com/watch?gti=amzn1.dv.gti.ba209947-9c34-4dce-872a-58136180287c"),
@@ -50,10 +41,6 @@ struct HBOMaxLinksMapperTests {
         #expect(links.isEmpty)
     }
 
-    /// The live response lists every `max` offer twice with an identical URL,
-    /// and one episode can appear under more than one season node. Whichever
-    /// arrives first is the answer, so the output does not depend on how many
-    /// copies the server felt like sending.
     @Test("the first usable offer wins")
     func theFirstOfferWins() {
         let links = HBOMaxLinksMapper().map(.make(episodes: [
@@ -67,8 +54,6 @@ struct HBOMaxLinksMapperTests {
                 == "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444")
     }
 
-    /// A broken first offer must not hide a working second one: the search steps
-    /// over what it cannot use rather than stopping at it.
     @Test("an unusable offer is stepped over, not treated as the answer")
     func anUnusableOfferDoesNotEndTheSearch() {
         let links = HBOMaxLinksMapper().map(.make(episodes: [
@@ -94,15 +79,7 @@ struct HBOMaxLinksMapperTests {
 
     // MARK: - Normalising the link
 
-    /// The same episode is reachable through the marketing site's long localized
-    /// paths, and every one of those shapes carries the same UUID. Rebuilding
-    /// from the UUID is what collapses them all onto the one link the app and
-    /// the website both understand.
-    ///
-    /// The URL is the real shape JustWatch returns for `GB`, and it carries
-    /// *two* UUIDs — the show's (`ab553cdc…`) before the episode's. Taking the
-    /// first would link every episode to the show page, which is exactly what
-    /// an earlier version of the mapper did.
+    /// The real shape JustWatch returns for `GB`: two UUIDs, show's then episode's.
     @Test("a marketing-site URL is reduced to the canonical link for the episode, not the show")
     func marketingURLsAreNormalized() {
         // swiftlint:disable line_length
@@ -118,9 +95,6 @@ struct HBOMaxLinksMapperTests {
                 == "https://play.hbomax.com/video/watch/ef7d1c40-2ecc-471a-81a5-7fe06400240a")
     }
 
-    /// Case-insensitive, because a UUID is a UUID however it is spelled, and
-    /// refusing an uppercase one would drop a button over something no user can
-    /// see.
     @Test("an uppercase UUID is recognised")
     func uppercaseUUIDsAreRecognised() {
         let links = HBOMaxLinksMapper().map(.make(episodes: [
@@ -133,9 +107,6 @@ struct HBOMaxLinksMapperTests {
                 == "https://play.hbomax.com/video/watch/EF7D1C40-2ECC-471A-81A5-7FE06400240A")
     }
 
-    /// Only the *path* is searched. Several services put a UUID in a query
-    /// parameter of their own, and lifting one of those out would build a
-    /// confident link to an episode that does not exist.
     @Test("a UUID that is only in the query string is not the episode's identity")
     func onlyThePathIsSearched() {
         let links = HBOMaxLinksMapper().map(.make(episodes: [
@@ -148,8 +119,6 @@ struct HBOMaxLinksMapperTests {
                 == "https://play.hbomax.com/redirect?target=ba209947-9c34-4dce-872a-58136180287c")
     }
 
-    /// Not a shape this code understands, but still what JustWatch says will
-    /// open the episode. A link that might work beats no button at all.
     @Test("a link with no UUID is kept verbatim")
     func linksWithoutAUUIDAreKept() {
         let links = HBOMaxLinksMapper().map(.make(episodes: [
@@ -187,9 +156,6 @@ struct HBOMaxLinksMapperTests {
         #expect(links.url(season: 2, number: 1) == nil)
     }
 
-    /// The episode's own season number wins over its season node's. The node is
-    /// the coarser answer — right in every observed response, and wrong for a
-    /// special a season node lists out of place.
     @Test("the episode's season number wins over the season's")
     func theEpisodeOwnsItsSeasonNumber() {
         let links = HBOMaxLinksMapper().map(.make(
@@ -201,8 +167,6 @@ struct HBOMaxLinksMapperTests {
         #expect(links.url(season: 9, number: 7) == nil)
     }
 
-    /// Only as a fallback, and it is worth having: an episode that does not
-    /// repeat its season is still unambiguously in the season that lists it.
     @Test("the season's number is used when the episode has none")
     func theSeasonNumberIsTheFallback() {
         let links = HBOMaxLinksMapper().map(.make(
@@ -213,10 +177,6 @@ struct HBOMaxLinksMapperTests {
         #expect(links.url(season: 4, number: 2) != nil)
     }
 
-    /// With neither number there is nothing to join on, and guessing would
-    /// attach a link to the wrong row — which is worse than no button, because
-    /// the user cannot tell it is wrong until they are watching the wrong
-    /// episode.
     @Test("an episode with no number is skipped rather than guessed at")
     func episodesWithoutNumbersAreSkipped() {
         let links = HBOMaxLinksMapper().map(.make(
@@ -254,18 +214,12 @@ struct HBOMaxLinksMapperTests {
 
     // MARK: - The whole thing, end to end
 
-    /// The one test that runs the real response through: the shapes above are
-    /// each one rule, and this is what the rules add up to against bytes the
-    /// server actually sent.
     @Test("the trimmed live response maps to one link per episode")
     func theLiveResponseMaps() throws {
         let show = try JustWatchShowEntity.decoded(from: JustWatchShowEntity.liveUSResponse)
 
         let links = HBOMaxLinksMapper().map(show)
 
-        // Five episodes in the fixture, five links — no more. The Prime Video
-        // offers in it carry a UUID of their own in a query parameter, so a
-        // sixth link here would mean one of them had been mistaken for HBO Max.
         #expect(links.count == 5)
         #expect(links.url(season: 1, number: 1)?.absoluteString
                 == "https://play.hbomax.com/video/watch/ef7d1c40-2ecc-471a-81a5-7fe06400240a")
@@ -278,9 +232,6 @@ struct HBOMaxLinksMapperTests {
 // MARK: - Fixtures
 
 extension JustWatchShowEntity {
-    /// One season with whatever episodes the test is about. Everything defaults
-    /// to something valid so a test that is about one missing field says only
-    /// that.
     static func make(season: Int? = 1, episodes: [JustWatchEpisodeEntity]?) -> JustWatchShowEntity {
         JustWatchShowEntity(seasons: [
             JustWatchSeasonEntity(content: JustWatchSeasonContentEntity(seasonNumber: season),
@@ -299,7 +250,6 @@ extension JustWatchEpisodeEntity {
 }
 
 extension JustWatchOfferEntity {
-    /// The package this feature actually looks at.
     static func max(_ url: String?) -> JustWatchOfferEntity {
         make(package: "max", url: url)
     }

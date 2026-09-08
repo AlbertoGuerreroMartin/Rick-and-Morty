@@ -25,20 +25,15 @@ extension GraphQLQuery {
 
     func queryParametersDefinitions(_ declaredProperties: [DeclaredProperty]) -> String {
         return declaredProperties.map {
-            // "id" keys must be defined on the query document as an "ID!" type,
-            // which doesn't exists on Swift, so it's manually parsed here.
+            // "id" keys must be typed "ID!" on the document, which doesn't exist as a Swift type.
             let type = $0.propertyIdentifier == "id" ? "ID" : "\($0.propertyType)"
-            // An ! mark must be added to the type if it isn't optional, to match GraphQL requirements.
+            // A non-optional type needs a trailing `!` to match GraphQL requirements.
             return "$\($0.propertyIdentifier): \(type)\($0.isOptional ? "" : "!")"
         }.joined(separator: ", ")
     }
 
-    /// The type the server expects for `value`.
-    ///
-    /// A `RawRepresentable` — typically a `String`-backed enum used to constrain a
-    /// filter — has no counterpart in the schema, so it's the raw value that goes
-    /// over the wire (`Encodable` synthesis serialises it that way too). Unwrapping
-    /// is repeated in case the raw value is itself `RawRepresentable`.
+    /// The type the server expects for `value`; a `RawRepresentable` sends its raw value
+    /// instead, since `Encodable` synthesis does too.
     private func declaredType(of value: Any) -> Any.Type {
         var value = value
         while let rawRepresentable = value as? any RawRepresentable {

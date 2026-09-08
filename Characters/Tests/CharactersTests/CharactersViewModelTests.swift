@@ -9,8 +9,6 @@ import Foundation
 import Testing
 @testable import Characters
 
-/// Every layer takes its collaborator through its initializer, so a test can
-/// stand a view model on a stub use case with no container or registry setup.
 @MainActor
 struct CharactersViewModelTests {
     @Test func loadDataPublishesCharactersFromUseCase() async {
@@ -65,8 +63,6 @@ struct CharactersViewModelTests {
 
         #expect(viewModel.charactersPublished?.map(\.id) == ["1-0", "1-1", "2-0", "2-1"])
         #expect(viewModel.paginationPublished == .idle(nextPage: 3))
-        // The initial spinner belongs to the first load only; appending a page
-        // must never blank the rows already on screen.
         #expect(viewModel.loadingPublished == false)
     }
 
@@ -83,9 +79,6 @@ struct CharactersViewModelTests {
         #expect(viewModel.paginationPublished == .end)
     }
 
-    /// The footer's `.task` can fire more than once for the same state (a
-    /// re-render, a scroll bounce). Every extra caller must join the in-flight
-    /// request rather than spend a second one against a rate-limited API.
     @Test func concurrentLoadNextPageCallsPerformASingleFetch() async {
         let useCase = StubCharactersUseCase(pages: [
             1: .success(.page(1, nextPage: 2)),
@@ -152,8 +145,6 @@ struct CharactersViewModelTests {
     }
 }
 
-/// The reload after a cache clear is real behaviour with a real race: rows
-/// appended by an in-flight page must never land on top of the fresh first page.
 extension CharactersViewModelTests {
     @Test func reloadFromScratchReloadsFromTheFirstPage() async {
         let useCase = StubCharactersUseCase(pages: [
@@ -174,9 +165,6 @@ extension CharactersViewModelTests {
         #expect(viewModel.loadingPublished == false)
     }
 
-    /// A reload while a search is on screen must come back with the *same*
-    /// search, uncached. Reloading `.empty` would look like the cache clear
-    /// silently dropped the user's query.
     @Test func reloadFromScratchKeepsTheAppliedFilterRatherThanTheEmptyOne() async {
         let alive = CharactersFilter(status: .alive)
         let useCase = StubCharactersUseCase(pages: [1: .success(.page(1, nextPage: 2))])
@@ -196,8 +184,6 @@ extension CharactersViewModelTests {
 
 // MARK: - Search and filters
 
-/// The feature is server-first: every one of these asserts that the *server* was
-/// asked, with the right filter, and that the list on screen is that answer.
 extension CharactersViewModelTests {
     @Test func searchTextReplacesTheRowsAndReseedsPagination() async {
         let rick = CharactersFilter(name: "rick")
@@ -230,8 +216,7 @@ extension CharactersViewModelTests {
 
         viewModel.updateSearchText("rick")
         await viewModel.settle()
-        // Re-typing the same text after trimming is the same query, so it must
-        // not spend a request against a rate-limited API.
+        // Trimmed text is the same query as the untrimmed one, so this must not spend a second request.
         viewModel.updateSearchText("  rick  ")
         await viewModel.settle()
 
@@ -239,9 +224,6 @@ extension CharactersViewModelTests {
         #expect(useCase.totalCallCount == 2)
     }
 
-    /// A search is a reload like any other: the list hides behind the spinner
-    /// until the server answers, and nothing predicted locally stands in for
-    /// the answer meanwhile.
     @Test func aSearchHidesTheListBehindTheSpinner() async {
         let rick = CharactersFilter(name: "rick")
         let call = StubCharactersUseCase.Call(filter: rick, page: 1)
@@ -277,7 +259,7 @@ extension CharactersViewModelTests {
         await useCase.waitUntilCalled(call)
 
         #expect(viewModel.loadingPublished == true)
-        // The chips update the instant the reload starts, not when it answers.
+        // Filter publishes as soon as the reload starts, not when it answers.
         #expect(viewModel.filterPublished == alive)
 
         useCase.release(call)
@@ -287,8 +269,6 @@ extension CharactersViewModelTests {
         #expect(viewModel.charactersPublished?.map(\.id) == ["5-0", "5-1"])
     }
 
-    /// The expensive race: page 2 of the old query landing on top of page 1 of
-    /// the new one.
     @Test func aPageInFlightNeverAppendsToTheReloadedList() async {
         let alive = CharactersFilter(status: .alive)
         let pageTwo = StubCharactersUseCase.Call(filter: .empty, page: 2)
@@ -305,9 +285,7 @@ extension CharactersViewModelTests {
         await useCase.waitUntilCalled(pageTwo)
 
         viewModel.apply(alive)
-        // Let the reload take ownership before the page is allowed to answer:
-        // it bumps the generation, then cancels and awaits the page task, so
-        // page 2 resumes into a world that has already moved on.
+        // Let the reload bump the generation and cancel the page task before it is allowed to answer.
         for _ in 0..<20 { await Task.yield() }
         useCase.release(pageTwo)
         await paging.value
@@ -317,9 +295,6 @@ extension CharactersViewModelTests {
         #expect(viewModel.paginationPublished == .end)
     }
 
-    /// The other half of the same race, and the reason for the generation
-    /// counter: a request that has already left the device cannot be un-sent, so
-    /// a superseded reload has to be *ignored* rather than merely cancelled.
     @Test func aStaleReloadNeverPublishes() async {
         let rick = CharactersFilter(name: "rick")
         let morty = CharactersFilter(name: "morty")
@@ -348,8 +323,6 @@ extension CharactersViewModelTests {
         #expect(viewModel.filterPublished == morty)
     }
 
-    /// The search text is not a filter *field*, so nothing that clears fields is
-    /// allowed to touch it.
     @Test func clearingFiltersAndApplyingThemAlwaysKeepsTheSearchText() async {
         let rick = CharactersFilter(name: "rick")
         let rickAlive = CharactersFilter(name: "rick", status: .alive)
@@ -403,8 +376,6 @@ extension CharactersViewModelTests {
         #expect(useCase.callCount(for: call) == 2)
     }
 
-    /// One request per keystroke would spend eleven of a small budget typing
-    /// "Birdperson".
     @Test func rapidKeystrokesCollapseIntoASingleFetch() async {
         let ric = CharactersFilter(name: "ric")
         let useCase = StubCharactersUseCase(pages: [1: .success(.page(1, nextPage: nil))])
@@ -428,12 +399,8 @@ extension CharactersViewModelTests {
 // MARK: - Test helpers
 
 private extension CharactersViewModel {
-    /// Awaits whatever page-1 work is pending.
-    ///
-    /// The search and filter entry points are synchronous — they are called from
-    /// SwiftUI actions, which cannot await — so they leave their work in a task
-    /// the view model owns. Awaiting those two tasks is what makes these tests
-    /// deterministic instead of sleep-and-hope.
+    /// Awaits pending page-1 work. Search/filter entry points are synchronous UI callbacks
+    /// that leave their work in an owned task, so tests await it instead of sleeping.
     func settle() async {
         await searchDebounceTask?.value
         await reloadTask?.value
@@ -443,8 +410,7 @@ private extension CharactersViewModel {
 private struct StubError: Error {}
 
 private extension CharactersPage {
-    /// Two characters whose ids carry the page they came from, so a test can
-    /// assert on append *order* and not just on counts.
+    /// Ids carry the page they came from, so a test can assert on append order, not just counts.
     static func page(_ page: Int, nextPage: Int?) -> CharactersPage {
         let characters = (0..<2).map { index in
             CharacterModel(id: "\(page)-\(index)",
@@ -458,14 +424,10 @@ private extension CharactersPage {
     }
 }
 
-/// A `final class` behind a lock rather than an actor: `CharactersUseCaseContract`
-/// is a synchronous-to-declare, `Sendable` protocol, and an actor could not
-/// satisfy it without every call hopping isolation, which would change the very
-/// interleaving these tests are checking.
+/// A `final class` behind a lock rather than an actor: `CharactersUseCaseContract` must stay
+/// a synchronous-to-declare `Sendable` protocol, and an actor would change the interleaving under test.
 private final class StubCharactersUseCase: CharactersUseCaseContract, @unchecked Sendable {
-    /// One request, as the view model made it. Filter *and* page, because "page
-    /// 2" only means anything together with the query it belongs to — which is
-    /// exactly what the pagination-versus-reload race is about.
+    /// Filter and page together: "page 2" only means something paired with its query.
     struct Call: Hashable, Sendable {
         let filter: CharactersFilter
         let page: Int
@@ -473,15 +435,11 @@ private final class StubCharactersUseCase: CharactersUseCaseContract, @unchecked
 
     private let lock = NSLock()
     private var pagesByNumber: [Int: Result<CharactersPage, StubError>]
-    /// Results for a specific filter. They win over `pagesByNumber`, so a test
-    /// can say "page 1 of *this* query answers differently" — which is the whole
-    /// shape of a search test.
+    /// Wins over `pagesByNumber`, so a test can make page 1 of a specific query answer differently.
     private var pagesByFilter: [CharactersFilter: Result<CharactersPage, StubError>] = [:]
     private var recorded: [Call] = []
-    /// Calls that stay suspended until the test releases them. Cancellation does
-    /// not release them on purpose: these tests are about what the view model
-    /// does *while* a fetch is open, and a fetch that unblocked itself on cancel
-    /// would race the assertions.
+    /// Held calls stay suspended and do not unblock on cancellation, so tests can inspect
+    /// view model state while a fetch is deliberately kept open.
     private var heldCalls: Set<Call> = []
 
     init(pages: [Int: Result<CharactersPage, StubError>]) {
@@ -520,8 +478,7 @@ private final class StubCharactersUseCase: CharactersUseCaseContract, @unchecked
         lock.withLock { _ = heldCalls.remove(call) }
     }
 
-    /// Suspends until `call` has been made. Bounded, so a test that never gets
-    /// its call fails on its assertions rather than hanging the whole suite.
+    /// Bounded so a test that never gets its call fails on assertions instead of hanging the suite.
     func waitUntilCalled(_ call: Call) async {
         for _ in 0..<100_000 {
             if callCount(for: call) > 0 { return }
@@ -539,8 +496,7 @@ private final class StubCharactersUseCase: CharactersUseCaseContract, @unchecked
         while lock.withLock({ heldCalls.contains(call) }) {
             await Task.yield()
         }
-        // A suspension point, so that three callers racing into `loadNextPage()`
-        // really are in flight at the same time.
+        // Ensures concurrent callers of `loadNextPage()` are really in flight at the same time.
         await Task.yield()
         return try result.get()
     }

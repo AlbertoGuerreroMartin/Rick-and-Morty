@@ -9,29 +9,17 @@ import CryptoKit
 import Foundation
 
 /// ``DiskStoreContract`` backed by the filesystem, one file per key:
-/// `<root>/<namespace>/<sha256(identifier)>`.
+/// `<root>/<namespace>/<sha256(identifier)>`. Identifiers are hashed because they can contain
+/// `/`, `?`, or newlines, or exceed the 255-byte name limit; the hash is one-way on purpose.
 ///
-/// Why hash the identifier instead of using it as the file name: identifiers
-/// here are derived from query documents and URLs, so they contain `/`, `?`,
-/// `{`, newlines and can run past the 255-byte name limit. Hashing gives a
-/// fixed-length, filesystem-safe, collision-resistant name and costs a few
-/// microseconds. It is one-way on purpose — nothing in this package needs to go
-/// from a file back to a key.
+/// - Important: default root is under `Library/Caches` (OS-purgeable, not backed up) — correct
+///   since every byte here is re-derivable from the network.
 ///
-/// - Important: the default root lives under `Library/Caches`, which means the
-///   OS may purge it when the device is low on space and it is **not** included
-///   in backups. That is the correct place for this data: every byte here is
-///   re-derivable from the network, and shipping a rebuildable cache in the
-///   user's iCloud backup is exactly what the "do not back up" rule exists to
-///   prevent. Anything that must survive a purge does not belong in this store.
-///
-/// An actor: writes and directory creation are not atomic with respect to each
-/// other, so two concurrent `store` calls into a fresh namespace could otherwise
-/// race on `createDirectory`.
+/// An actor: concurrent `store` calls into a fresh namespace could otherwise race on
+/// `createDirectory`.
 public actor FileDiskStore: DiskStoreContract {
 
-    /// `Library/Caches/<bundle id>/Cache`. Namespaced by bundle id so a test
-    /// host, an extension and the app never share a directory by accident.
+    /// `Library/Caches/<bundle id>/Cache`, namespaced so a test host and the app don't collide.
     public static var defaultRoot: URL {
         let caches = FileManager.default
             .urls(for: .cachesDirectory, in: .userDomainMask)
@@ -44,8 +32,7 @@ public actor FileDiskStore: DiskStoreContract {
     private let root: URL
     private let fileManager: FileManager
 
-    /// - Parameter root: injectable so every test gets its own directory and the
-    ///   suites can run in parallel without stepping on each other.
+    /// - Parameter root: injectable so tests get isolated directories and can run in parallel.
     public init(root: URL? = nil, fileManager: FileManager = .default) {
         self.root = root ?? FileDiskStore.defaultRoot
         self.fileManager = fileManager
@@ -60,9 +47,7 @@ public actor FileDiskStore: DiskStoreContract {
     public func store(_ data: Data, for key: CacheKey) async throws {
         let directory = directory(for: key.namespace)
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
-        // `.atomic` writes to a sibling temp file and renames it into place, so a
-        // crash or a kill mid-write leaves the previous entry intact instead of a
-        // truncated file that would later decode as garbage.
+        // `.atomic`: writes to a temp file then renames, so a crash mid-write can't truncate the entry.
         try data.write(to: url(for: key), options: .atomic)
     }
 
@@ -92,8 +77,7 @@ public actor FileDiskStore: DiskStoreContract {
             at: directory(for: namespace),
             includingPropertiesForKeys: Array(keys)
         ) else {
-            // A namespace nothing has written to yet is empty, not an error:
-            // callers are sweeping, and "no files" is a valid answer.
+            // An unwritten namespace is empty, not an error — callers are sweeping.
             return []
         }
 
@@ -121,10 +105,8 @@ public actor FileDiskStore: DiskStoreContract {
         do {
             return try Data(contentsOf: url)
         } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
-            // "Never written" and "written and then purged by the OS" are the
-            // same answer to a cache: a miss, not a failure. Everything else —
-            // permissions, an unreadable volume — is a real problem and is
-            // propagated so it does not hide behind a silent cache miss.
+            // Missing file (never written, or purged by the OS) is a miss, not a failure;
+            // other errors propagate.
             return nil
         }
     }
@@ -146,9 +128,8 @@ public actor FileDiskStore: DiskStoreContract {
             .appendingPathComponent(FileDiskStore.fileName(for: key.identifier), isDirectory: false)
     }
 
-    /// Namespaces are written by this app, not derived from network data, so
-    /// they are already short and safe — but a path separator in one would let a
-    /// caller escape the root, so they go through the same sanitisation.
+    /// Namespaces are app-controlled and already safe, but sanitized anyway so a path separator
+    /// can't escape the root.
     private func fileName(for namespace: String) -> String {
         let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_"))
         let sanitised = String(namespace.unicodeScalars.filter(allowed.contains))

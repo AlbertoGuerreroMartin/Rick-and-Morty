@@ -11,57 +11,41 @@ import Storage
 import SwiftUI
 
 struct EpisodesScreen<Content: View>: View {
-    // The graph lives in `Owned` rather than the view model living directly in
-    // `@StateObject`: `@StateObject` is what keeps the graph alive for the
-    // screen's identity, but it also observes. An observable view model would
-    // fire `objectWillChange` on every `@Published` write and re-evaluate this
-    // whole body, while the architecture wants only the section to re-render
-    // (view model publishers -> mapper -> section `@State`). `Owned` never
-    // publishes anything, so we get the ownership without the observation.
+    // `Owned`, not an observed view model, so a view-model publish doesn't re-evaluate this body.
     @StateObject private var graph: Owned<EpisodesScreenGraph>
     private let makeSection: (EpisodesScreenGraph) -> Content
 
-    /// The search field's text, owned by the screen.
-    ///
-    /// `.searchable` needs a `Binding`, and the only two-way binding available
-    /// without observation is local `@State`. It is a *write-only* mirror: the
-    /// screen pushes each change into the view model and never reads anything
-    /// back, so this stays consistent with the screen not observing the view
-    /// model — the rows still arrive through the mapper.
+    /// `AnyView`: the destination is a screen from another package; see `EpisodesExternalDestinations`.
+    private let makeDestination: (EpisodesRoute) -> AnyView
+
+    /// Write-only mirror pushed into the view model; `.searchable` needs a `Binding`.
     @State private var searchText = ""
 
     init(makeGraph: @escaping () -> EpisodesScreenGraph,
-         makeSection: @escaping (EpisodesScreenGraph) -> Content) {
+         makeSection: @escaping (EpisodesScreenGraph) -> Content,
+         makeDestination: @escaping (EpisodesRoute) -> AnyView) {
         _graph = StateObject(wrappedValue: Owned(makeGraph))
         self.makeSection = makeSection
+        self.makeDestination = makeDestination
     }
 
     var body: some View {
-        NavigationStack {
+        // Bound to the navigator's path so a tap and a programmatic push land in the same array.
+        NavigationStack(path: Bindable(graph.value.navigator).path) {
             makeSection(graph.value)
+                // Declared once for the whole stack: every row pushes the same route case.
+                .navigationDestination(for: EpisodesRoute.self) { makeDestination($0) }
                 .navigationTitle("Episodes")
                 .searchable(text: $searchText,
                             placement: .navigationBarDrawer(displayMode: .always),
                             prompt: "Search episodes")
-                // Episode titles are puns on proper nouns — "Rickshank
-                // Rickdemption", "Mortynight Run" — so autocorrect turns a
-                // correct query into a word the catalogue does not contain,
-                // and capitalization only adds noise the match ignores.
+                // Episode titles are puns on proper nouns; autocorrect would rewrite the query.
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .onChange(of: searchText) { _, text in
-                    // Straight through, with no debounce: the catalogue is
-                    // already in memory, so a keystroke costs one pass through
-                    // the mapper and no requests at all. See
-                    // `EpisodesViewModel.updateSearchText(_:)`.
                     graph.value.viewModel.updateSearchText(text)
                 }
-                // A cache wiped behind this screen's back — from the developer
-                // tools — is announced through `Storage`, and the screen answers
-                // by loading again from scratch. Neither side knows the other
-                // exists: the tool does not know this screen, and this screen
-                // does not know the tool; the notification is the only thing
-                // they share. See `CacheClearedNotification`.
+                // Cache cleared elsewhere (dev tools) triggers a reload.
                 .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
                     Task { await graph.value.viewModel.reloadFromScratch() }
                 }
@@ -77,24 +61,23 @@ struct EpisodesScreen<Content: View>: View {
         makeGraph: {
             let useCase = EpisodesUseCase(repository: PreviewEpisodesRepository())
             let viewModel = EpisodesViewModel(episodesUseCase: useCase)
-            return EpisodesScreenGraph(viewModel: viewModel,
+            return EpisodesScreenGraph(navigator: EpisodesNavigator(),
+                                       viewModel: viewModel,
                                        listMapper: EpisodesListSectionMapper(viewModel: viewModel))
         },
         makeSection: { graph in
             EpisodesListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
+        },
+        makeDestination: { route in
+            switch route {
+            case .character(let id):
+                AnyView(Text("Character \(id)"))
+            }
         }
     )
 }
 
-/// Stubbed at the repository seam rather than the data-source one: the preview
-/// wants canned domain models, and standing in for the repository skips the
-/// cache, the network and the mapper in one substitution.
-///
-/// It serves three seasons rather than one so the sticky headers, the grouping
-/// and the search across seasons are all reachable in the canvas without a
-/// network. The episodes come back deliberately *unordered* within each season,
-/// because putting them in order is the mapper's job and a preview that fed it
-/// sorted input would never show whether it does it.
+/// Canned domain models for the preview canvas, deliberately unordered within each season.
 private struct PreviewEpisodesRepository: EpisodesRepositoryContract {
     private static let names = ["Pilot", "Lawnmower Dog", "Anatomy Park",
                                 "M. Night Shaym-Aliens!", "Meeseeks and Destroy"]
@@ -114,12 +97,10 @@ private struct PreviewEpisodesRepository: EpisodesRepositoryContract {
                                     characters: (1...(number * 2)).map { index in
                                         EpisodeCharacterModel(
                                             id: "\(code)-\(index)",
+                                            name: "Character \(index)",
                                             image: URL(string: "https://rickandmortyapi.com/api/character/avatar/\(index).jpeg")!
                                         )
                                     },
-                                    // Every other episode, so the canvas shows
-                                    // both a linked row and an unlinked one
-                                    // without a JustWatch request.
                                     hboMaxURL: number.isMultiple(of: 2)
                                         ? URL(string: "https://play.hbomax.com/video/watch/ef7d1c40-2ecc-471a-81a5-7fe06400240a")
                                         : nil)
@@ -127,8 +108,6 @@ private struct PreviewEpisodesRepository: EpisodesRepositoryContract {
         }
     }
 
-    /// The preview joins nothing: the links are already on the models above, so
-    /// this only has to satisfy the contract.
     func fetchHBOMaxLinks() async throws -> HBOMaxLinks {
         .empty
     }

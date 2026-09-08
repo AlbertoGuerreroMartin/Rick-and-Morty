@@ -1,36 +1,23 @@
 import Foundation
 
-/// What kind of traffic a record describes.
-///
-/// The records themselves are identical for both — a method, a URL, headers and
-/// bytes — so image loading reuses them rather than growing a parallel type
-/// hierarchy with its own store, its own stream and its own formatter. The kind
-/// is the one bit a reader needs to tell the two apart: the console prints a
-/// different header, and the developer-tools inspector filters on it.
+/// What kind of traffic a record describes. Records are identical for both — a method, URL,
+/// headers, bytes — so image loading reuses them; the console and inspector use kind to filter.
 public enum APILogKind: String, Sendable, Equatable {
-    /// A GraphQL call made by `GraphQLClient`.
     case api
-    /// An image download made by the design system's loader.
     case image
 }
 
-/// One HTTP request as it left the client.
-///
-/// Plain values on purpose: no `URLRequest`, no `URLResponse`. The records are
-/// meant to be displayed by code that knows nothing about `URLSession` — the
-/// console today, a developer-tools screen later — so they carry only what such
-/// a consumer can render. `id` is shared with the matching `APIResponseRecord`,
-/// which is how a consumer pairs the two halves of one call.
+/// One HTTP request as it left the client, in plain values (no `URLRequest`) so a console or
+/// debug screen can render it without knowing `URLSession`. `id` pairs it with its
+/// `APIResponseRecord`.
 public struct APIRequestRecord: Sendable, Identifiable, Equatable {
     public let id: UUID
     public let timestamp: Date
-    /// Defaults to `.api` so every existing call site keeps compiling: the
-    /// GraphQL client, which is the only thing that logged before images did,
-    /// never has to name it.
+    /// Defaults to `.api` so existing call sites keep compiling.
     public let kind: APILogKind
     public let method: String
     public let url: URL
-    /// Header name to value, unsorted. Formatters sort for stable output.
+    /// Unsorted; formatters sort for stable output.
     public let headers: [String: String]
     public let body: Data?
 
@@ -55,16 +42,10 @@ public struct APIRequestRecord: Sendable, Identifiable, Equatable {
 
 /// What came back for an `APIRequestRecord`, or why nothing did.
 public struct APIResponseRecord: Sendable, Identifiable, Equatable {
-    /// How the call ended, as far as the transport is concerned.
-    ///
-    /// This is deliberately *not* the client's notion of failure: a GraphQL
-    /// error arrives as a `200 OK` with an `errors` array, and a body that does
-    /// not decode is still a body the server sent. Both are `.success` here,
-    /// because the log's job is to show what crossed the wire.
+    /// How the call ended, transport-wise — not the client's notion of failure: a GraphQL error
+    /// is still a `200 OK` here, since the log shows what crossed the wire.
     public enum Outcome: Sendable, Equatable {
-        /// A 2xx status.
         case success(statusCode: Int)
-        /// The server answered with a non-2xx status.
         case failure(statusCode: Int)
         /// The request never produced a response (offline, DNS, timeout...).
         case transportError(description: String)
@@ -73,7 +54,7 @@ public struct APIResponseRecord: Sendable, Identifiable, Equatable {
     /// Same value as the request's `id`.
     public let id: UUID
     public let timestamp: Date
-    /// Matches the request's kind. Defaults to `.api` for the same reason.
+    /// Matches the request's kind; defaults to `.api` for the same reason.
     public let kind: APILogKind
     public let method: String
     public let url: URL
@@ -121,8 +102,7 @@ public struct APIResponseRecord: Sendable, Identifiable, Equatable {
     }
 }
 
-/// One thing the client did. A call produces exactly two: a `.request` when it
-/// is sent and a `.response` when it ends, in that order, sharing an `id`.
+/// One thing the client did: `.request` when sent, `.response` when it ends, sharing an `id`.
 public enum APILogEvent: Sendable, Equatable {
     case request(APIRequestRecord)
     case response(APIResponseRecord)

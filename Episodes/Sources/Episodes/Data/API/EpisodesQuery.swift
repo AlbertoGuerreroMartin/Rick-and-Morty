@@ -7,18 +7,8 @@
 
 import Networking
 
-/// One page of the `episodes` root field.
-///
-/// `page` is the only variable the feature ever sends. That is not a shortcut:
-/// the schema's episode filter matches on name and episode code, and this
-/// screen deliberately searches locally over the whole catalogue rather than
-/// asking the server (see `EpisodesSearchQuery`), so a filter argument would be
-/// dead weight that also fragmented the cache key per keystroke.
-///
-/// With `page` as the single declared property, `GraphQLPaginatedQuery` emits
-/// `episodes(page: $page)` and no `filter: { ... }` argument at all — the
-/// builder drops an empty filter object rather than sending `filter: {}`, which
-/// the server would reject.
+/// `page` is the only variable sent: search happens locally, so a filter would just fragment the
+/// cache key. With no filter property, the builder omits `filter:` rather than sending `filter: {}`.
 struct EpisodesQuery: GraphQLPaginatedQuery {
     typealias ResponseEntity = EpisodeEntity
 

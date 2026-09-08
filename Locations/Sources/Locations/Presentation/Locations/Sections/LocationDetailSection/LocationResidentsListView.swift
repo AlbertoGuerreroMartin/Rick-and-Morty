@@ -11,13 +11,9 @@ import SwiftUI
 struct LocationResidentsListView: View {
     @Environment(\.displayScale) private var displayScale
 
-    /// The avatar's rendered edge, in points.
     private static let avatarSize: CGFloat = 50
 
-    /// The avatar edge in *pixels*, which is what the downsampler decodes to.
-    /// Decoding at point size would be soft on every device shipped this decade;
-    /// decoding at the source's own size would hold a 300x300 bitmap for each of
-    /// the hundreds of residents a location can have.
+    /// Pixel size the downsampler decodes to, avoiding a full-size bitmap per resident.
     private var avatarPixelSize: CGFloat {
         Self.avatarSize * displayScale
     }

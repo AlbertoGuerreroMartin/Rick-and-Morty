@@ -9,9 +9,6 @@ import Foundation
 import Testing
 @testable import Episodes
 
-/// The mapper is where the feature decides what it cannot draw a row without,
-/// so these tests are that decision, field by field: four things are required,
-/// two are decoration that can never fail a row.
 @Suite("EpisodeEntityMapper")
 struct EpisodeEntityMapperTests {
 
@@ -63,8 +60,6 @@ struct EpisodeEntityMapperTests {
         }
     }
 
-    /// A code that will not parse has no season to be grouped under, and
-    /// inventing one would quietly put a row in a group that does not exist.
     @Test("an unparseable code is rejected rather than guessed at", arguments: [
         "Season 1", "S01", "E01", "S01E", "SxxExx", "1x01", "", " S01E01 "
     ])
@@ -74,15 +69,12 @@ struct EpisodeEntityMapperTests {
         }
     }
 
-    /// The schema promises a format, not a casing, and a lowercase code
-    /// describes exactly the same episode.
     @Test("a lowercase code is accepted", arguments: ["s01e05", "S01e05", "s01E05"])
     func lowercaseCodeIsAccepted(code: String) throws {
         let episode = try EpisodeEntityMapper().map(.make(code: code))
 
         #expect(episode.season == 1)
         #expect(episode.number == 5)
-        // Verbatim: the row shows back what the API said, whatever its casing.
         #expect(episode.code == code)
     }
 
@@ -105,9 +97,6 @@ struct EpisodeEntityMapperTests {
         #expect(episode.created == expected.date(from: "2021-10-15T17:00:24.105Z"))
     }
 
-    /// `ISO8601DateFormatter` returns `nil` rather than a close-enough date when
-    /// the string does not carry exactly the components the options asked for,
-    /// so both spellings need their own reading.
     @Test("created parses without fractional seconds")
     func createdWithoutFractionalSecondsParses() throws {
         let episode = try EpisodeEntityMapper().map(.make(created: "2021-10-15T17:00:24Z"))
@@ -123,7 +112,6 @@ struct EpisodeEntityMapperTests {
         let episode = try EpisodeEntityMapper().map(.make(created: created))
 
         #expect(episode.created == nil)
-        // The point of the test: the episode still maps.
         #expect(episode.name == "Pilot")
     }
 
@@ -132,8 +120,8 @@ struct EpisodeEntityMapperTests {
     @Test("a character missing its id is skipped, not fatal")
     func characterWithoutIdIsSkipped() throws {
         let entity = EpisodeEntity.make(characters: [
-            EpisodeCharacterEntity(id: nil, image: URL(string: "https://example.com/1.jpeg")),
-            EpisodeCharacterEntity(id: "2", image: URL(string: "https://example.com/2.jpeg"))
+            EpisodeCharacterEntity(id: nil, name: "Rick Sanchez", image: URL(string: "https://example.com/1.jpeg")),
+            EpisodeCharacterEntity(id: "2", name: "Morty Smith", image: URL(string: "https://example.com/2.jpeg"))
         ])
 
         #expect(try EpisodeEntityMapper().map(entity).characters.map(\.id) == ["2"])
@@ -142,11 +130,26 @@ struct EpisodeEntityMapperTests {
     @Test("a character missing its image is skipped, not fatal")
     func characterWithoutImageIsSkipped() throws {
         let entity = EpisodeEntity.make(characters: [
-            EpisodeCharacterEntity(id: "1", image: nil),
-            EpisodeCharacterEntity(id: "2", image: URL(string: "https://example.com/2.jpeg"))
+            EpisodeCharacterEntity(id: "1", name: "Rick Sanchez", image: nil),
+            EpisodeCharacterEntity(id: "2", name: "Morty Smith", image: URL(string: "https://example.com/2.jpeg"))
         ])
 
         #expect(try EpisodeEntityMapper().map(entity).characters.map(\.id) == ["2"])
+    }
+
+    @Test("a character's name is carried through, and its absence is not fatal")
+    func characterNamesAreCarriedThrough() throws {
+        let entity = EpisodeEntity.make(characters: [
+            EpisodeCharacterEntity(id: "1", name: "Rick Sanchez",
+                                   image: URL(string: "https://example.com/1.jpeg")),
+            EpisodeCharacterEntity(id: "2", name: nil,
+                                   image: URL(string: "https://example.com/2.jpeg"))
+        ])
+
+        let characters = try EpisodeEntityMapper().map(entity).characters
+
+        #expect(characters.map(\.id) == ["1", "2"])
+        #expect(characters.map(\.name) == ["Rick Sanchez", nil])
     }
 
     @Test("an absent characters array is an empty strip")
@@ -156,8 +159,6 @@ struct EpisodeEntityMapperTests {
 
     // MARK: - Errors
 
-    /// The descriptions are what a developer reads in the console when a page
-    /// silently loses a row, so they have to name the thing that was wrong.
     @Test("errors describe what was missing")
     func errorsAreDescriptive() {
         #expect(EpisodeEntityMapperError.noEntityError("EpisodeEntity")

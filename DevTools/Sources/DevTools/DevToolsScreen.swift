@@ -10,14 +10,6 @@ import Storage
 import SwiftUI
 
 /// The debug menu: clear a cache, or read the traffic.
-///
-/// Deliberately built with none of the app's architecture — no `*Contract`
-/// protocols, no section mappers, no use cases, no view model per screen. Those
-/// exist so a feature can grow without its screens becoming untestable, and this
-/// is a tool that will never ship to a user: a `List` over an array of closures
-/// and one `@Observable` for the inspector is the entire thing. Adding four
-/// layers to it would cost more to read than the screen it wraps. See the
-/// README's "Developer tools and logging".
 public struct DevToolsScreen: View {
     private let caches: [DevToolsCache]
     private let apiLog: APILogStore
@@ -83,9 +75,6 @@ public struct DevToolsScreen: View {
     private func result(for cache: DevToolsCache) -> some View {
         switch model.results[cache.id] {
         case .cleared:
-            // A checkmark rather than an alert: clearing a cache is not a
-            // decision anyone needs confirmed, and a sheet on top of a debug
-            // sheet is two taps to get back to where you were.
             Label("Cleared", systemImage: "checkmark.circle.fill")
                 .labelStyle(.titleAndIcon)
                 .font(.footnote)

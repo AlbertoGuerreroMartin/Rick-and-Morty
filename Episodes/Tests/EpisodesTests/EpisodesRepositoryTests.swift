@@ -11,9 +11,6 @@ import Storage
 import Testing
 @testable import Episodes
 
-/// The repository is where the cache policy and the catalogue walk live, so
-/// these tests are both: which of the two data sources answers in each state the
-/// pair can be in, and what the walk does with the pages it collects.
 @Suite("EpisodesRepository")
 struct EpisodesRepositoryTests {
 
@@ -46,8 +43,6 @@ struct EpisodesRepositoryTests {
 
     @Test("a failed refresh falls back to the stale entry")
     func staleEntrySurvivesAFailedFetch() async throws {
-        // This is the 429 case: the API throttles, and the user still gets the
-        // catalogue they were looking at last week instead of an error screen.
         let local = FakeEpisodesLocalDataSource(entries: [1: .expired(page: .make(codes: ["S01E01"]))])
         let remote = FakeEpisodesRemoteDataSource(pages: [1: .failure(TestError())])
         let repository = makeRepository(remote: remote, local: local)
@@ -87,8 +82,6 @@ struct EpisodesRepositoryTests {
 
     @Test("cancellation is rethrown rather than answered from a stale entry")
     func cancellationIsRethrown() async {
-        // Serving stale data here would hide the fact that the screen went away
-        // and quietly defeat structured concurrency.
         let local = FakeEpisodesLocalDataSource(entries: [1: .expired(page: .make(codes: ["S01E01"]))])
         let remote = FakeEpisodesRemoteDataSource(pages: [1: .failure(CancellationError())])
         let repository = makeRepository(remote: remote, local: local)
@@ -115,8 +108,6 @@ struct EpisodesRepositoryTests {
         #expect(await remote.requestedPages == [1, 2, 3])
     }
 
-    /// Each page is asked for exactly once. A walk that re-requested a page
-    /// would triple the cost of the one thing this screen does on load.
     @Test("each page is requested once")
     func eachPageIsRequestedOnce() async throws {
         let remote = FakeEpisodesRemoteDataSource(pages: [
@@ -130,9 +121,6 @@ struct EpisodesRepositoryTests {
         #expect(await remote.requestedPages == [1, 2])
     }
 
-    /// Half a catalogue would silently break the local search — the whole reason
-    /// the walk exists — so a page that cannot be answered fails the load rather
-    /// than returning what it managed to collect.
     @Test("a later page failing with nothing cached fails the whole load")
     func aFailedLaterPageFailsTheLoad() async {
         let remote = FakeEpisodesRemoteDataSource(pages: [
@@ -146,8 +134,6 @@ struct EpisodesRepositoryTests {
         }
     }
 
-    /// A half-cached catalogue costs only the missing requests, because the
-    /// policy is applied per page rather than to the walk as a whole.
     @Test("a cached page in the middle of the walk is not refetched")
     func cachedPagesInTheWalkSkipTheNetwork() async throws {
         let local = FakeEpisodesLocalDataSource(entries: [
@@ -165,8 +151,6 @@ struct EpisodesRepositoryTests {
         #expect(await remote.requestedPages == [1, 3])
     }
 
-    /// `info.next` is the server's word. A malformed answer pointing back at a
-    /// page already walked must stop the walk, not loop forever.
     @Test("a next pointer that repeats a page stops the walk")
     func aRepeatedNextPointerStopsTheWalk() async throws {
         let remote = FakeEpisodesRemoteDataSource(pages: [
@@ -181,8 +165,6 @@ struct EpisodesRepositoryTests {
         #expect(await remote.requestedPages == [1, 2])
     }
 
-    /// The other guard: `info.pages` bounds the walk even when `next` keeps
-    /// pointing at pages that have not been seen yet.
     @Test("the walk never runs longer than info.pages says it should")
     func thePageCountBoundsTheWalk() async throws {
         let remote = FakeEpisodesRemoteDataSource(pages: [
@@ -223,11 +205,6 @@ struct EpisodesRepositoryTests {
     }
 }
 
-/// The JustWatch lookup runs on the very same four-step policy as a page of
-/// episodes — one extracted helper, two call sites — so these are the same six
-/// states asserted against the other call site. Sharing the implementation is
-/// exactly why they are worth repeating: a change made for one of the two
-/// fetches now silently changes both.
 @Suite("EpisodesRepository HBO Max links")
 struct EpisodesRepositoryHBOMaxLinksTests {
 
@@ -260,9 +237,6 @@ struct EpisodesRepositoryHBOMaxLinksTests {
         #expect(await local.storedOffers.count == 1)
     }
 
-    /// The stale-while-error case, and the reason the links are cached at all:
-    /// an unofficial endpoint that has started refusing requests still leaves
-    /// last week's buttons on the rows.
     @Test("a failed refresh falls back to the stale entry")
     func staleEntrySurvivesAFailedFetch() async throws {
         let hboLink = "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444"
@@ -273,9 +247,6 @@ struct EpisodesRepositoryHBOMaxLinksTests {
         #expect(try await repository.fetchHBOMaxLinks().url(season: 1, number: 1) != nil)
     }
 
-    /// It throws rather than answering `.empty`: whether a missing link is
-    /// survivable is the use case's decision, and a repository that swallowed
-    /// the error here would take it away and log nothing.
     @Test("with nothing cached, a failed fetch is an error")
     func noCacheAndFailedFetchThrows() async {
         let repository = makeRepository(local: FakeEpisodesLocalDataSource(),
@@ -319,9 +290,6 @@ struct EpisodesRepositoryHBOMaxLinksTests {
         }
     }
 
-    /// The offers are cached as the *entity*, so the normalisation rules run on
-    /// every read — a week-old entry is mapped by today's mapper rather than by
-    /// whatever the rules were when it was written.
     @Test("a cached entity is mapped on read, not when it was stored")
     func cachedOffersAreMappedOnRead() async throws {
         let hboLink = "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444?utm_source=universal_search"
@@ -349,9 +317,7 @@ struct EpisodesRepositoryHBOMaxLinksTests {
 
 struct TestError: Error, Equatable {}
 
-/// Keyed on the page number rather than on the query: the repository builds the
-/// query privately, so the page is the only handle a test has on "which request
-/// is this" — and it is exactly the axis the walk is about.
+/// Keyed on the page number, the only handle a test has since the repository builds the query.
 actor FakeEpisodesRemoteDataSource: EpisodesRemoteDataSourceContract {
     private let pages: [Int: Result<EpisodesPageEntity, any Error>]
     private(set) var requestedPages: [Int] = []
@@ -372,8 +338,7 @@ actor FakeEpisodesRemoteDataSource: EpisodesRemoteDataSourceContract {
 
 actor FakeEpisodesLocalDataSource: EpisodesLocalDataSourceContract {
     private let entries: [Int: CacheEntry<EpisodesPageEntity>]
-    /// There is only ever one offers entry — the lookup is one request for the
-    /// whole show — so it needs no key.
+    /// Only ever one offers entry: the lookup is one request for the whole show.
     private let offers: CacheEntry<JustWatchShowEntity>?
     private let readError: (any Error)?
     private let writeError: (any Error)?
@@ -417,8 +382,6 @@ actor FakeEpisodesLocalDataSource: EpisodesLocalDataSourceContract {
     }
 }
 
-/// One canned answer, because the lookup is one request: there is no page, no
-/// filter and no second call to tell apart.
 actor FakeHBOMaxLinksRemoteDataSource: HBOMaxLinksRemoteDataSourceContract {
     private let result: Result<JustWatchShowEntity, any Error>
     private(set) var callCount = 0
@@ -456,24 +419,23 @@ extension CacheEntry where Value == JustWatchShowEntity {
 }
 
 extension JustWatchShowEntity {
-    /// Season 1, episode 1, on HBO Max at `link`. The policy tests only ever
-    /// need to tell one answer from another.
+    /// Season 1, episode 1, on HBO Max at `link`.
     static func oneEpisode(link: String) -> JustWatchShowEntity {
         .make(episodes: [.make(season: 1, number: 1, offers: [.max(link)])])
     }
 }
 
 extension EpisodeEntity {
-    /// Every property defaults to something valid, so a test that is about one
-    /// missing field says only that.
     static func make(id: String? = "1",
                      name: String? = "Pilot",
                      airDate: String? = "December 2, 2013",
                      code: String? = "S01E01",
                      created: String? = "2021-10-15T17:00:24.105Z",
                      characters: [EpisodeCharacterEntity]? = [
-                        EpisodeCharacterEntity(id: "1", image: URL(string: "https://example.com/1.jpeg")),
-                        EpisodeCharacterEntity(id: "2", image: URL(string: "https://example.com/2.jpeg"))
+                        EpisodeCharacterEntity(id: "1", name: "Rick Sanchez",
+                                               image: URL(string: "https://example.com/1.jpeg")),
+                        EpisodeCharacterEntity(id: "2", name: "Morty Smith",
+                                               image: URL(string: "https://example.com/2.jpeg"))
                      ]) -> EpisodeEntity {
         EpisodeEntity(id: id,
                       name: name,

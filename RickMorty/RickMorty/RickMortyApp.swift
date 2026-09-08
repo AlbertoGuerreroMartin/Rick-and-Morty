@@ -16,11 +16,15 @@ import DevTools
 
 @main
 struct RickMortyApp: App {
-    /// Built once for the app's lifetime; features receive it and build their
-    /// own layers from it. See `AppContainer`.
+    /// Built once for the app's lifetime; features receive it and build their own layers from it.
     private let container = AppContainer()
 
+    /// Built once, same reason as `container`: a fresh one per body evaluation would be a new
+    /// object behind every push. See `RickMortyExternalNavigator`.
+    private let externalNavigator: RickMortyExternalNavigator
+
     init() {
+        externalNavigator = RickMortyExternalNavigator(container: container)
         container.sweepExpiredCache()
     }
 
@@ -33,11 +37,16 @@ struct RickMortyApp: App {
     private var tabs: some View {
         let tabs = TabView {
             Tab("Characters", systemImage: "person") {
-                CharactersFactory.build(dependencies: container)
+                // Navigator comes from the container, not the factory: a deep link must
+                // reach it before the screen exists.
+                CharactersFactory.build(dependencies: container,
+                                        navigator: container.charactersNavigator)
             }
 
             Tab("Episodes", systemImage: "list.bullet") {
-                EpisodesFactory.build(dependencies: container)
+                EpisodesFactory.build(dependencies: container,
+                                      navigator: container.episodesNavigator,
+                                      external: externalNavigator)
             }
 
             Tab("Locations", systemImage: "mappin") {
@@ -45,10 +54,8 @@ struct RickMortyApp: App {
             }
         }
 
-        // Debug only. The `DevTools` product is linked in every configuration,
-        // but its `UIWindow.motionEnded` override is compiled under `#if DEBUG`
-        // too, so a shipped build carries no process-wide swizzle. Shake the
-        // device — Device ▸ Shake (⌃⌘Z) in the simulator — to open it.
+        // Debug only: `UIWindow.motionEnded` override is behind `#if DEBUG` too, so a shipped
+        // build carries no swizzle. Shake the device (⌃⌘Z in the simulator) to open it.
         #if DEBUG
         return tabs.devToolsOnShake(caches: container.devToolsCaches,
                                     apiLog: container.apiLogStore,

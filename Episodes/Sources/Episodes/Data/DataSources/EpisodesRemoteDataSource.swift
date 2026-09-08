@@ -7,11 +7,7 @@
 
 import Networking
 
-/// The network half of the data layer. It speaks *entities*, not domain models.
-///
-/// Returning the entity rather than a mapped model is what lets the repository
-/// store the raw server shape and map on every read — from the network and from
-/// disk alike — through one code path.
+/// Speaks entities, not domain models, so the repository maps on every read, network or disk.
 protocol EpisodesRemoteDataSourceContract: Sendable {
     func fetchEpisodesPage(_ query: EpisodesQuery) async throws -> EpisodesPageEntity
 }

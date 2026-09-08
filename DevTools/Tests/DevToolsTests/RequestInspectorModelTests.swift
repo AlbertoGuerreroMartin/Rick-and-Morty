@@ -11,9 +11,6 @@ import Storage
 import Testing
 @testable import DevTools
 
-/// The merge is the only real logic in this package: two event streams with
-/// different shapes have to end up as one ordered list where a response finds
-/// the request it belongs to.
 @Suite("RequestInspectorModel")
 @MainActor
 struct RequestInspectorModelTests {
@@ -37,8 +34,6 @@ struct RequestInspectorModelTests {
         #expect(model.entries.contains { $0.kind == .cache })
     }
 
-    /// The pair has to collapse into one row: two rows for one call is what the
-    /// raw console already gives you, and the inspector exists to improve on it.
     @Test("a live response fills in the request it belongs to")
     func responseUpdatesTheRequestInPlace() async {
         let apiLog = APILogStore()
@@ -62,8 +57,7 @@ struct RequestInspectorModelTests {
         #expect(model.entries.first?.responseText != nil)
     }
 
-    /// The store's cap drops the oldest events, so an inspector opened mid-scroll
-    /// really does see responses whose requests are gone.
+    /// The store's cap drops oldest events, so a mid-scroll open really can see this.
     @Test("a response with no request becomes its own entry")
     func orphanResponseBecomesAnEntry() async {
         let apiLog = APILogStore()
@@ -111,8 +105,6 @@ struct RequestInspectorModelTests {
         ])
     }
 
-    /// A completed entry keeps the request's timestamp, so a slow call does not
-    /// jump to the top of the list the moment its response lands.
     @Test("a completed entry keeps its position")
     func completedEntryKeepsItsTimestamp() async {
         let apiLog = APILogStore()
@@ -156,8 +148,6 @@ struct RequestInspectorModelTests {
         #expect(model.visibleEntries.count == 3)
     }
 
-    /// Clearing only the local list would mean the next screen to open the
-    /// inspector sees everything this one just dismissed.
     @Test("clear empties the list and both stores")
     func clearEmptiesEverything() async {
         let apiLog = APILogStore()
@@ -232,10 +222,6 @@ struct RequestInspectorModelTests {
         #expect(model.entries.map(\.status) == [.failure(429)])
     }
 
-    /// `.task` runs `start()` again every time the inspector re-appears — after
-    /// a detail row is popped, or during the sheet's own presentation — on the
-    /// same `@State` model. A second seeding must not add a second copy of
-    /// every row: duplicate identifiers make a `List` drop and shuffle rows.
     @Test("starting again on the same model does not duplicate the history")
     func restartingDoesNotDuplicate() async {
         let apiLog = APILogStore()
@@ -254,8 +240,6 @@ struct RequestInspectorModelTests {
         #expect(Set(model.entries.map(\.id)).count == model.entries.count)
     }
 
-    /// An event logged in the window between reading the history and following
-    /// the stream can arrive through both. Once is enough.
     @Test("an event seen in the history and again on the stream is one entry")
     func historyAndStreamOverlapIsOneEntry() async {
         let apiLog = APILogStore()
@@ -279,9 +263,7 @@ struct RequestInspectorModelTests {
         #expect(model.entries.filter { $0.kind == .api }.map(\.status) == [.success(200)])
     }
 
-    /// Same store, same list: with no new events, two openings of the inspector
-    /// must show identical rows in an identical order, ties in timestamp
-    /// included — image events are logged by the dozen within one millisecond.
+    /// Covers timestamp ties: image events are logged by the dozen within one millisecond.
     @Test("two openings over the same history produce the same order")
     func orderIsDeterministic() async {
         let apiLog = APILogStore()
@@ -301,8 +283,6 @@ struct RequestInspectorModelTests {
         #expect(first.entries.map(\.id) == second.entries.map(\.id))
     }
 
-    /// The search covers everything the detail screen shows, because the URL
-    /// is the least distinctive part of a GraphQL log — every call shares it.
     @Test("the search matches request bodies, response bodies and titles, case-insensitively")
     func searchMatchesWholeText() async {
         let apiLog = APILogStore()
@@ -356,8 +336,6 @@ struct RequestInspectorModelTests {
         model.filter = .images
         #expect(model.visibleEntries.map(\.kind) == [.image])
 
-        // Nothing in the cache log mentions the host, and the empty state has to
-        // say "no results" rather than "nothing logged".
         model.filter = .cache
         #expect(model.visibleEntries.isEmpty)
         #expect(model.isSearchHidingEverything)
@@ -389,11 +367,7 @@ struct RequestInspectorModelTests {
                       outcome: .miss)
     }
 
-    /// Seeds the model from history and stops.
-    ///
-    /// `start()` never returns on its own — it follows both streams until it is
-    /// cancelled — so a test that only needs the seeding cancels it as soon as
-    /// the history has been read.
+    /// Seeds the model from history, then cancels: `start()` never returns on its own.
     private func start(_ model: RequestInspectorModel) async {
         let task = Task { await model.start() }
         await settle()

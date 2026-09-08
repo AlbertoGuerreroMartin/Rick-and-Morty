@@ -9,11 +9,6 @@ import Foundation
 import Testing
 @testable import Locations
 
-/// The use case is a pass-through today, and these tests say exactly that: the
-/// page asked for is the page requested, the answer comes back untouched, and a
-/// failure is not swallowed on the way. They are short because the type is, and
-/// they are worth having because the day this grows a join, the assertions that
-/// break are the ones describing what it used to guarantee.
 @Suite("LocationsUseCase")
 struct LocationsUseCaseTests {
 
@@ -29,8 +24,6 @@ struct LocationsUseCaseTests {
         #expect(await repository.requestedPages == [1])
     }
 
-    /// The page number is the whole request, so losing it would silently serve
-    /// page 1 for every circle on the carousel.
     @Test("the page number reaches the repository")
     func thePageNumberIsForwarded() async throws {
         let repository = FakeLocationsRepository(pages: [

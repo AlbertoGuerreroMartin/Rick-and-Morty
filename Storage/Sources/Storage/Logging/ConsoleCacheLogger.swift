@@ -8,28 +8,16 @@
 import Foundation
 import os
 
-/// Writes every cache event to the unified logging system, which Xcode shows in
-/// its console.
-///
-/// The category is "Cache", a different one from Networking's "API", and that
-/// separation is the point rather than a detail. A cache read happens for every
-/// row and every avatar, so interleaving them with the network log would bury
-/// the handful of requests that actually left the device under hundreds of
-/// hits. Two categories mean the Xcode console filter picks one or the other,
-/// and Console.app shows them as separate columns.
-///
-/// The text is built by ``CacheLogFormatter`` so the format is testable without
-/// capturing output; this type only decides *where* the text goes. Unlike a
-/// network log, one event is one line — there is nothing to unpack — but
-/// `os.Logger` is still the right sink for the filtering above.
+/// Writes every cache event to the unified logging system, which Xcode shows in its console.
+/// Category is "Cache", separate from Networking's "API": cache reads happen by the hundred and
+/// would otherwise bury the handful of requests that actually left the device.
 public struct ConsoleCacheLogger: CacheLogSinkContract {
     private let formatter: CacheLogFormatter
     private let logger: Logger
 
     /// - Parameters:
-    ///   - subsystem: the unified-logging subsystem, typically the app's bundle
-    ///     identifier, so the entries can be filtered by app in Console.app.
-    ///   - category: the unified-logging category, shown as a column in Xcode.
+    ///   - subsystem: typically the app's bundle identifier, for filtering in Console.app.
+    ///   - category: shown as a column in Xcode.
     public init(
         subsystem: String = "Storage",
         category: String = "Cache",
@@ -44,19 +32,8 @@ public struct ConsoleCacheLogger: CacheLogSinkContract {
     }
 }
 
-/// Turns a cache event into the one line the console shows.
-///
-/// ```
-/// 🗂️ 14:20:37.360 > [Cache] HIT (fresh, disk) characters › characters|<hash>|{"page":1}
-/// 🗂️ 14:20:37.360 > [Cache] HIT (expired, memory) episodes › episodes|<hash>|{"page":2}
-/// 🗂️ 14:20:37.360 > [Cache] MISS images › https://rickandmortyapi.com/api/character/avatar/1.jpeg
-/// ```
-///
-/// One line per event, because these arrive by the hundred: a multi-line entry
-/// per avatar would make the console unreadable exactly when it matters. The key
-/// is printed verbatim, `namespace › identifier`, and not hashed — the on-disk
-/// name is a SHA-256 that cannot be read back, so the identifier is the only
-/// thing that lets a reader match a log line to the query that produced it.
+/// Turns a cache event into one console line: `namespace › identifier`, printed verbatim (not
+/// hashed) since the on-disk SHA-256 name can't be read back to match a log line to its query.
 public struct CacheLogFormatter: Sendable {
     private let timeFormatter: DateFormatter
 
@@ -77,8 +54,7 @@ public struct CacheLogFormatter: Sendable {
     private func outcome(_ outcome: CacheLogEvent.Outcome) -> String {
         switch outcome {
         case .hit(let layer, let isExpired):
-            // Freshness before layer: "is this entry usable" is the question a
-            // reader has first, and the layer only explains how fast it was.
+            // Freshness before layer: "is this entry usable" is the reader's first question.
             return "HIT (\(isExpired ? "expired" : "fresh"), \(layer.rawValue))"
         case .miss:
             return "MISS"

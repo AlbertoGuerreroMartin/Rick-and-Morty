@@ -11,30 +11,25 @@ import Storage
 import Testing
 @testable import Characters
 
-/// The factories are the feature's composition roots, and every layer they wire
-/// is constructor-injected — so building the real graphs needs nothing but two
-/// clients and a cache store, and a missing edge is a compile error here rather
-/// than an empty screen at runtime.
-///
-/// This file used to stand up a `CharactersView` that no longer exists, which
-/// meant the whole test target had stopped compiling. What replaced it is the
-/// smallest thing worth keeping: that both screens can actually be assembled.
 @Suite("Characters factories")
 @MainActor
 struct CharactersFactoryTests {
 
     @Test("the characters factory builds a graph in its initial state")
     func charactersFactoryBuildsTheGraph() {
-        let graph = CharactersFactory.makeGraph(dependencies: StubCharactersDependencies())
+        let navigator = CharactersNavigator()
+        let graph = CharactersFactory.makeGraph(dependencies: StubCharactersDependencies(),
+                                                navigator: navigator)
 
+        // Passed through, not built here: the graph must hand the screen the object a deep link writes to.
+        #expect(graph.navigator === navigator)
+        #expect(graph.navigator.path.isEmpty)
         #expect(graph.viewModel.charactersPublished == nil)
         #expect(graph.viewModel.loadingPublished == false)
         #expect(graph.viewModel.filterPublished == .empty)
     }
 
-    /// The detail's graph is built per pushed screen and carries the id it was
-    /// pushed with — a graph that dropped it would fetch whichever character the
-    /// server answered for an empty query.
+    /// A graph that dropped the id would fetch whichever character the server answered for an empty query.
     @Test("the detail factory builds a graph for the route's character")
     func detailFactoryBuildsTheGraph() {
         let graph = CharacterDetailFactory.makeGraph(dependencies: StubCharactersDependencies(), id: "42")
@@ -46,9 +41,7 @@ struct CharactersFactoryTests {
     }
 }
 
-/// Stands in for the app container. Nothing here reaches the network, so
-/// endpoints that resolve to nothing are exactly right — the point is that the
-/// factories can be handed the three things they declare and nothing else.
+/// Stands in for the app container; nothing here reaches the network.
 struct StubCharactersDependencies: CharactersDependencies {
     let graphQLClient = GraphQLClient(endpoint: URL(string: "https://example.com/graphql")!)
     let justWatchClient = GraphQLClient(endpoint: URL(string: "https://example.com/justwatch")!)

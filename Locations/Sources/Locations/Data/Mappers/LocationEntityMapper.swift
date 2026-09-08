@@ -25,27 +25,11 @@ enum LocationEntityMapperError: LocalizedError {
     }
 }
 
-/// Turns the server's shape into the domain's, and decides — per location — what
-/// this feature cannot draw a circle for.
+/// Turns the server's shape into the domain's. Only `id` and `name` are required.
 ///
-/// The required set is exactly two fields: `id` and `name`. The id is the
-/// carousel's identity and what the selection is published as, and the name is the
-/// only thing a circle ever says out loud; a location missing either has nothing
-/// to be and nothing to be called.
-///
-/// Everything else is allowed to be absent, and each for its own reason:
-///
-/// - `type` and `dimension` are **blank for many locations, and the API sends
-///   `""` rather than `null`**, so whitespace normalizes to `nil` and the detail
-///   simply does not draw the row. The API's own literal `"unknown"` is a
-///   different thing entirely — it is a *value*, the name the show gives to a
-///   dimension nobody has charted — so it is kept verbatim. `nil` is reserved
-///   for "there is no record at all", and only this mapper can tell the two
-///   apart.
-/// - a resident missing its id or its image is **dropped, not fatal**: the strip
-///   is a row of avatars, one that cannot be drawn or keyed is nothing the user
-///   could have noticed, and failing a whole location over it would cost a real
-///   circle to save a missing thumbnail.
+/// `type`/`dimension`: API sends `""` (not `null`) when blank, normalized here to `nil`;
+/// the literal `"unknown"` is a real value and kept as-is. A resident missing id or image
+/// is dropped rather than failing the whole location.
 final class LocationEntityMapper: LocationEntityMapperContract {
 
     func map(_ entity: LocationEntity?) throws -> LocationModel {
@@ -73,11 +57,7 @@ final class LocationEntityMapper: LocationEntityMapperContract {
 
     // MARK: - Text
 
-    /// Trims whitespace and turns the blank result into `nil`.
-    ///
-    /// The API answers `""` rather than `null` for a location with no type, and
-    /// an empty string is not the same thing as a value: it would draw a
-    /// labelled row with nothing after it.
+    /// Trims whitespace; a blank result becomes `nil`.
     private static func normalized(_ text: String?) -> String? {
         guard let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines),
               !trimmed.isEmpty else { return nil }

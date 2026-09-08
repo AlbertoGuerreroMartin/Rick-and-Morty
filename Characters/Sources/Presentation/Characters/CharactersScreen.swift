@@ -3,76 +3,52 @@ import Storage
 import SwiftUI
 
 struct CharactersScreen<Content: View, Detail: View>: View {
-    // The graph lives in `Owned` rather than the view model living directly in
-    // `@StateObject`: `@StateObject` is what keeps the graph alive for the
-    // screen's identity, but it also observes. An observable view model would
-    // fire `objectWillChange` on every `@Published` write and re-evaluate this
-    // whole body, while the architecture wants only the sections to re-render
-    // (view model publishers -> mapper -> section `@State`). `Owned` never
-    // publishes anything, so we get the ownership without the observation.
+    // `Owned`, not a directly-observed `@StateObject`: the view model must not
+    // trigger this body on every `@Published` write, only the sections should.
     @StateObject private var graph: Owned<CharactersScreenGraph>
     private let makeSection: (CharactersScreenGraph, CharactersLayout) -> Content
 
-    /// Builds the pushed character detail for a route value.
-    ///
-    /// A closure, and generic over its result, for exactly the reason
-    /// `makeSection` is: this screen stays a shape rather than a wiring diagram,
-    /// so a test or a preview can push a stub detail without a container, and
-    /// `CharactersFactory` remains the single place where the feature's real
-    /// graph is assembled.
-    private let makeDetail: (CharacterDetailRoute) -> Detail
+    /// Builds the pushed character detail for a character id, so a test or preview can
+    /// push a stub detail without a container.
+    private let makeDetail: (String) -> Detail
 
-    /// The search field's text, owned by the screen.
-    ///
-    /// `.searchable` needs a `Binding`, and the only two-way binding available
-    /// without observation is local `@State`. It is a *write-only* mirror: the
-    /// screen pushes each change into the view model and never reads anything
-    /// back, so this stays consistent with the screen not observing the view
-    /// model — the rows still arrive through the mapper.
+    /// Write-only mirror of the search field for `.searchable`'s binding; the view model
+    /// never learns about it, so the screen stays non-observing.
     @State private var searchText = ""
 
-    /// Which of the two results sections is on screen.
-    ///
-    /// Plain `@State`, per screen identity, starting at the list: a preference
-    /// the user has to re-toggle after a relaunch is a small price against
-    /// a `UserDefaults` key the feature would then have to own, migrate and
-    /// reset in tests. Like `searchText`, it is view state the view model never
-    /// learns about, so the screen stays non-observing.
+    /// Which of the two results sections is on screen. Not persisted: a relaunch
+    /// resetting the toggle is cheaper than a `UserDefaults` key to own and test.
     @State private var layout: CharactersLayout = .list
 
     init(makeGraph: @escaping () -> CharactersScreenGraph,
          makeSection: @escaping (CharactersScreenGraph, CharactersLayout) -> Content,
-         makeDetail: @escaping (CharacterDetailRoute) -> Detail) {
+         makeDetail: @escaping (String) -> Detail) {
         _graph = StateObject(wrappedValue: Owned(makeGraph))
         self.makeSection = makeSection
         self.makeDetail = makeDetail
     }
 
     var body: some View {
-        NavigationStack {
+        // Bound to the navigator's `path` (via `Bindable`) rather than a local `@State`:
+        // taps and deep links both write into the same array, one source of truth.
+        NavigationStack(path: Bindable(graph.value.navigator).path) {
             makeSection(graph.value, layout)
-                // Inside the stack, and declared once for the whole screen
-                // rather than per row: both the list and the grid push the same
-                // `CharacterDetailRoute`, so a layout toggle cannot leave the
-                // two layouts navigating to different places — and there is one
-                // destination built per push instead of one per visible row.
-                .navigationDestination(for: CharacterDetailRoute.self) { route in
-                    makeDetail(route)
+                .navigationDestination(for: CharactersRoute.self) { route in
+                    switch route {
+                    case .detail(let id):
+                        makeDetail(id)
+                    }
                 }
                 .navigationTitle("Characters")
                 .searchable(text: $searchText,
                             placement: .navigationBarDrawer(displayMode: .always),
                             prompt: "Search by name")
-                // Character names are proper nouns the keyboard has never seen,
-                // so autocorrect turns "Squanchy" into a different query and
-                // capitalization only adds noise the server ignores.
+                // Character names are proper nouns; autocorrect would rewrite them.
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .onChange(of: searchText) { _, text in
-                    // Debounced inside the view model, not here: the delay is a
-                    // property of how the feature spends its request budget, and
-                    // a `.task(id:)` on the view would be cancelled by the very
-                    // re-render the keystroke causes.
+                    // Debounced in the view model, not here: a `.task(id:)` here would be
+                    // cancelled by the re-render each keystroke causes.
                     graph.value.viewModel.updateSearchText(text)
                 }
                 .toolbar {
@@ -84,12 +60,8 @@ struct CharactersScreen<Content: View, Detail: View>: View {
                         }
                     }
                 }
-                // A cache wiped behind this screen's back — from the developer
-                // tools — is announced through `Storage`, and the screen answers
-                // by loading again from scratch. Neither side knows the other
-                // exists: the tool does not know this screen, and this screen
-                // does not know the tool; the notification is the only thing
-                // they share. See `CacheClearedNotification`.
+                // A cache clear from the developer tools is announced via `Storage`
+                // notification; the screen answers by reloading from scratch.
                 .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
                     Task { await graph.value.viewModel.reloadFromScratch() }
                 }
@@ -105,7 +77,8 @@ struct CharactersScreen<Content: View, Detail: View>: View {
         makeGraph: {
             let useCase = CharactersUseCase(repository: PreviewCharactersRepository())
             let viewModel = CharactersViewModel(charactersUseCase: useCase)
-            return CharactersScreenGraph(viewModel: viewModel,
+            return CharactersScreenGraph(navigator: CharactersNavigator(),
+                                         viewModel: viewModel,
                                          listMapper: CharactersListSectionMapper(viewModel: viewModel),
                                          gridMapper: CharactersGridSectionMapper(viewModel: viewModel),
                                          filterBarMapper: CharactersFilterBarSectionMapper(viewModel: viewModel))
@@ -121,25 +94,16 @@ struct CharactersScreen<Content: View, Detail: View>: View {
                 }
             }
         },
-        // The canvas pushes a placeholder rather than the real detail: building
-        // one needs a container, and what this preview is for is the list.
-        makeDetail: { route in
-            Text("Character \(route.id)")
+        // Placeholder detail: this preview is for the list, and a real one needs a container.
+        makeDetail: { id in
+            Text("Character \(id)")
         }
     )
 }
 
-/// Stubbed at the repository seam rather than the data-source one: the preview
-/// wants canned domain models, and standing in for the repository skips the
-/// cache, the network and the mapper in one substitution.
-///
-/// It serves three pages rather than one so the footer, the append and the end
-/// of the list are all reachable in the canvas without a network.
-///
-/// It honours `name` and `status` in memory. That is a *preview* standing in for
-/// the server, not the local search the feature deliberately does not do: the
-/// point is that the canvas can exercise the search bar, the chips and the empty
-/// state at all, which a repository that ignored the filter could not.
+/// Stands in for the repository, skipping the cache, network and mapper. Serves three pages
+/// so the footer, append and end of list are reachable in the canvas, and filters in memory
+/// so the search bar, chips and empty state are all exercisable without a network.
 private struct PreviewCharactersRepository: CharactersRepositoryContract {
     private static let pageCount = 3
     private static let names = ["Rick Sanchez", "Morty Smith", "Summer Smith",
@@ -147,8 +111,7 @@ private struct PreviewCharactersRepository: CharactersRepositoryContract {
 
     func fetchCharacters(filter: CharactersFilter, page: Int) async throws -> CharactersPage {
         let characters = Self.names.enumerated().map { index, name in
-            // Ids have to be unique *across* pages: `List` keys rows on them, so
-            // a repeated id would collapse page two into page one.
+            // Ids must be unique across pages: `List` keys rows on them.
             let number = (page - 1) * Self.names.count + index + 1
             return CharacterModel(id: "\(number)",
                                   name: "\(name) (page \(page))",
@@ -166,8 +129,7 @@ private struct PreviewCharactersRepository: CharactersRepositoryContract {
                               nextPage: page < Self.pageCount ? page + 1 : nil)
     }
 
-    /// Never called: this preview never pushes the real detail. The screen it
-    /// stands in for has its own preview and its own stub.
+    /// Never called: this preview never pushes the real detail.
     func fetchCharacterDetail(id: String) async throws -> CharacterDetailModel {
         throw CancellationError()
     }

@@ -7,23 +7,13 @@
 
 import Foundation
 
-/// The `data` object of every operation this package builds.
+/// The `data` object of every operation this package builds. Document builders alias the root
+/// field to a fixed `result` key, so one generic type stands in for what each query used to
+/// declare its own `Response` struct only to spell the server's field name.
 ///
-/// The document builders alias the root field to a fixed `result` key
-/// (`result: characters(...)`, `result: character(...)`), so the shape of `data`
-/// no longer depends on which field was requested. That is what lets a single
-/// generic type stand in for the per-query `Response` struct each operation used
-/// to declare only to spell the server's field name.
-///
-/// Aliases are resolved entirely by the client — the response key is the alias
-/// when one is present, otherwise the field name — so this needs nothing from
-/// the schema.
-///
-/// - Note: This assumes exactly *one* root field per operation. Selecting two
-///   (`characters` and `episodes` in a single round trip) needs its own `Response`
-///   type with a property per alias.
+/// - Note: Assumes exactly one root field per operation. Selecting two in a single round trip
+///   needs its own `Response` type with a property per alias.
 public struct GraphQLRootPayload<Result: Decodable>: Decodable {
-    /// The value of the aliased root field.
     public let result: Result
 
     public init(result: Result) {
@@ -31,10 +21,8 @@ public struct GraphQLRootPayload<Result: Decodable>: Decodable {
     }
 }
 
-// Conditional, for the same reason as `GraphQLPageResponse`: only the payloads
-// that actually get written to a cache need to be encodable, and requiring it of
-// every `Response` would ripple out to every query in the app.
-
+// Conditional, like `GraphQLPageResponse`: only cached payloads need to be encodable, and
+// requiring it of every `Response` would ripple out to every query in the app.
 extension GraphQLRootPayload: Encodable where Result: Encodable {}
 
 extension GraphQLRootPayload: Sendable where Result: Sendable {}

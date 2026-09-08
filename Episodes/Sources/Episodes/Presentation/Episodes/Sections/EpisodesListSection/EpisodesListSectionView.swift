@@ -10,14 +10,7 @@ import SwiftUI
 
 struct EpisodesListSectionView: View {
 
-    /// Held as the contract, not as a closure: "retry the load" is a capability
-    /// of the view model the section is already bound to, and routing it through
-    /// an escaping closure would hide that from the type system while adding a
-    /// second thing to wire up in the factory and in every preview.
-    ///
-    /// This is *not* observation — the view never reads a property on it. The
-    /// render pipeline is unchanged (publishers -> mapper -> `@State`); the view
-    /// model is here only so the empty state has something to call.
+    /// Not observed: only called for `retryLoad()`. Rows arrive through the mapper into `@State`.
     let viewModel: any EpisodesListSectionViewModelContract
 
     private let renderModelPublisher: AnyPublisher<EpisodesListRenderModel, Never>
@@ -50,9 +43,6 @@ struct EpisodesListSectionView: View {
         }
     }
 
-    /// A `List` of `Section`s rather than one flat list with separator rows: the
-    /// season headers then stick to the top while scrolling, which is what makes
-    /// a 51-row list navigable without a jump bar.
     @ViewBuilder
     func episodesList(seasons: [EpisodesSeasonRenderModel]) -> some View {
         List {

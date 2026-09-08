@@ -41,8 +41,6 @@ struct DevToolsCacheTests {
         await #expect(throws: Failure.self) { try await cache.clear() }
     }
 
-    /// Both layers, in order: clearing disk alone would leave every avatar on
-    /// screen and read as a button that did nothing.
     @Test("the images cache clears memory and disk")
     func imagesCacheClearsBothLayers() async throws {
         let directory = TemporaryDirectory()
@@ -50,9 +48,7 @@ struct DevToolsCacheTests {
         let url = URL(string: "https://example.com/dev-tools-avatar.png")!
         let diskStore = FileDiskStore(root: directory.url)
         let diskCache = ImageDiskCache(diskStore: diskStore)
-        // Seeded on disk rather than downloaded: the loader decodes a disk entry
-        // through exactly the same path as a fresh download, so this warms both
-        // layers without a stubbed network.
+        // Seeded on disk, not downloaded: the loader decodes it the same way, no stubbed network needed.
         try await diskCache.store(makePNG(), for: url)
         let loader = ImageLoader(session: URLSession(configuration: .ephemeral), diskCache: diskCache)
         _ = try await loader.image(for: url, maxPixelSize: 64)

@@ -7,11 +7,9 @@
 
 import Foundation
 
-/// A query whose root field returns a page (`info` + `results`) rather than the
-/// entity directly.
-///
-/// The `where` clause pins `Response` for every conformer, so a paginated query
-/// declares only its `ResponseEntity` and `objectRequested`.
+/// A query whose root field returns a page (`info` + `results`) rather than the entity
+/// directly. The `where` clause pins `Response`, so a conformer declares only `ResponseEntity`
+/// and `objectRequested`.
 public protocol GraphQLPaginatedQuery: GraphQLQuery where Response == GraphQLRootPayload<GraphQLPageResponse<ResponseEntity>> {
     var page: Int? { get }
 }
@@ -20,8 +18,7 @@ extension GraphQLPaginatedQuery {
     public var document: String {
         let declaredProperties = declaredProperties()
 
-        // The paginated root field doesn't take its variables flat: `page` is an
-        // argument of its own and everything else is nested inside `filter`.
+        // `page` is its own argument; everything else nests inside `filter`.
         let filters = declaredProperties
             .map(\.propertyIdentifier)
             .filter { $0 != "page" }

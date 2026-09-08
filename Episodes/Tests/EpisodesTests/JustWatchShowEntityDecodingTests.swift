@@ -10,16 +10,7 @@ import Networking
 import Testing
 @testable import Episodes
 
-/// JustWatch's schema cannot be introspected, so the entity tree below is a
-/// guess pinned by one real response. These tests are that pin: they decode
-/// bytes copied verbatim off the wire — offers, duplicates, tracking parameters
-/// and all — rather than a fixture written to match the Swift types, which would
-/// only ever prove the types agree with themselves.
-///
-/// The second half is the other half of the contract: this endpoint is
-/// unofficial and can start answering `null` anywhere at any time, and none of
-/// those answers may throw. A decoding failure here would be an error in the log
-/// for a play button nobody asked for.
+/// Decodes bytes copied verbatim off the wire and checks that `null` at any level never throws.
 @Suite("JustWatchShowEntity decoding")
 struct JustWatchShowEntityDecodingTests {
 
@@ -41,15 +32,10 @@ struct JustWatchShowEntityDecodingTests {
 
         #expect(episode.content?.seasonNumber == 1)
         #expect(episode.content?.episodeNumber == 1)
-        // Including the services this feature ignores: the server sends them
-        // whatever the query asks, so the entity has to survive them.
         #expect(episode.offers?.compactMap { $0.package?.technicalName }
             == ["hulu", "amazonhbomax", "max", "max"])
     }
 
-    /// The tracking parameter and the duplicate `max` offer are both kept
-    /// verbatim here. Dropping either is the mapper's job, and an entity that
-    /// tidied the response would hide what the server actually said.
     @Test("a deeplink arrives exactly as the server spelled it")
     func deeplinksAreVerbatim() throws {
         let offers = try #require(try decode(Self.realResponse).seasons?.first?.episodes?.first?.offers)
@@ -103,9 +89,6 @@ struct JustWatchShowEntityDecodingTests {
         #expect(season.episodes?.last?.offers?.first?.deeplinkURL == nil)
     }
 
-    /// A `String?` rather than a `URL?` is what makes this survivable: `URL`
-    /// decoding is unforgiving, and one broken link for a service nobody looks
-    /// at would otherwise cost the whole show its decoding.
     @Test("a deeplink that is not a URL still decodes")
     func malformedDeeplinkDecodes() throws {
         let show = try decode(#"""
@@ -120,9 +103,6 @@ struct JustWatchShowEntityDecodingTests {
 
     // MARK: - The document
 
-    /// The selection set is what the server was asked for, so it has to name
-    /// every field the entities above decode — and the arguments they take,
-    /// which is the reason this document is written by hand at all.
     @Test("the selection set asks for exactly what the entities decode")
     func documentMatchesTheEntities() {
         let document = JustWatchShowEntity.document
@@ -137,9 +117,6 @@ struct JustWatchShowEntityDecodingTests {
         #expect(document.contains("deeplinkURL(platform: IOS)"))
     }
 
-    /// The shape is pinned by observation against a server with introspection
-    /// disabled, so there is nothing to expand: asking for one level must not
-    /// quietly return a truncated selection the response would not match.
     @Test("the depth does not change the selection set")
     func documentIgnoresDepth() {
         #expect(JustWatchShowEntity.document(depth: 1) == JustWatchShowEntity.document(depth: 9))
@@ -158,12 +135,7 @@ struct JustWatchShowEntityDecodingTests {
 
 extension JustWatchShowEntity {
 
-    /// Decodes a whole response body, envelope included, so the fixtures can be
-    /// pasted straight from the network log.
-    ///
-    /// `GraphQLResponse` is internal to Networking, so the `data` key is peeled
-    /// here — everything below it, the `result` alias included, is the real thing
-    /// the client would decode.
+    /// Decodes a whole response body, envelope included, so fixtures paste straight from the log.
     static func decoded(from json: String) throws -> JustWatchShowEntity {
         struct Envelope: Decodable {
             let data: GraphQLRootPayload<JustWatchShowEntity>
@@ -172,17 +144,7 @@ extension JustWatchShowEntity {
         return try JSONDecoder().decode(Envelope.self, from: Data(json.utf8)).data.result
     }
 
-    /// Copied out of a live `country: US` response — the territory the query
-    /// asks for — and trimmed to two seasons, three then two episodes, and four
-    /// offers each: enough to carry a `max` offer, its duplicate, and two
-    /// packages that are not HBO Max, one of them with a UUID of its own in a
-    /// query parameter.
-    ///
-    /// Inline rather than a resource file: it is the *only* fixture this package
-    /// needs, and a bundle resource would mean a `resources:` declaration in
-    /// `Package.swift` plus a `Bundle.module` lookup that can fail at runtime, to
-    /// hold six kilobytes of text that is easier to read next to the assertions
-    /// about it.
+    /// Copied from a live `country: US` response, trimmed to two seasons of 3/2 episodes.
     static let liveUSResponse = #"""
         {
           "data": {

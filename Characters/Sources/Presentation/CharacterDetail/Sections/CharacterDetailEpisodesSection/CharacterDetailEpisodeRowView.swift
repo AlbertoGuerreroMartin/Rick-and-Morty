@@ -8,20 +8,11 @@
 import Foundation
 import SwiftUI
 
-/// One episode: its name, its code and air date, and — when there is one — a
-/// button that opens it on HBO Max.
-///
-/// Deliberately three lines and a button, with no character strip: this row is
-/// already inside a character's page, so a row of avatars would be showing the
-/// user the character they are looking at, once per episode.
+/// One episode's name, code, air date, and — when there is one — a button that opens it on HBO Max.
 struct CharacterDetailEpisodeRowView: View {
     let episode: CharacterDetailEpisodeModel
 
-    /// Opens the HBO Max link through the environment rather than
-    /// `UIApplication.shared.open`. `play.hbomax.com` registers a universal link
-    /// for the HBO Max app, so the system opens the app when it is installed and
-    /// Safari when it is not — and reaching for `UIApplication` from a SwiftUI
-    /// body would drag UIKit into a view that otherwise has no need of it.
+    /// `play.hbomax.com` is a universal link, so this opens the HBO Max app when installed.
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -33,24 +24,14 @@ struct CharacterDetailEpisodeRowView: View {
         .padding(.vertical, 10)
     }
 
-    /// Everything the row *says*, as one accessibility element.
-    ///
-    /// The combining is on this stack and not on the whole row, which is the
-    /// difference between the button being reachable and not: `children:
-    /// .combine` flattens its subtree into a single element, so a button inside
-    /// it would stop being something VoiceOver can move to and activate. Split
-    /// this way the row is two elements — the episode, then its button — which
-    /// is also the right number to swipe through.
+    /// Combined on this stack, not the whole row: combining the button too would make it
+    /// unreachable to VoiceOver.
     private var details: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(episode.name)
                 .font(.headline)
                 .multilineTextAlignment(.leading)
 
-            // The code verbatim, as the API spells it: it is what appears on
-            // every episode guide the user has ever seen, so reformatting it
-            // into "Season 1, Episode 5" would be this app inventing its own
-            // dialect for something already standard.
             Text("\(episode.code) · \(episode.airDate)")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -60,11 +41,6 @@ struct CharacterDetailEpisodeRowView: View {
     }
 
     /// Shown only when there is somewhere to go.
-    ///
-    /// An always-present button that sometimes did nothing — or opened a search
-    /// — would promise something the app cannot deliver for an episode HBO Max
-    /// does not carry. The absence is the honest state, and it costs the row
-    /// nothing: the details take the full width either way.
     @ViewBuilder
     private var watchOnHBOMaxButton: some View {
         if let url = episode.hboMaxURL {
@@ -75,13 +51,8 @@ struct CharacterDetailEpisodeRowView: View {
                     .font(.title2)
                     .symbolRenderingMode(.hierarchical)
             }
-            // Not decoration: any button style that draws a background —
-            // `.automatic` included — lets an enclosing tappable row swallow the
-            // tap. `.borderless` is what keeps the two apart, and this row will
-            // become tappable the day an episode gets a screen of its own.
+            // `.automatic` would let an enclosing tappable row swallow the tap.
             .buttonStyle(.borderless)
-            // The image is a play triangle and says nothing about where it goes,
-            // so the label has to carry the whole meaning of the control.
             .accessibilityLabel("Watch on HBO Max")
         }
     }
@@ -101,8 +72,7 @@ struct CharacterDetailEpisodeRowView: View {
 
         Divider()
 
-        // No link: an episode HBO Max does not carry, or a JustWatch lookup that
-        // did not answer. The row draws without a button.
+        // No link: draws without a button.
         CharacterDetailEpisodeRowView(episode: CharacterDetailEpisodeModel(
             id: "2",
             name: "Lawnmower Dog",

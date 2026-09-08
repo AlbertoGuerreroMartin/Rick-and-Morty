@@ -9,10 +9,6 @@ import Foundation
 import Testing
 @testable import Locations
 
-/// The mapper is where "what the server sent" becomes "what this screen can
-/// draw", so these are the rules of that translation: which two fields are
-/// required, what blank means, what `"unknown"` means, and which failures cost a
-/// whole location versus one avatar.
 @Suite("LocationEntityMapper")
 struct LocationEntityMapperTests {
 
@@ -34,8 +30,6 @@ struct LocationEntityMapperTests {
         }
     }
 
-    /// The id is the carousel's identity and what the selection is published as; a
-    /// location without one has nothing to be.
     @Test("a missing id throws")
     func missingIdThrows() {
         #expect(throws: LocationEntityMapperError.self) {
@@ -43,7 +37,6 @@ struct LocationEntityMapperTests {
         }
     }
 
-    /// The name is the only thing a circle says out loud.
     @Test("a missing name throws")
     func missingNameThrows() {
         #expect(throws: LocationEntityMapperError.self) {
@@ -53,8 +46,6 @@ struct LocationEntityMapperTests {
 
     // MARK: - Type and dimension
 
-    /// The API sends `""`, not `null`, for a location with no recorded type. An
-    /// empty string would draw a labelled row with nothing after it.
     @Test("a blank type normalizes to nil")
     func blankTypeIsNil() throws {
         #expect(try LocationEntityMapper().map(.make(type: "")).type == nil)
@@ -75,10 +66,6 @@ struct LocationEntityMapperTests {
         #expect(model.dimension == nil)
     }
 
-    /// The one distinction the whole normalization exists to preserve: the API's
-    /// literal `"unknown"` is a *value* — the name the show gives an uncharted
-    /// dimension — while `nil` means there is no record at all. Rewriting the
-    /// first into the second would throw away a fact worth showing.
     @Test("the API's literal unknown is kept verbatim")
     func literalUnknownIsKept() throws {
         let model = try LocationEntityMapper().map(.make(type: "unknown", dimension: "unknown"))
@@ -97,9 +84,6 @@ struct LocationEntityMapperTests {
 
     // MARK: - Residents
 
-    /// A resident that cannot be drawn or keyed is nothing the user could have
-    /// noticed, and failing the whole location over it would cost a real circle
-    /// to save a missing thumbnail.
     @Test("a resident missing its id is skipped, not fatal")
     func residentWithoutAnIdIsSkipped() throws {
         let entity = LocationEntity.make(residents: [
@@ -136,8 +120,6 @@ struct LocationEntityMapperTests {
 
     // MARK: - Errors
 
-    /// The messages are what a developer reads in the console when a page comes
-    /// back one circle short, so they have to name the field.
     @Test("the errors name what was missing")
     func errorsDescribeThemselves() {
         #expect(LocationEntityMapperError.noEntityError("LocationEntity").errorDescription?

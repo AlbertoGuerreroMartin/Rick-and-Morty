@@ -9,8 +9,6 @@ import Foundation
 import Testing
 @testable import Characters
 
-/// Every layer takes its collaborator through its initializer, so a test can
-/// stand a view model on a stub use case with no container or registry setup.
 @Suite("CharacterDetailViewModel")
 @MainActor
 struct CharacterDetailViewModelTests {
@@ -27,9 +25,6 @@ struct CharacterDetailViewModelTests {
         #expect(viewModel.loadFailedPublished == false)
     }
 
-    /// The id is the screen's identity, and it is the only thing the navigation
-    /// carries — a view model that asked for anything else would show whichever
-    /// character the server answered with.
     @Test("the fetch asks for the character the screen was pushed with")
     func theIdReachesTheUseCase() async {
         let useCase = StubCharacterDetailUseCase(result: .success(.make()))
@@ -40,9 +35,6 @@ struct CharacterDetailViewModelTests {
         #expect(useCase.requestedIDs == ["42"])
     }
 
-    /// `nil` rather than a half-built placeholder: there is no partial character
-    /// to show, so the header reads the failure flag and draws its Retry over an
-    /// empty screen rather than over a stale name.
     @Test("a failed load leaves no character behind and raises the failure flag")
     func loadDataPublishesNilOnFailure() async {
         let useCase = StubCharacterDetailUseCase(result: .failure(StubCharacterDetailError()))
@@ -55,8 +47,6 @@ struct CharacterDetailViewModelTests {
         #expect(viewModel.loadingPublished == false)
     }
 
-    /// A failure after a successful load must not leave the previous character
-    /// on screen under an error: the two would contradict each other.
     @Test("a failed reload clears the character that was on screen")
     func aFailedReloadClearsTheDetail() async {
         let useCase = StubCharacterDetailUseCase(result: .success(.make(name: "Rick Sanchez")))
@@ -71,9 +61,6 @@ struct CharacterDetailViewModelTests {
         #expect(viewModel.loadFailedPublished == true)
     }
 
-    /// `.task` fires again every time the screen reappears — after a sheet, or
-    /// on a restored navigation stack. The character is not going to have
-    /// changed while the user was looking at it.
     @Test("a second loadData does not refetch")
     func loadDataIsIdempotent() async {
         let useCase = StubCharacterDetailUseCase(result: .success(.make()))
@@ -85,9 +72,6 @@ struct CharacterDetailViewModelTests {
         #expect(useCase.fetchCallCount == 1)
     }
 
-    /// A load that failed did not land, so a return to the screen is allowed to
-    /// try again — the guard is about not re-fetching a character that is
-    /// already on screen, not about giving up after one failure.
     @Test("loadData tries again after a failure")
     func loadDataRetriesAfterAFailure() async {
         let useCase = StubCharacterDetailUseCase(result: .failure(StubCharacterDetailError()))
@@ -101,9 +85,6 @@ struct CharacterDetailViewModelTests {
         #expect(viewModel.detailPublished?.name == "Rick Sanchez")
     }
 
-    /// The view model publishes the model the use case built, links included. It
-    /// does no joining of its own — that is the use case's job — so what this
-    /// pins is that nothing on the way to the sections drops the URL.
     @Test("the HBO Max link survives the trip to the sections")
     func loadDataPublishesTheHBOMaxLink() async {
         let detail = CharacterDetailModel.make(episodes: [
@@ -140,8 +121,6 @@ struct CharacterDetailViewModelTests {
         #expect(viewModel.loadingPublished == false)
     }
 
-    /// Unlike a load, a retry is unconditional: re-asking for the same character
-    /// after a success is what the button is for if it is ever offered again.
     @Test("retryLoad is not guarded by a previous success")
     func retryLoadAlwaysFetches() async {
         let useCase = StubCharacterDetailUseCase(result: .success(.make()))
@@ -156,8 +135,6 @@ struct CharacterDetailViewModelTests {
 
     // MARK: - Reload after a cache clear
 
-    /// What the screen runs when the developer tools announce a cleared cache:
-    /// the character is fetched again and replaces what was on screen.
     @Test("reloadFromScratch fetches the character again")
     func reloadFromScratchFetchesAgain() async {
         let useCase = StubCharacterDetailUseCase(result: .success(.make(name: "Rick Sanchez")))
@@ -171,9 +148,6 @@ struct CharacterDetailViewModelTests {
         #expect(viewModel.loadingPublished == false)
     }
 
-    /// The clear is invisible on its own, so the reload is what makes it
-    /// observable — which means it has to go through the spinner rather than
-    /// swapping one character for another behind the user's back.
     @Test("reloadFromScratch clears what was on screen before it refetches")
     func reloadFromScratchClearsFirst() async {
         let useCase = StubCharacterDetailUseCase(result: .success(.make(name: "Rick Sanchez")))
@@ -195,31 +169,24 @@ struct CharacterDetailViewModelTests {
 
     // MARK: - The generation counter
 
-    /// A request that has already left the device cannot be un-sent, and nothing
-    /// about `Task.cancel()` guarantees it stops before it publishes. This is
-    /// the race the counter exists for: a stale reload finishing after a newer
-    /// one must be a no-op, not a screen that flickers back.
+    /// `Task.cancel()` does not guarantee a stale reload stops before it publishes.
     @Test("a stale reload never publishes over a newer one")
     func aStaleReloadNeverPublishes() async {
         let useCase = StubCharacterDetailUseCase(result: .success(.make(name: "Rick Sanchez")))
         let viewModel = CharacterDetailViewModel(id: "1", characterDetailUseCase: useCase)
         await viewModel.loadData()
 
-        // The second fetch — the first retry — is held open.
         useCase.hold(call: 2)
         viewModel.retryLoad()
         await useCase.waitUntilCalled(2)
         let staleReload = viewModel.reloadTask
 
-        // A newer reload takes ownership and finishes while the first is still
-        // suspended.
         useCase.setResult(.success(.make(name: "Newer")))
         viewModel.retryLoad()
         await viewModel.settle()
 
         #expect(viewModel.detailPublished?.name == "Newer")
 
-        // Only now does the stale fetch get its answer. It must change nothing.
         useCase.release(call: 2)
         await staleReload?.value
 
@@ -231,38 +198,23 @@ struct CharacterDetailViewModelTests {
 // MARK: - Test helpers
 
 private extension CharacterDetailViewModel {
-    /// Awaits whatever reload is pending.
-    ///
-    /// `retryLoad` is synchronous — it is called from SwiftUI actions, which
-    /// cannot await — so it leaves its work in a task the view model owns.
-    /// Awaiting that task is what makes these tests deterministic instead of
-    /// sleep-and-hope.
+    /// Awaits the pending reload task, so tests are deterministic instead of sleep-and-hope.
     func settle() async {
         await reloadTask?.value
     }
 }
 
-/// Named for this suite rather than `StubError`: the characters view model's
-/// own suite declares a file-private one, and two `StubCharacterDetailError`s in one target
-/// make every `Result<_, StubCharacterDetailError>` in both files ambiguous.
 struct StubCharacterDetailError: Error {}
 
-/// A `final class` behind a lock rather than an actor:
-/// `CharacterDetailUseCaseContract` is a synchronous-to-declare, `Sendable`
-/// protocol, and an actor could not satisfy it without every call hopping
-/// isolation, which would change the very interleaving the generation test is
-/// checking.
+/// `final class` behind a lock, not an actor: an actor would hop isolation on
+/// every call, changing the interleaving the generation test checks.
 final class StubCharacterDetailUseCase: CharacterDetailUseCaseContract, @unchecked Sendable {
     private let lock = NSLock()
     private var result: Result<CharacterDetailModel, StubCharacterDetailError>
     private var fetchCount = 0
     private var ids: [String] = []
-    /// Fetches that stay suspended until the test releases them, identified by
-    /// their ordinal — the view model's requests are otherwise indistinguishable
-    /// from one another, and holding *one* of them is the whole point.
-    /// Cancellation does not release them on purpose: the test is about what a
-    /// *late* answer does, and a fetch that unblocked itself on cancel would
-    /// race the assertions.
+    /// Fetches held open by ordinal until the test releases them. Cancellation does not
+    /// release them: the test is about what a late answer does.
     private var heldCalls: Set<Int> = []
 
     init(result: Result<CharacterDetailModel, StubCharacterDetailError>) {
@@ -285,8 +237,8 @@ final class StubCharacterDetailUseCase: CharacterDetailUseCaseContract, @uncheck
         lock.withLock { _ = heldCalls.remove(call) }
     }
 
-    /// Suspends until `count` fetches have been made. Bounded, so a test that
-    /// never gets its call fails on its assertions rather than hanging the suite.
+    /// Suspends until `count` fetches have been made. Bounded, so a test that never
+    /// gets its call fails on assertions rather than hanging the suite.
     func waitUntilCalled(_ count: Int) async {
         for _ in 0..<100_000 {
             if fetchCallCount >= count { return }
@@ -295,9 +247,8 @@ final class StubCharacterDetailUseCase: CharacterDetailUseCaseContract, @uncheck
     }
 
     func fetchCharacterDetail(id: String) async throws -> CharacterDetailModel {
-        // The result is snapshotted at call time, so a held fetch answers with
-        // what was configured when it *started* rather than with whatever a
-        // later test line set up for a newer request.
+        // Snapshotted at call time, so a held fetch answers with what was configured
+        // when it started, not with what a later test line sets up.
         let (call, snapshot) = lock.withLock { () -> (Int, Result<CharacterDetailModel, StubCharacterDetailError>) in
             fetchCount += 1
             ids.append(id)
@@ -307,8 +258,6 @@ final class StubCharacterDetailUseCase: CharacterDetailUseCaseContract, @uncheck
         while lock.withLock({ heldCalls.contains(call) }) {
             await Task.yield()
         }
-        // A suspension point, so a reload really is in flight when the next one
-        // starts.
         await Task.yield()
         return try snapshot.get()
     }
@@ -317,8 +266,6 @@ final class StubCharacterDetailUseCase: CharacterDetailUseCaseContract, @uncheck
 // MARK: - Fixtures
 
 extension CharacterDetailModel {
-    /// Every property defaults to something valid, so a test that is about one
-    /// field says only that.
     static func make(id: String = "1",
                      name: String = "Rick Sanchez",
                      status: CharacterStatus = .alive,
@@ -349,9 +296,7 @@ extension CharacterDetailModel {
 }
 
 extension CharacterDetailEpisodeModel {
-    /// The code is derived from the season and the number rather than passed in:
-    /// a fixture whose `S01E02` disagreed with its `season`/`number` would be
-    /// testing a state the mapper cannot produce.
+    /// `code` is derived from `season`/`number` rather than passed in, so the two cannot disagree.
     static func make(id: String? = nil,
                      name: String = "Pilot",
                      airDate: String = "December 2, 2013",

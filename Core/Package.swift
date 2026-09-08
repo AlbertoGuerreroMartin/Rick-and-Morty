@@ -7,9 +7,8 @@ let package = Package(
     name: "Core",
     platforms: [
         .iOS("18.6"),
-        // The macro plugin and its tests are compiled for the *host*, so this
-        // package — unlike every other one in the workspace — has to build on
-        // macOS as well. Nothing in `Core` is iOS-only, so this costs nothing.
+        // The macro plugin and its tests compile for the host, so this package must build on
+        // macOS too.
         .macOS("15.0"),
     ],
     products: [
@@ -24,8 +23,7 @@ let package = Package(
         .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "603.0.0"),
     ],
     targets: [
-        // The compiler plugin. It cannot be a product, which is why the macro
-        // *declaration* lives in the `Core` library target instead.
+        // Compiler plugin; can't be a product, so the macro declaration lives in `Core` instead.
         .macro(
             name: "Macros",
             dependencies: [

@@ -1,19 +1,7 @@
 import Foundation
 
-/// A tiny, dependency-free GraphQL client built on `URLSession`.
-///
-/// GraphQL over HTTP is far simpler than the tooling around it suggests:
-/// **every** request is a `POST` to **one** URL, with a JSON body shaped like
-///
-/// ```json
-/// { "query": "query Characters($page: Int) { ... }", "variables": { "page": 1 } }
-/// ```
-///
-/// There are no per-resource paths. In REST you'd hit `/character`,
-/// `/character/1` and `/episode`; here all of those collapse into a single
-/// endpoint, and *what* comes back is decided by the query document, not the URL.
-/// That is the whole trade: you describe the exact shape you want, and the server
-/// returns that shape — no over-fetching, no three round trips to build one screen.
+/// A tiny, dependency-free GraphQL client built on `URLSession`. Every request is a `POST` to one
+/// URL; what comes back is decided by the query document, not the URL.
 public struct GraphQLClient: Sendable {
 
     /// The public Rick and Morty endpoint. https://rickandmortyapi.com/documentation
@@ -24,21 +12,10 @@ public struct GraphQLClient: Sendable {
         )
     }
 
-    /// JustWatch's public — but unofficial and undocumented — GraphQL endpoint.
-    ///
-    /// A second factory rather than a second *client type*: everything this
-    /// package does is endpoint-agnostic, so the only thing that differs between
-    /// the two services is the URL. Both take the same logger, which is the
-    /// point of building it here — a JustWatch call then shows up in the API log
-    /// and the request inspector next to the Rick and Morty ones, rather than
-    /// being an invisible third-party request nobody can see going out.
-    ///
-    /// Unofficial has two consequences worth spelling out. There is no schema to
-    /// introspect (the server disables it), so every operation against this
-    /// endpoint is pinned by observation and has to be written by hand rather
-    /// than generated. And nothing here is a promise: a caller must treat a
-    /// failure as normal and degrade rather than surface an error — see
-    /// `EpisodesUseCase`.
+    /// JustWatch's public but unofficial, undocumented GraphQL endpoint. Shares the same client
+    /// type and logger as ``rickAndMorty(logger:)``, so its calls show in the inspector too. No
+    /// schema introspection (the server disables it); a caller must treat a failure as normal and
+    /// degrade rather than surface an error — see `EpisodesUseCase`.
     public static func justWatch(logger: any APILogSinkContract = NoOpAPILogger()) -> GraphQLClient {
         GraphQLClient(
             endpoint: URL(string: "https://apis.justwatch.com/graphql")!,
@@ -51,11 +28,8 @@ public struct GraphQLClient: Sendable {
     let logger: any APILogSinkContract
 
     /// - Parameters:
-    ///   - session: injectable so a caller can supply its own configuration —
-    ///     or a stubbed `URLProtocol` — instead of the default uncached session.
-    ///   - logger: receives a `.request` event before each call leaves and a
-    ///     `.response` event when it ends. Defaults to discarding them; the app
-    ///     passes an `APILogStore` with a console logger attached.
+    ///   - session: injectable, e.g. for a stubbed `URLProtocol` in tests.
+    ///   - logger: receives `.request`/`.response` events; defaults to discarding them.
     public init(
         endpoint: URL,
         session: URLSession = GraphQLClient.uncachedSession,
@@ -66,14 +40,8 @@ public struct GraphQLClient: Sendable {
         self.logger = logger
     }
 
-    /// A session with no `URLCache` at all.
-    ///
-    /// `URLSession.shared` would store every response in the system cache even
-    /// though the request policy below never reads from it: a request's cache
-    /// policy governs *lookups*, while *storage* is decided by the session's
-    /// cache. Caching is a repository decision, made through `Storage` with a
-    /// lifetime the app controls; a second copy in the system cache would be
-    /// invisible to that policy. So the session has no cache to write to.
+    /// No `URLCache`: caching is a repository decision made through `Storage`, so the session
+    /// must have no cache of its own to write a second, invisible copy into.
     public static let uncachedSession: URLSession = {
         let configuration = URLSessionConfiguration.default
         configuration.urlCache = nil
@@ -84,23 +52,19 @@ public struct GraphQLClient: Sendable {
     public func execute<Query: GraphQLQuery>(_ query: Query) async throws -> Query.Response {
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
-        // Never answer from a cache, even on an injected session that has one:
-        // whether a response is reused is the repository's call, not URLCache's.
+        // Never answer from a cache, even on an injected session that has one: reuse is the
+        // repository's call, not URLCache's.
         request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        // The document is static (one per operation type); the variables are the
-        // per-call values. Keeping them separate is what lets a server cache and
-        // validate the document, and it's also how you avoid string interpolation
-        // bugs — never build a query by gluing user input into the document.
+        // Document and variables kept separate: lets the server cache/validate the document, and
+        // avoids string-interpolation bugs.
         request.httpBody = try JSONEncoder().encode(
             RequestBody(query: query.document, variables: query)
         )
 
-        // Logged *before* any of the checks below, and unconditionally: a 500,
-        // a GraphQL `errors` array and a body that does not decode are all
-        // things the log exists to show, so the response record is written the
-        // moment bytes arrive, not after the client has decided what it thinks.
+        // Logged unconditionally, before any check below, so a 500 or undecodable body still
+        // gets a response record.
         let requestRecord = APIRequestRecord(
             method: request.httpMethod ?? "POST",
             url: endpoint,
@@ -151,9 +115,7 @@ public struct GraphQLClient: Sendable {
             throw GraphQLClientError.decoding(error)
         }
 
-        // A GraphQL server answers 200 OK even when the operation failed: failures
-        // live in the `errors` array, never in the status code. Checking only
-        // `response.statusCode` — the REST habit — would silently swallow them.
+        // A GraphQL server answers 200 OK even on failure; failures live in the `errors` array.
         if let errors = envelope.errors, !errors.isEmpty {
             throw GraphQLClientError.server(errors)
         }
@@ -163,7 +125,7 @@ public struct GraphQLClient: Sendable {
         return data
     }
 
-    /// The wire format of a GraphQL request. `variables` is the query object itself.
+    /// The wire format of a GraphQL request; `variables` is the query object itself.
     private struct RequestBody<Variables: Encodable>: Encodable {
         let query: String
         let variables: Variables
@@ -171,8 +133,8 @@ public struct GraphQLClient: Sendable {
 }
 
 private extension HTTPURLResponse {
-    /// `allHeaderFields` is `[AnyHashable: Any]` for historical reasons; on the
-    /// wire both sides are always strings, so this is a lossless narrowing.
+    /// `allHeaderFields` is `[AnyHashable: Any]` for historical reasons; narrowing to strings
+    /// is lossless.
     var stringHeaders: [String: String] {
         allHeaderFields.reduce(into: [:]) { headers, pair in
             guard let name = pair.key as? String else { return }

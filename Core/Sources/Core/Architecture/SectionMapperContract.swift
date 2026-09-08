@@ -8,11 +8,10 @@
 import Combine
 import Foundation
 
-// Main-actor isolated: mappers read view model publishers and feed section
-// views, both of which live on the main actor.
+// Main-actor isolated: mappers read view model publishers and feed section views, both of
+// which live on the main actor.
 @MainActor
 public protocol SectionMapperContract {
-//    associatedtype ViewModel: ViewModelContract
     associatedtype ViewModel
     associatedtype DataModel
     associatedtype RenderModel

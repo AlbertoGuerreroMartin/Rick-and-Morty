@@ -8,12 +8,6 @@
 import Foundation
 
 /// The gender values the API accepts as a characters filter.
-///
-/// It lives in the domain rather than being reused from the data layer's
-/// `CharactersQueryGender` for the same reason `CharacterStatus` does: the
-/// presentation layer picks one of these in a menu, and a screen has no business
-/// importing a query type to do it. The raw values match the schema, so the
-/// mapping down to the query is a `rawValue` and nothing else.
 enum CharacterGender: String, Sendable, Hashable, CaseIterable {
     case female
     case male
@@ -21,12 +15,8 @@ enum CharacterGender: String, Sendable, Hashable, CaseIterable {
     case unknown
 
     init?(rawValue: String) {
-        // Exactly `CharacterStatus`'s reading, for exactly its reasons: the API
-        // sends some of these upper camel cased and some lowercased, and it may
-        // grow a value this app has never heard of. Lowercasing first and
-        // falling back to `unknown` means a detail is never rejected over a
-        // spelling, which matters here because gender is a *required* field of
-        // the detail — a `nil` would fail the whole screen.
+        // Read leniently: the API mixes casing and may add values this app
+        // doesn't know, so an unrecognised spelling falls back to unknown.
         switch rawValue.lowercased() {
         case "female": self = .female
         case "male": self = .male
@@ -36,18 +26,7 @@ enum CharacterGender: String, Sendable, Hashable, CaseIterable {
     }
 }
 
-/// Every constraint the API accepts on the characters list, in one value.
-///
-/// The whole search-and-filter feature is server-first: the list on screen is
-/// always "the complete, paginated result for *this* filter". Modelling the five
-/// constraints as one `Hashable` value is what makes that statement checkable —
-/// a reload is a filter change, a no-op is `new == applied`, and the cache key
-/// downstream is derived from the same five fields. Five loose properties on the
-/// view model could disagree with each other; this cannot.
-///
-/// `nil` means "unconstrained", and blank text is always normalized to `nil`, so
-/// a filter carrying `species: "   "` — which would send an empty string to the
-/// server and match nothing — is unrepresentable in practice.
+/// Every constraint the API accepts on the characters list; `nil` means unconstrained, blank text normalizes to `nil`.
 struct CharactersFilter: Sendable, Hashable {
     /// The search bar's text. `nil` when blank after trimming.
     var name: String?
@@ -58,7 +37,6 @@ struct CharactersFilter: Sendable, Hashable {
     var type: String?
     var gender: CharacterGender?
 
-    /// No constraints at all: the plain, unfiltered character list.
     static let empty = CharactersFilter()
 
     init(name: String? = nil,
@@ -73,11 +51,7 @@ struct CharactersFilter: Sendable, Hashable {
         self.gender = gender
     }
 
-    /// The four constraints that are *not* the search bar.
-    ///
-    /// They are grouped because the UI treats them as a set the search text is
-    /// not part of: they get a chip each, a count on the "Filters" button, and a
-    /// "Clear all" that must never wipe what the user typed.
+    /// The four constraints that are not the search bar.
     enum Field: String, Sendable, Hashable, CaseIterable {
         case status
         case species
@@ -85,8 +59,7 @@ struct CharactersFilter: Sendable, Hashable {
         case gender
     }
 
-    /// How many of the four fields are set. Drives the badge on the filter
-    /// button and the "Clear all" affordance.
+    /// How many of the four fields are set. Drives the filter button's badge.
     var activeFieldCount: Int {
         Field.allCases.filter { self[field: $0] != nil }.count
     }
@@ -100,13 +73,7 @@ struct CharactersFilter: Sendable, Hashable {
         self == .empty
     }
 
-    /// The whole filter as one line of user-facing copy, or `nil` when there is
-    /// nothing to describe.
-    ///
-    /// It carries the search text as well as the fields because it exists for
-    /// exactly one caller — the "no characters found" state — and telling the
-    /// user *why* nothing matched is only useful if it names everything that was
-    /// asked for: `“rick” with Alive · Human`.
+    /// One line of user-facing copy summarizing the filter, or `nil` when empty.
     var summary: String? {
         let fields = Field.allCases.compactMap { field -> String? in
             self[field: field].map { field == .type ? "Type: \($0)" : $0.capitalized }
@@ -125,11 +92,6 @@ struct CharactersFilter: Sendable, Hashable {
         }
     }
 
-    /// The value of one of the four fields, as text. `nil` when unconstrained.
-    ///
-    /// A subscript rather than four `switch`es: `activeFieldCount`, `summary`
-    /// and the chip mapper all need "read field X", and repeating the switch in
-    /// each of them is three places to forget a new case in.
     subscript(field field: Field) -> String? {
         switch field {
         case .status: status?.rawValue
@@ -139,8 +101,7 @@ struct CharactersFilter: Sendable, Hashable {
         }
     }
 
-    /// Drops one constraint. The search text is never a `Field`, so this cannot
-    /// silently throw it away.
+    /// Drops one constraint. The search text is never a `Field`.
     mutating func clear(_ field: Field) {
         switch field {
         case .status: status = nil
@@ -151,20 +112,13 @@ struct CharactersFilter: Sendable, Hashable {
     }
 
     /// A copy with the four fields cleared and the search text untouched.
-    ///
-    /// "Clear all" means the filters the user opened a sheet to set, not the
-    /// word they are still typing in the search bar.
     func clearingFields() -> CharactersFilter {
         var copy = self
         Field.allCases.forEach { copy.clear($0) }
         return copy
     }
 
-    /// A copy with every free-text field trimmed and blanks turned into `nil`.
-    ///
-    /// The initializer already does this, so a filter that was *built* is always
-    /// normalized; this is for one that was edited field by field — the filter
-    /// sheet's draft, which lets the user type freely and tidies up on Done.
+    /// Re-normalizes free-text fields; for a draft edited field by field.
     func normalized() -> CharactersFilter {
         CharactersFilter(name: name, status: status, species: species, type: type, gender: gender)
     }
@@ -176,10 +130,7 @@ struct CharactersFilter: Sendable, Hashable {
         return copy
     }
 
-    /// Trims whitespace and newlines, and turns the blank result into `nil`.
-    ///
-    /// Every text that reaches a filter goes through here, so `""` and `"  "`
-    /// can never become a constraint the server would match nothing against.
+    /// Trims whitespace and newlines; blank becomes `nil`.
     static func normalized(_ text: String?) -> String? {
         guard let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines),
               !trimmed.isEmpty else { return nil }

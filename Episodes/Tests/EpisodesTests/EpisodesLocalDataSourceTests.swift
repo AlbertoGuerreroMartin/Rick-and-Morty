@@ -11,10 +11,8 @@ import Storage
 import Testing
 @testable import Episodes
 
-/// Run against the real `CodableCacheStore` on a real `FileDiskStore`: the thing
-/// worth checking here is that an entity survives a JSON round trip through the
-/// actual encoder and the actual filesystem, which a fake store would not
-/// exercise at all.
+/// Run against the real `CodableCacheStore` on a real `FileDiskStore`, so an entity round trips
+/// through the actual encoder and filesystem.
 @Suite("EpisodesLocalDataSource")
 struct EpisodesLocalDataSourceTests {
 
@@ -46,9 +44,6 @@ struct EpisodesLocalDataSourceTests {
 
     @Test("two pages of the same query are two entries")
     func pagesGetDifferentKeys() async throws {
-        // The bug this guards against is the expensive one: a single "episodes"
-        // key would have page 2 overwrite page 1, and the catalogue walk would
-        // then serve the same twenty rows three times over.
         let directory = TemporaryDirectory()
         defer { directory.remove() }
         let dataSource = makeDataSource(root: directory.url)
@@ -76,9 +71,6 @@ struct EpisodesLocalDataSourceTests {
         #expect(try await dataSource.episodesPage(for: EpisodesQuery(page: 2)) == nil)
     }
 
-    /// The developer-tools screen wipes this feature's cache through the
-    /// factory, which is the only way in from outside the module: the namespace
-    /// stays private, so a caller cannot name — or mistype — it.
     @Test("purging through the factory empties the feature's cache")
     func purgeCacheEmptiesTheFeature() async throws {
         let directory = TemporaryDirectory()
@@ -94,10 +86,6 @@ struct EpisodesLocalDataSourceTests {
 
     // MARK: - The JustWatch offers
 
-    /// The offers go through the same generic plumbing as a page, so what is
-    /// actually being checked is that a deeply nested, entirely-optional tree
-    /// survives a JSON round trip through the real encoder and the real
-    /// filesystem — which is the one thing a fake store would not exercise.
     @Test("the offers entity round trips through disk")
     func offersRoundTrip() async throws {
         let directory = TemporaryDirectory()
@@ -123,9 +111,6 @@ struct EpisodesLocalDataSourceTests {
         #expect(try await dataSource.showOffers(for: JustWatchShowOffersQuery()) == nil)
     }
 
-    /// The offers share the `episodes` namespace with the catalogue pages, and
-    /// the key comes from the query — so the two live side by side without one
-    /// ever being read back as the other.
     @Test("the offers and a page of episodes are two entries")
     func offersDoNotCollideWithAPage() async throws {
         let directory = TemporaryDirectory()
@@ -141,9 +126,6 @@ struct EpisodesLocalDataSourceTests {
             .value.seasons?.count == 1)
     }
 
-    /// "Clear Episodes" in the developer tools has to mean the whole feature,
-    /// links included — an offers entry that survived the wipe would put buttons
-    /// back on a screen the developer just emptied.
     @Test("removeAll forgets the offers too")
     func removeAllForgetsTheOffers() async throws {
         let directory = TemporaryDirectory()
@@ -158,9 +140,6 @@ struct EpisodesLocalDataSourceTests {
         #expect(try await dataSource.showOffers(for: JustWatchShowOffersQuery()) == nil)
     }
 
-    /// Not a tautology: the number is the one deliberate difference from the
-    /// characters feature's cache, and a careless edit back to 24 hours would
-    /// triple this screen's request count with nothing on screen to show for it.
     @Test("the lifetime is a week")
     func lifetimeIsSevenDays() {
         #expect(EpisodesLocalDataSource.lifetime == 7 * 24 * 60 * 60)
@@ -171,8 +150,7 @@ struct EpisodesLocalDataSourceTests {
     }
 }
 
-/// Stands in for the app container. `purgeCache` only ever touches the cache
-/// store, so the client here is never used.
+/// Stands in for the app container; `purgeCache` only touches the cache store.
 private struct PurgeTestEpisodesDependencies: EpisodesDependencies {
     let graphQLClient = GraphQLClient(endpoint: URL(string: "https://example.com/graphql")!)
     let justWatchClient = GraphQLClient(endpoint: URL(string: "https://example.com/justwatch")!)
@@ -183,8 +161,7 @@ private struct PurgeTestEpisodesDependencies: EpisodesDependencies {
     }
 }
 
-/// A unique directory per test, so the suite never reads the app's real cache
-/// and tests cannot see each other's files.
+/// A unique directory per test so tests cannot see each other's files.
 struct TemporaryDirectory {
     let url: URL
 

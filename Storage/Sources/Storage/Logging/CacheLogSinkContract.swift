@@ -7,28 +7,17 @@
 
 import Foundation
 
-/// Somewhere cache events go.
+/// Somewhere cache events go; the store doesn't know or care what a sink does with one. Sync,
+/// since a sink must never make a cache read wait — anything slow belongs behind a `Task` inside it.
 ///
-/// The store does not know or care what happens to an event — printing it,
-/// keeping it for a screen, dropping it — so it talks to this one-method
-/// protocol and the composition root decides. `nonisolated` and synchronous on
-/// purpose: a sink must never make a cache read wait, so anything slow (disk,
-/// UI) belongs behind a `Task` inside the sink.
-///
-/// Deliberately a second protocol rather than a reuse of `APILogSinkContract`:
-/// Storage cannot import Networking without inverting the dependency — the
-/// features depend on both, and Networking has no business knowing about
-/// caches. The duplication is a handful of lines and buys each package a log
-/// that stands on its own.
+/// A second protocol rather than reusing `APILogSinkContract`: Storage can't import Networking
+/// without inverting the dependency.
 public protocol CacheLogSinkContract: Sendable {
     func log(_ event: CacheLogEvent)
 }
 
-/// The default sink: discards everything.
-///
-/// Exists so ``CodableCacheStore`` has a logger unconditionally and its read
-/// path has no optional to unwrap. Tests and previews that do not care about
-/// logging get this without asking.
+/// Discards everything, so ``CodableCacheStore`` has a logger unconditionally with no optional
+/// to unwrap.
 public struct NoOpCacheLogger: CacheLogSinkContract {
     public init() {}
 

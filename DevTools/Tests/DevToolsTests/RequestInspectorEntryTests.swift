@@ -12,10 +12,7 @@ import SwiftUI
 import Testing
 @testable import DevTools
 
-/// The entry is where three event shapes become one row, so the mapping — title,
-/// status, which text goes where — is worth pinning down away from the views.
-/// On the main actor because the row's presentation helpers are: they are
-/// statics on a `View`, which SwiftUI isolates along with the rest of the type.
+/// `@MainActor` because it also exercises `RequestInspectorRow`'s static helpers, which SwiftUI isolates.
 @Suite("RequestInspectorEntry")
 @MainActor
 struct RequestInspectorEntryTests {
@@ -36,8 +33,6 @@ struct RequestInspectorEntryTests {
         #expect(entry.status == .pending)
         #expect(entry.duration == nil)
         #expect(entry.responseText == nil)
-        // Verbatim from the package's own formatter, so the console and the
-        // inspector cannot disagree about what a request looked like.
         #expect(entry.requestText == apiFormatter.string(for: record))
     }
 
@@ -85,8 +80,6 @@ struct RequestInspectorEntryTests {
         #expect(entry.responseText != nil)
     }
 
-    /// A cache read is one line and it is the whole event, so it goes in the
-    /// request half and the detail view labels that half "Cache".
     @Test("a cache event puts its line in the request half")
     func cacheEvent() {
         let event = CacheLogEvent(key: CacheKey(namespace: "images", identifier: "a.jpeg"),
@@ -102,8 +95,6 @@ struct RequestInspectorEntryTests {
         #expect(entry.responseText == nil)
     }
 
-    /// The trailing edge of a row shares its line with a URL, so these have to
-    /// stay short — which is why an expired hit does not also name its layer.
     @Test("every status has a short label")
     func statusText() {
         #expect(RequestInspectorEntry.Status.pending.text == "PENDING")
@@ -125,8 +116,6 @@ struct RequestInspectorEntryTests {
         #expect(Set(colors).count == 3)
     }
 
-    /// A cache miss is the normal first read of anything, so it must not be red
-    /// — a screen full of red on a cold launch says "broken" when nothing is.
     @Test("only genuine failures are red")
     func statusColors() {
         #expect(RequestInspectorRow.statusColor(for: .pending) == .orange)
@@ -140,8 +129,7 @@ struct RequestInspectorEntryTests {
 
     @Test("the row time is millisecond precision")
     func rowTime() {
-        // 14:20:37.360 UTC — asserted through the same formatter the row uses,
-        // whose time zone is the reader's, so only the shape is pinned here.
+        // 14:20:37.360 UTC; the formatter uses the reader's own time zone, so only shape is pinned.
         let text = RequestInspectorRow.time(Date(timeIntervalSince1970: 1_788_531_637.360))
 
         #expect(text.count == 12)

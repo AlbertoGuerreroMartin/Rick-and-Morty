@@ -1,23 +1,14 @@
 import Foundation
 
-/// Tuning knobs for ``ImageLoader``.
-///
-/// Two caches sit behind an image request and they hold different things:
-/// `memoryCostLimit` bounds *decoded* images (already downsampled bitmaps, the
-/// expensive thing to recreate), while `diskCapacity` bounds the *encoded* bytes
-/// kept by ``ImageDiskCache`` so a cold launch can skip the network entirely.
+/// Tuning knobs for ``ImageLoader``: `memoryCostLimit` bounds decoded bitmaps, `diskCapacity`
+/// bounds the encoded bytes kept by ``ImageDiskCache``.
 public struct ImageLoaderConfiguration: Sendable {
-    /// Approximate ceiling, in bytes, for decoded images held in memory.
-    ///
-    /// `NSCache` treats this as advisory and evicts under memory pressure well
-    /// before the limit is reached, so it is a budget rather than a guarantee.
+    /// Approximate ceiling, in bytes, for decoded images in memory. `NSCache` treats this as
+    /// advisory and may evict earlier under memory pressure.
     public var memoryCostLimit: Int
 
-    /// Ceiling, in bytes, for encoded image bytes on disk.
-    ///
-    /// A safety net rather than a working limit — see ``ImageDiskCache``. There
-    /// is no expiry to pair it with: image URLs are immutable, so an entry is
-    /// only ever evicted because of size, never because of age.
+    /// Ceiling, in bytes, for encoded image bytes on disk. A safety net, not a working limit —
+    /// see ``ImageDiskCache``. Entries are evicted by size only; image URLs never go stale.
     public var diskCapacity: Int
 
     public init(

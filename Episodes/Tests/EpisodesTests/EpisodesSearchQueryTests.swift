@@ -9,8 +9,6 @@ import Foundation
 import Testing
 @testable import Episodes
 
-/// The search is local, so this value *is* the search: what it matches is what
-/// the user sees, with no server to blame or to correct it.
 @Suite("EpisodesSearchQuery")
 struct EpisodesSearchQueryTests {
 
@@ -51,14 +49,11 @@ struct EpisodesSearchQueryTests {
         #expect(EpisodesSearchQuery(text: text).matches(.make(name: "Lawnmower Dog")))
     }
 
-    /// Typing a code is how people jump to a season or to every premiere.
     @Test("the code matches", arguments: ["S03", "s03", "E01", "S03E01"])
     func codeMatches(text: String) {
         #expect(EpisodesSearchQuery(text: text).matches(.make(season: 3, number: 1)))
     }
 
-    /// The air date is the API's own wording, which is how people remember when
-    /// something aired: a year, or a month.
     @Test("the air date matches", arguments: ["2013", "December", "december", "2, 2013"])
     func airDateMatches(text: String) {
         #expect(EpisodesSearchQuery(text: text).matches(.make(airDate: "December 2, 2013")))
@@ -79,23 +74,20 @@ struct EpisodesSearchQueryTests {
         #expect(!EpisodesSearchQuery(text: "2020").matches(episode))
     }
 
-    /// Deliberately not searched: character ids and images are opaque strings no
-    /// user has ever seen, and matching them would produce results nobody could
-    /// explain.
     @Test("character ids and images are not searched")
     func charactersAreNotSearched() {
         let episode = EpisodeModel.make(
             name: "Pilot",
             characters: [EpisodeCharacterModel(id: "squanchy",
+                                               name: "Birdperson",
                                                image: URL(string: "https://example.com/birdperson.jpeg")!)]
         )
 
         #expect(!EpisodesSearchQuery(text: "squanchy").matches(episode))
         #expect(!EpisodesSearchQuery(text: "birdperson").matches(episode))
+        #expect(!EpisodesSearchQuery(text: "birdperson").matches(episode))
     }
 
-    /// `created` is the API's bookkeeping timestamp, never on screen. Searching
-    /// it would return 2013 episodes for a query of "2021".
     @Test("the created timestamp is not searched")
     func createdIsNotSearched() {
         let episode = EpisodeModel.make(airDate: "December 2, 2013",

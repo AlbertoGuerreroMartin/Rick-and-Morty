@@ -17,70 +17,50 @@ import Storage
 import DevTools
 #endif
 
-/// The app's composition root.
-///
-/// Owns the long-lived infrastructure (a `GraphQLClient` and the cache store)
-/// and satisfies every feature's `*Dependencies` protocol through the extensions
-/// below. Each feature declares what it needs as a protocol; conforming here is
-/// what wires the app together, and a missing requirement is a compile error
-/// rather than a runtime lookup failure.
-///
-/// Screen-scoped objects (view models, use cases, repositories) are *not* held
-/// here: each feature builds them per screen and SwiftUI owns their lifetime.
+/// The app's composition root. Wires long-lived infrastructure and satisfies every feature's
+/// `*Dependencies` protocol; screen-scoped objects are built per screen instead, by each feature.
 struct AppContainer: Sendable {
-    /// Every API request and response goes through here. The store keeps the
-    /// history for a future developer-tools screen; the console logger is a
-    /// sink on it, attached only in debug builds so release output stays quiet.
+    /// Every API request/response log; console sink attached only in debug builds.
     let apiLogStore: APILogStore
-    /// Every cache read goes through here. A second store rather than a channel
-    /// on `apiLogStore`, because the two live in packages that cannot see each
-    /// other — and because the console wants them in separate categories, see
-    /// `ConsoleCacheLogger`.
+    /// Every cache-read log. Separate from `apiLogStore`: different packages, and `ConsoleCacheLogger`
+    /// wants its own category.
     let cacheLogStore: CacheLogStore
     let graphQLClient: GraphQLClient
-    /// The second endpoint the app talks to: JustWatch, for the "Watch on HBO
-    /// Max" links on the episodes screen. It shares `apiLogStore` with the
-    /// client above, so a third-party request shows up in the console and the
-    /// request inspector rather than going out unseen.
+    /// JustWatch endpoint, for the HBO Max links on the episodes screen. Shares `apiLogStore` so
+    /// these requests show up in the inspector too.
     let justWatchClient: GraphQLClient
 
-    /// One store for the whole app, app-lifetime like the client. Features get
-    /// their own directory through the key's namespace, so sharing the instance
-    /// costs them no isolation and buys a single expiry sweep and a single place
-    /// to reason about what is on disk.
+    /// One store for the whole app; features get separate directories via the cache key's namespace.
     let cacheStore: any CacheStoreContract
 
+    /// Tab-root navigation stacks, held here rather than per-screen because a deep link must reach
+    /// them before the screen it targets exists. One per tab, each with its own route type.
+    let charactersNavigator = CharactersNavigator()
+    let episodesNavigator = EpisodesNavigator()
+
+    /// Main-actor: the navigators above are main-actor classes.
+    @MainActor
     init() {
         let subsystem = Bundle.main.bundleIdentifier ?? "RickMorty"
         #if DEBUG
         apiLogStore = APILogStore(sinks: [ConsoleAPILogger(subsystem: subsystem)])
         cacheLogStore = CacheLogStore(sinks: [ConsoleCacheLogger(subsystem: subsystem)])
         #else
-        // The stores stay, the console sinks do not: a release build keeps the
-        // in-memory history (which nothing reads without the debug screen) and
-        // prints nothing.
+        // Release builds keep the in-memory history but attach no console sink.
         apiLogStore = APILogStore()
         cacheLogStore = CacheLogStore()
         #endif
         graphQLClient = GraphQLClient.rickAndMorty(logger: apiLogStore)
         justWatchClient = GraphQLClient.justWatch(logger: apiLogStore)
-        // Built here rather than as a property initializer because it needs the
-        // log store, which is only ready inside `init`.
+        // Built here, not as a property initializer, since it needs the log store from `init`.
         cacheStore = CodableCacheStore(diskStore: FileDiskStore(), logger: cacheLogStore)
-        // The loader is a shared static that exists before this container does,
-        // so it is configured rather than constructed. Synchronous on purpose:
-        // the first images are requested as soon as the first screen appears,
-        // and an `await` here would let them load unlogged.
+        // `ImageLoader.shared` is a pre-existing static, so it's configured rather than constructed.
+        // Synchronous so the first images (requested as soon as the first screen appears) are logged.
         ImageLoader.shared.setLoggers(network: apiLogStore, cache: cacheLogStore)
     }
 
-    /// Drops entries whose lifetime has run out.
-    ///
-    /// Detached and at low priority because nothing on screen waits for it: the
-    /// sweep only reclaims disk, and an expired entry is already handled
-    /// correctly on read. Running it at launch — rather than on a timer or on
-    /// every write — is what keeps a cache that is written far more often than
-    /// it is swept from growing without bound across releases.
+    /// Drops expired cache entries. Detached and low-priority: reads already handle expiry
+    /// correctly, so this only reclaims disk space.
     func sweepExpiredCache() {
         Task.detached(priority: .background) { [cacheStore] in
             try? await cacheStore.removeExpired()
@@ -96,12 +76,8 @@ extension AppContainer: LocationsDependencies {}
 
 #if DEBUG
 extension AppContainer {
-    /// What the developer-tools screen offers to clear.
-    ///
-    /// The list lives here because the container is the only place that knows
-    /// every feature. Each feature keeps its cache namespace private and exposes
-    /// a `purgeCache` on its factory instead, so adding a cache to the screen is
-    /// one line here and no change at all in `DevTools`.
+    /// What the developer-tools screen can clear. Lives here since the container is the only
+    /// place that knows every feature.
     var devToolsCaches: [DevToolsCache] {
         [
             .images(),

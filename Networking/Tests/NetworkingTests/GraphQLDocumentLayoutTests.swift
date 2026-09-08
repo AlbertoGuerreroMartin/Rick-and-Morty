@@ -9,8 +9,7 @@ import Foundation
 import Testing
 @testable import Networking
 
-/// The layout is for people, not the server — GraphQL ignores whitespace — but
-/// it is what the API log prints, so it is pinned here exactly.
+/// GraphQL ignores whitespace, but this layout is what the API log prints, so it's pinned here.
 @Suite("GraphQL document layout")
 struct GraphQLDocumentLayoutTests {
 
@@ -72,9 +71,8 @@ struct GraphQLDocumentLayoutTests {
 
 // MARK: - Test doubles
 
-/// Hand-written `document(depth:)` in the shape the `@Document` macro expands
-/// to, so the layout is tested without depending on the macro plugin, which
-/// only builds for the host.
+/// Hand-written in the shape `@Document` expands to, so layout is tested without the macro
+/// plugin, which only builds for the host.
 private struct Place: GraphQLDocumentConvertible, Decodable {
     let name: String?
     let dimension: String?

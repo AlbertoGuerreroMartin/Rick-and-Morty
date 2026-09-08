@@ -10,12 +10,6 @@ import Storage
 import SwiftUI
 
 /// The network and cache traffic, newest first.
-///
-/// This is the console log with a scrollbar, and that is the whole idea: the
-/// Xcode console is not available on a device in someone else's hands, and the
-/// question it answers — did this screen go to the network, or was it a stale
-/// cache entry — is exactly the one that comes up when a tester says the app
-/// showed them yesterday's data.
 struct RequestInspectorView: View {
     @State private var model: RequestInspectorModel
 
@@ -57,17 +51,12 @@ struct RequestInspectorView: View {
         }
         .navigationTitle("Requests")
         .navigationBarTitleDisplayMode(.inline)
-        // Always shown rather than revealed by a pull: the field is the way to
-        // find one call among hundreds of avatar loads, and a hidden one is a
-        // feature nobody knows this screen has. It matches the whole text of
-        // each entry, request and response alike — see `searchableText`.
         .searchable(
             text: $model.searchText,
             placement: .navigationBarDrawer(displayMode: .always),
             prompt: "Search requests and responses"
         )
-        // The queries are URLs, JSON keys and status codes, none of which a
-        // keyboard should capitalise or "correct".
+        // Queries are URLs, JSON keys and status codes; no autocapitalization or autocorrect.
         .textInputAutocapitalization(.never)
         .autocorrectionDisabled()
         .toolbar {
@@ -113,9 +102,7 @@ struct RequestInspectorRow: View {
                     .foregroundStyle(Self.statusColor(for: entry.status))
             }
 
-            // Truncated in the middle because both ends of these strings carry
-            // information: the host at the front, the resource at the back. A
-            // tail truncation would leave forty rows all reading the same.
+            // Middle truncation: both the host (front) and resource (back) carry information.
             Text(entry.title)
                 .font(.system(.footnote, design: .monospaced))
                 .lineLimit(1)
@@ -140,9 +127,7 @@ struct RequestInspectorRow: View {
         }
     }
 
-    /// Green for anything that worked, red for anything that did not, orange
-    /// for a call still in flight. A cache miss is not a failure — it is the
-    /// normal first read of anything — so it stays neutral.
+    /// A cache miss is not a failure, so it stays neutral rather than red.
     static func statusColor(for status: RequestInspectorEntry.Status) -> Color {
         switch status {
         case .pending:

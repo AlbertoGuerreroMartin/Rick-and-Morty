@@ -7,18 +7,12 @@
 
 import Foundation
 
-/// Resolves one property into its GraphQL selection.
-///
-/// A macro only sees the syntax of the declaration it is attached to, so
-/// `@Document` on `CharacterEntity` cannot know whether `Place` is itself a
-/// document type — it only sees the spelling `Place?`. The decision is therefore
-/// deferred to runtime: the generated code hands the property's type over and
-/// this asks it directly.
+/// Resolves one property into its GraphQL selection. Deferred to runtime since a macro can only
+/// see a property's type spelling, not whether it conforms to `GraphQLDocumentConvertible`.
 public enum GraphQLField {
 
-    /// - Returns: `name` for a scalar, `name { ... }` for a nested document type,
-    ///   or `nil` when the budget is spent — dropping the field, because an
-    ///   object field with no selection set is not valid GraphQL.
+    /// - Returns: `name` for a scalar, `name { ... }` for a nested document type, or `nil` when
+    ///   depth is spent (an object field with no selection is invalid GraphQL).
     public static func resolve<T>(_ name: String, _ type: T.Type, depth: Int) -> String? {
         guard let nested = type as? any GraphQLDocumentConvertible.Type else {
             return name
@@ -27,19 +21,8 @@ public enum GraphQLField {
         return selection(name, nested.document(depth: depth - 1))
     }
 
-    /// An object field with its selection set laid out one field per line:
-    ///
-    /// ```
-    /// origin {
-    ///   name
-    ///   dimension
-    /// }
-    /// ```
-    ///
-    /// GraphQL ignores whitespace, so this is purely for the humans reading the
-    /// document — in the API log above all. Every builder that nests a
-    /// selection goes through here, so indentation compounds correctly however
-    /// deep the schema is walked.
+    /// An object field with its selection set indented one field per line, purely for humans
+    /// reading the document (GraphQL ignores whitespace) — mainly in the API log.
     public static func selection(_ name: String, _ body: String) -> String {
         let indented = body
             .split(separator: "\n", omittingEmptySubsequences: false)
