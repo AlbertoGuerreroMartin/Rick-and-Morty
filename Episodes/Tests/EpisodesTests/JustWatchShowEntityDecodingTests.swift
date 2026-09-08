@@ -145,34 +145,6 @@ struct JustWatchShowEntityDecodingTests {
         #expect(JustWatchShowEntity.document(depth: 1) == JustWatchShowEntity.document(depth: 9))
     }
 
-    // MARK: - Debugging
-
-    /// What a developer reads when the buttons stop appearing: the counts say
-    /// whether the response arrived and whether it still has the shape this
-    /// feature expects, without printing a hundred kilobytes to say it.
-    @Test("the show summarises itself by counts")
-    func showDescribesItself() throws {
-        let description = try decode(Self.realResponse).debugDescription
-
-        #expect(description.contains("seasons:  2"))
-        #expect(description.contains("episodes: 5"))
-    }
-
-    @Test("an empty show describes its absent fields rather than crashing")
-    func emptyShowDescribesItself() {
-        #expect(JustWatchShowEntity(seasons: nil).debugDescription.contains("nil"))
-    }
-
-    @Test("an offer describes itself")
-    func offerDescribesItself() {
-        let offer = JustWatchOfferEntity(package: JustWatchPackageEntity(technicalName: "max"),
-                                         deeplinkURL: "https://play.hbomax.com/video/watch/1")
-
-        #expect(offer.debugDescription.contains("max"))
-        #expect(offer.debugDescription.contains("https://play.hbomax.com/video/watch/1"))
-        #expect(JustWatchOfferEntity(package: nil, deeplinkURL: nil).debugDescription.contains("nil"))
-    }
-
     // MARK: - Helpers
 
     private func decode(_ json: String) throws -> JustWatchShowEntity {

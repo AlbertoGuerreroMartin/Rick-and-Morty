@@ -113,25 +113,3 @@ extension JustWatchShowEntity: GraphQLDocumentConvertible {
         """
     }
 }
-
-// MARK: - Debugging
-
-/// Summarised rather than dumped. A single response for this show is ~120 KB
-/// across nine seasons and a thousand offers, so printing it whole would bury
-/// whatever it was printed to explain; the counts are what answer "did the shape
-/// change" and "did the offers arrive".
-extension JustWatchShowEntity: CustomDebugStringConvertible {
-    var debugDescription: String {
-        """
-        JustWatchShowEntity
-          seasons:  \(seasons.map { "\($0.count)" } ?? "nil")
-          episodes: \(seasons.map { "\($0.reduce(0) { $0 + ($1.episodes?.count ?? 0) })" } ?? "nil")
-        """
-    }
-}
-
-extension JustWatchOfferEntity: CustomDebugStringConvertible {
-    var debugDescription: String {
-        "Offer(package: \(package?.technicalName ?? "nil"), deeplinkURL: \(deeplinkURL ?? "nil"))"
-    }
-}

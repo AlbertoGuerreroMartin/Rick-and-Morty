@@ -167,40 +167,4 @@ struct EpisodeEntityMapperTests {
         #expect(EpisodeEntityMapperError.invalidCode("Season 1")
             .errorDescription?.contains("Season 1") == true)
     }
-
-    // MARK: - Debugging
-
-    /// The debug description is what a developer reads when a page silently
-    /// loses a row, so it has to name every field the mapper requires — a
-    /// description that omitted the one that was `nil` would be worse than none.
-    @Test("the entity describes every field it carries")
-    func entityDescribesItself() {
-        let description = EpisodeEntity.make().debugDescription
-
-        #expect(description.contains("1"))
-        #expect(description.contains("Pilot"))
-        #expect(description.contains("December 2, 2013"))
-        #expect(description.contains("S01E01"))
-        #expect(description.contains("2021-10-15T17:00:24.105Z"))
-        // The characters are summarised by count: printing a dozen URLs per
-        // episode would bury the fields anyone is actually reading this for.
-        #expect(description.contains("2"))
-    }
-
-    @Test("an empty entity describes its absent fields rather than crashing")
-    func emptyEntityDescribesItself() {
-        let entity = EpisodeEntity(id: nil, name: nil, air_date: nil,
-                                   episode: nil, created: nil, characters: nil)
-
-        #expect(entity.debugDescription.contains("nil"))
-    }
-
-    @Test("a character describes itself")
-    func characterDescribesItself() {
-        let character = EpisodeCharacterEntity(id: "1", image: URL(string: "https://example.com/1.jpeg"))
-
-        #expect(character.debugDescription.contains("1"))
-        #expect(character.debugDescription.contains("https://example.com/1.jpeg"))
-        #expect(EpisodeCharacterEntity(id: nil, image: nil).debugDescription.contains("nil"))
-    }
 }

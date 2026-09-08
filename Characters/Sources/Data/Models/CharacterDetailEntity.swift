@@ -67,38 +67,3 @@ struct CharacterDetailEpisode: GraphQLDocumentConvertible, Codable, Sendable, Id
     /// split into a season and a number.
     let episode: String?
 }
-
-// MARK: - Debugging
-
-/// Written out by hand rather than reflected. `@Document` skips computed
-/// properties, so none of this reaches the selection set.
-
-extension CharacterDetailEntity: CustomDebugStringConvertible {
-    var debugDescription: String {
-        """
-        CharacterDetailEntity
-          id:       \(id ?? "nil")
-          name:     \(name ?? "nil")
-          status:   \(status ?? "nil")
-          species:  \(species ?? "nil")
-          type:     \(type ?? "nil")
-          gender:   \(gender ?? "nil")
-          origin:   \(origin?.debugDescription ?? "nil")
-          location: \(location?.debugDescription ?? "nil")
-          image:    \(image?.absoluteString ?? "nil")
-          episode:  \(episode.map { "\($0.count)" } ?? "nil")
-        """
-    }
-}
-
-extension CharacterDetailPlace: CustomDebugStringConvertible {
-    var debugDescription: String {
-        "Place(name: \(name ?? "nil"), type: \(type ?? "nil"), dimension: \(dimension ?? "nil"))"
-    }
-}
-
-extension CharacterDetailEpisode: CustomDebugStringConvertible {
-    var debugDescription: String {
-        "Episode(id: \(id ?? "nil"), name: \(name ?? "nil"), air_date: \(air_date ?? "nil"), episode: \(episode ?? "nil"))"
-    }
-}

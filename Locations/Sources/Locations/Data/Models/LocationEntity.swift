@@ -54,26 +54,3 @@ struct LocationResidentEntity: GraphQLDocumentConvertible, Codable, Sendable, Id
     let name: String?
     let image: URL?
 }
-
-// MARK: - Debugging
-
-/// Written out by hand rather than reflected. `@Document` skips computed
-/// properties, so none of this reaches the selection set.
-extension LocationEntity: CustomDebugStringConvertible {
-    var debugDescription: String {
-        """
-        LocationEntity
-          id:        \(id ?? "nil")
-          name:      \(name ?? "nil")
-          type:      \(type ?? "nil")
-          dimension: \(dimension ?? "nil")
-          residents: \(residents.map { "\($0.count)" } ?? "nil")
-        """
-    }
-}
-
-extension LocationResidentEntity: CustomDebugStringConvertible {
-    var debugDescription: String {
-        "Resident(id: \(id ?? "nil"), image: \(image?.absoluteString ?? "nil"))"
-    }
-}

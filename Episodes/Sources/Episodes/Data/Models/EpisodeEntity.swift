@@ -53,27 +53,3 @@ struct EpisodeCharacterEntity: GraphQLDocumentConvertible, Codable, Sendable, Id
     let id: String?
     let image: URL?
 }
-
-// MARK: - Debugging
-
-/// Written out by hand rather than reflected. `@Document` skips computed
-/// properties, so none of this reaches the selection set.
-extension EpisodeEntity: CustomDebugStringConvertible {
-    var debugDescription: String {
-        """
-        EpisodeEntity
-          id:         \(id ?? "nil")
-          name:       \(name ?? "nil")
-          air_date:   \(air_date ?? "nil")
-          episode:    \(episode ?? "nil")
-          created:    \(created ?? "nil")
-          characters: \(characters.map { "\($0.count)" } ?? "nil")
-        """
-    }
-}
-
-extension EpisodeCharacterEntity: CustomDebugStringConvertible {
-    var debugDescription: String {
-        "Character(id: \(id ?? "nil"), image: \(image?.absoluteString ?? "nil"))"
-    }
-}

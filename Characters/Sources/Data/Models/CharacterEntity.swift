@@ -25,28 +25,3 @@ struct CharacterLocationEntity: GraphQLDocumentConvertible, Codable, Sendable, H
     let name: String?
     let dimension: String?
 }
-
-// MARK: - Debugging
-
-/// Written out by hand rather than reflected. `@Document` skips computed
-/// properties, so none of this reaches the selection set.
-extension CharacterEntity: CustomDebugStringConvertible {
-    var debugDescription: String {
-        """
-        CharacterEntity
-          id:       \(id)
-          name:     \(name)
-          status:   \(status)
-          species:  \(species)
-          image:    \(image?.absoluteString ?? "nil")
-          origin:   \(origin?.debugDescription ?? "nil")
-          location: \(location?.debugDescription ?? "nil")
-        """
-    }
-}
-
-extension CharacterLocationEntity: CustomDebugStringConvertible {
-    var debugDescription: String {
-        "Place(name: \(name ?? "nil"), dimension: \(dimension ?? "nil"))"
-    }
-}
