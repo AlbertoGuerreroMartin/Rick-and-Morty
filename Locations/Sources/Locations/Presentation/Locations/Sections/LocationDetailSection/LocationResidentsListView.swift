@@ -26,20 +26,24 @@ struct LocationResidentsListView: View {
                 .font(.title3.weight(.semibold))
                 .lineLimit(2)
             List {
+                // Rows are `NavigationLink`s: dead unless a `NavigationStack` is above this view.
                 ForEach(residents) { resident in
-                    HStack {
-                        CachedAsyncImage(url: resident.image, maxPixelSize: avatarPixelSize) { image in
-                            image.resizable().scaledToFill()
-                        } placeholder: {
-                            Circle().fill(.quaternary)
-                        }
-                        .frame(width: Self.avatarSize, height: Self.avatarSize)
-                        .clipShape(Circle())
-                        .padding(.trailing)
+                    NavigationLink(value: LocationsRoute.character(id: resident.id)) {
+                        HStack {
+                            CachedAsyncImage(url: resident.image, maxPixelSize: avatarPixelSize) { image in
+                                image.resizable().scaledToFill()
+                            } placeholder: {
+                                Circle().fill(.quaternary)
+                            }
+                            .frame(width: Self.avatarSize, height: Self.avatarSize)
+                            .clipShape(Circle())
+                            .padding(.trailing)
 
-                        Text(resident.name)
-                            .font(.subheadline.weight(.medium))
-                            .multilineTextAlignment(.trailing)
+                            Text(resident.name)
+                                .font(.subheadline.weight(.medium))
+                                .multilineTextAlignment(.trailing)
+                        }
+                        .accessibilityElement(children: .combine)
                     }
                 }
             }

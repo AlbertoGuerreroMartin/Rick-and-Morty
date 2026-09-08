@@ -17,7 +17,8 @@ struct LocationsFactoryTests {
 
     @Test("the factory builds a graph in its initial state")
     func factoryBuildsTheGraph() {
-        let graph = LocationsFactory.makeGraph(dependencies: StubLocationsDependencies())
+        let graph = LocationsFactory.makeGraph(dependencies: StubLocationsDependencies(),
+                                               navigator: LocationsNavigator())
 
         #expect(graph.viewModel.locationsPublished == nil)
         #expect(graph.viewModel.loadingPublished == false)
@@ -28,10 +29,23 @@ struct LocationsFactoryTests {
 
     @Test("both section mappers read the same view model")
     func bothMappersShareTheViewModel() {
-        let graph = LocationsFactory.makeGraph(dependencies: StubLocationsDependencies())
+        let graph = LocationsFactory.makeGraph(dependencies: StubLocationsDependencies(),
+                                               navigator: LocationsNavigator())
 
         #expect(graph.carouselMapper.viewModel as AnyObject === graph.viewModel)
         #expect(graph.detailMapper.viewModel as AnyObject === graph.viewModel)
+    }
+
+    @Test("the graph carries the navigator it was handed")
+    func theGraphCarriesTheNavigator() {
+        let navigator = LocationsNavigator()
+
+        let graph = LocationsFactory.makeGraph(dependencies: StubLocationsDependencies(),
+                                               navigator: navigator)
+
+        // Passed through, not rebuilt: the graph must hand the screen this exact instance.
+        #expect(graph.navigator === navigator)
+        #expect(graph.navigator.path.isEmpty)
     }
 
     @Test("purging empties the feature's cache")

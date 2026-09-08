@@ -37,6 +37,7 @@ struct AppContainer: Sendable {
     /// them before the screen it targets exists. One per tab, each with its own route type.
     let charactersNavigator = CharactersNavigator()
     let episodesNavigator = EpisodesNavigator()
+    let locationsNavigator = LocationsNavigator()
 
     /// Main-actor: the navigators above are main-actor classes.
     @MainActor

@@ -16,15 +16,23 @@ struct LocationsScreen<Content: View>: View {
     @StateObject private var graph: Owned<LocationsScreenGraph>
     private let makeSection: (LocationsScreenGraph) -> Content
 
+    /// `AnyView`: the destination is a screen from another package; see `LocationsExternalDestinations`.
+    private let makeDestination: (LocationsRoute) -> AnyView
+
     init(makeGraph: @escaping () -> LocationsScreenGraph,
-         makeSection: @escaping (LocationsScreenGraph) -> Content) {
+         makeSection: @escaping (LocationsScreenGraph) -> Content,
+         makeDestination: @escaping (LocationsRoute) -> AnyView) {
         _graph = StateObject(wrappedValue: Owned(makeGraph))
         self.makeSection = makeSection
+        self.makeDestination = makeDestination
     }
 
     var body: some View {
-        NavigationStack {
+        // Bound to the navigator's path so a tap and a programmatic push land in the same array.
+        NavigationStack(path: Bindable(graph.value.navigator).path) {
             makeSection(graph.value)
+                // Declared once for the whole stack: every row pushes the same route case.
+                .navigationDestination(for: LocationsRoute.self) { makeDestination($0) }
                 .navigationTitle("Locations")
                 // Reloads on a cache clear announced via `Storage` (e.g. from developer tools).
                 .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in

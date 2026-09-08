@@ -7,9 +7,10 @@
 
 import Characters
 import Episodes
+import Locations
 import SwiftUI
 
-/// Where features are joined: the one file that imports two of them. Feature packages can't
+/// Where features are joined: the one file that imports all of them. Feature packages can't
 /// import each other (enforced via `Package.swift`), so a feature declares the cross-feature
 /// destination it needs (e.g. `EpisodesExternalDestinations`) and the composition root supplies
 /// it — the same shape as `*Dependencies` one layer up.
@@ -26,10 +27,13 @@ final class RickMortyExternalNavigator {
 }
 
 extension RickMortyExternalNavigator: EpisodesExternalDestinations {
-    /// The Characters feature's detail screen, pushed onto the Episodes stack. Returns the
+    /// The Characters feature's detail screen, pushed onto the host stack. Returns the
     /// screen alone (no `NavigationStack`) so it inherits the host's back button; erased to
     /// `AnyView` here since this is the only side that knows the concrete type.
     func characterDetail(id: String) -> AnyView {
         AnyView(CharactersFactory.buildCharacterDetail(dependencies: container, id: id))
     }
 }
+
+/// Same requirement, same signature: `characterDetail(id:)` above satisfies both protocols.
+extension RickMortyExternalNavigator: LocationsExternalDestinations {}

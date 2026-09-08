@@ -9,6 +9,8 @@
 /// Carries both mappers so re-subscribing on each body evaluation can't yank the carousel focus back.
 @MainActor
 struct LocationsScreenGraph {
+    /// Handed in by the app rather than owned: a tab root's stack must outlive the screen.
+    let navigator: LocationsNavigator
     let viewModel: LocationsViewModel
     let carouselMapper: LocationsCarouselSectionMapper
     let detailMapper: LocationDetailSectionMapper

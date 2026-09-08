@@ -198,8 +198,8 @@ struct LocationsViewTests {
 
     @Test("the residents list draws full and empty")
     func residentsListDraws() async {
-        await render(LocationResidentsListView(residents: .crowd))
-        await render(LocationResidentsListView(residents: []))
+        await renderRows(LocationResidentsListView(residents: .crowd))
+        await renderRows(LocationResidentsListView(residents: []))
     }
 
     @Test("both empty states draw")
@@ -260,7 +260,7 @@ struct LocationsViewTests {
 
     @Test("the detail preview card draws")
     func previewCardDraws() async {
-        await render(LocationDetailSectionView.PreviewCard(content: LocationDetailContent(
+        await renderRows(LocationDetailSectionView.PreviewCard(content: LocationDetailContent(
             name: "Earth (C-137)",
             rows: [LocationDetailInfoRow(label: "Type", value: "Planet")],
             residents: .crowd,
@@ -276,7 +276,8 @@ struct LocationsViewTests {
         let viewModel = LocationsViewModel(locationsUseCase: useCase)
         let screen = LocationsScreen(
             makeGraph: {
-                LocationsScreenGraph(viewModel: viewModel,
+                LocationsScreenGraph(navigator: LocationsNavigator(),
+                                     viewModel: viewModel,
                                      carouselMapper: LocationsCarouselSectionMapper(viewModel: viewModel),
                                      detailMapper: LocationDetailSectionMapper(viewModel: viewModel))
             },
@@ -285,6 +286,12 @@ struct LocationsViewTests {
                     LocationsCarouselSectionView(viewModel: graph.viewModel,
                                                  mapper: graph.carouselMapper)
                     LocationDetailSectionView(mapper: graph.detailMapper)
+                }
+            },
+            makeDestination: { route in
+                switch route {
+                case .character(let id):
+                    AnyView(Text(id))
                 }
             }
         )
@@ -306,7 +313,29 @@ struct LocationsViewTests {
 
     @Test("the feature's public entry point draws")
     func factoryBuildDraws() async {
-        await render(LocationsFactory.build(dependencies: StubLocationsDependencies()))
+        await render(LocationsFactory.build(dependencies: StubLocationsDependencies(),
+                                            navigator: LocationsNavigator(),
+                                            external: StubExternalDestinations()))
+    }
+
+    @Test("showing a character pushes it onto the screen's path")
+    func showingACharacterPushesIt() async {
+        let dependencies = StubLocationsDependencies()
+        let navigator = LocationsNavigator()
+        let external = StubExternalDestinations()
+
+        await render(LocationsFactory.build(dependencies: dependencies,
+                                            navigator: navigator,
+                                            external: external))
+
+        navigator.showCharacter(id: "42")
+        #expect(navigator.path == [.character(id: "42")])
+
+        await render(LocationsFactory.build(dependencies: dependencies,
+                                            navigator: navigator,
+                                            external: external))
+
+        #expect(external.requestedIds.contains("42"))
     }
 
     // MARK: - Hosting
@@ -319,7 +348,12 @@ struct LocationsViewTests {
     }
 
     private func renderDetail(_ viewModel: StubLocationDetailViewModel) async {
-        await render(LocationDetailSectionView(mapper: LocationDetailSectionMapper(viewModel: viewModel)))
+        await renderRows(LocationDetailSectionView(mapper: LocationDetailSectionMapper(viewModel: viewModel)))
+    }
+
+    /// Rows need a `NavigationStack`: residents are `NavigationLink`s, dead outside one.
+    private func renderRows(_ rows: some View) async {
+        await render(NavigationStack { rows })
     }
 
     /// Laid out three times: the initial `.hidden` state, what the mapper produces after the
@@ -382,6 +416,16 @@ private extension Array where Element == LocationModel {
                                type: index.isMultiple(of: 3) ? nil : "Planet",
                                dimension: "Dimension C-\(index)")
         }
+    }
+}
+
+@MainActor
+private final class StubExternalDestinations: LocationsExternalDestinations {
+    private(set) var requestedIds: [String] = []
+
+    func characterDetail(id: String) -> AnyView {
+        requestedIds.append(id)
+        return AnyView(Text(id))
     }
 }
 

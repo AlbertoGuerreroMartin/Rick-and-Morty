@@ -50,7 +50,9 @@ struct RickMortyApp: App {
             }
 
             Tab("Locations", systemImage: "mappin") {
-                LocationsFactory.build(dependencies: container)
+                LocationsFactory.build(dependencies: container,
+                                       navigator: container.locationsNavigator,
+                                       external: externalNavigator)
             }
         }
 

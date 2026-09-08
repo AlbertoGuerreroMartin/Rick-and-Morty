@@ -11,10 +11,19 @@ import SwiftUI
 public enum LocationsFactory {
     /// Returns a screen description, not a built graph: the closures are invoked once per
     /// screen identity, so a parent re-evaluating its body doesn't rebuild the view model.
-    public static func build(dependencies: any LocationsDependencies) -> some View {
+    public static func build(dependencies: any LocationsDependencies,
+                             navigator: LocationsNavigator,
+                             external: any LocationsExternalDestinations) -> some View {
         LocationsScreen(
-            makeGraph: { makeGraph(dependencies: dependencies) },
-            makeSection: { graph in section(graph) }
+            makeGraph: { makeGraph(dependencies: dependencies, navigator: navigator) },
+            makeSection: { graph in section(graph) },
+            // Exhaustive switch: adding a `LocationsRoute` case is a compile error here.
+            makeDestination: { route in
+                switch route {
+                case .character(let id):
+                    external.characterDetail(id: id)
+                }
+            }
         )
     }
 
@@ -23,27 +32,36 @@ public enum LocationsFactory {
         try await LocationsLocalDataSource(cacheStore: dependencies.cacheStore).removeAll()
     }
 
-    static func makeGraph(dependencies: any LocationsDependencies) -> LocationsScreenGraph {
+    static func makeGraph(dependencies: any LocationsDependencies,
+                          navigator: LocationsNavigator) -> LocationsScreenGraph {
         let remoteDataSource = LocationsRemoteDataSource(client: dependencies.graphQLClient)
         let localDataSource = LocationsLocalDataSource(cacheStore: dependencies.cacheStore)
         let repository = LocationsRepository(remoteDataSource: remoteDataSource,
                                              localDataSource: localDataSource,
                                              mapper: LocationEntityMapper())
-        return makeGraph(repository: repository)
+        return makeGraph(repository: repository, navigator: navigator)
     }
 
     /// Split out so a preview or test can substitute the repository without restating the wiring above it.
-    static func makeGraph(repository: LocationsRepositoryContract) -> LocationsScreenGraph {
+    static func makeGraph(repository: LocationsRepositoryContract,
+                          navigator: LocationsNavigator) -> LocationsScreenGraph {
         let useCase = LocationsUseCase(repository: repository)
         let viewModel = LocationsViewModel(locationsUseCase: useCase)
-        return LocationsScreenGraph(viewModel: viewModel,
+        return LocationsScreenGraph(navigator: navigator,
+                                    viewModel: viewModel,
                                     carouselMapper: LocationsCarouselSectionMapper(viewModel: viewModel),
                                     detailMapper: LocationDetailSectionMapper(viewModel: viewModel))
     }
 
     static func previewScreen(repository: LocationsRepositoryContract) -> some View {
-        LocationsScreen(makeGraph: { makeGraph(repository: repository) },
-                        makeSection: { graph in section(graph) })
+        LocationsScreen(makeGraph: { makeGraph(repository: repository, navigator: LocationsNavigator()) },
+                        makeSection: { graph in section(graph) },
+                        makeDestination: { route in
+                            switch route {
+                            case .character(let id):
+                                AnyView(Text("Character \(id)"))
+                            }
+                        })
     }
 
     /// Carousel has an intrinsic height; the detail card takes the remaining space.
