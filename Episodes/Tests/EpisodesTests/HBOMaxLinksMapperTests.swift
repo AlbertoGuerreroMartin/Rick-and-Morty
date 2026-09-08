@@ -105,9 +105,12 @@ struct HBOMaxLinksMapperTests {
     /// an earlier version of the mapper did.
     @Test("a marketing-site URL is reduced to the canonical link for the episode, not the show")
     func marketingURLsAreNormalized() {
+        // swiftlint:disable line_length
+        let hboLink = "https://www.hbomax.com/gb/en/shows/rick-and-morty/s1/ab553cdc-e15d-4597-b65f-bec9201fd2dd/e1-pilot/ef7d1c40-2ecc-471a-81a5-7fe06400240a"
+        // swiftlint:enable line_length
         let links = HBOMaxLinksMapper().map(.make(episodes: [
             .make(season: 1, number: 1, offers: [
-                .max("https://www.hbomax.com/gb/en/shows/rick-and-morty/s1/ab553cdc-e15d-4597-b65f-bec9201fd2dd/e1-pilot/ef7d1c40-2ecc-471a-81a5-7fe06400240a")
+                .max(hboLink)
             ])
         ]))
 

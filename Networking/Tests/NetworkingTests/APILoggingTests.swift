@@ -23,13 +23,15 @@ struct APILogFormatterTests {
 
     @Test("a request prints its line, method, sorted headers and a readable GraphQL body")
     func request() {
+        let body = #"{"query":"query($page: Int) {\n  result: characters(page: $page) {\n    id\n  }\n}","variables":{"page":1,"name":"Rick"}}"#
+        let data = Data(body.utf8)
         let record = APIRequestRecord(
             id: id,
             timestamp: timestamp,
             method: "POST",
             url: url,
             headers: ["Content-Type": "application/json", "Accept": "application/json"],
-            body: Data(#"{"query":"query($page: Int) {\n  result: characters(page: $page) {\n    id\n  }\n}","variables":{"page":1,"name":"Rick"}}"#.utf8)
+            body: data
         )
 
         #expect(formatter.string(for: record) == """
@@ -415,8 +417,8 @@ private final class StubURLProtocol: URLProtocol {
 
     nonisolated(unsafe) static var stub: Stub?
 
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override static func canInit(with request: URLRequest) -> Bool { true }
+    override static func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
         switch Self.stub {

@@ -36,6 +36,10 @@ function_body_length:
   warning: 100
   error: 150
 
+type_body_length:
+  warning: 300
+  error: 350
+
 type_name:
   # Contract / mapper / view-model types are named after their section, which
   # produces long but descriptive names such as

@@ -143,7 +143,7 @@ struct LocationDetailSectionMapperTests {
     @Test("the resident count is pluralized")
     func residentCountIsPluralized() throws {
         #expect(try residentsDescription(residents: []) == "No residents")
-        #expect(try residentsDescription(residents: Array(Array<LocationResidentModel>.crowd.prefix(1)))
+        #expect(try residentsDescription(residents: Array([LocationResidentModel].crowd.prefix(1)))
                 == "1 resident")
         #expect(try residentsDescription(residents: .crowd) == "6 residents")
     }

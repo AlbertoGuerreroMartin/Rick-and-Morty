@@ -8,11 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		0AFD73D0C3089C97C3A6C55B /* DevTools in Frameworks */ = {isa = PBXBuildFile; productRef = 77123240906A941889D325F5 /* DevTools */; };
-		9C8DF7BF6851F75C5411FFD3 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = B5B44D7EBF8304E84F2D54A0 /* Storage */; };
 		26C675EC3041B3EB007FE2C0 /* Episodes in Frameworks */ = {isa = PBXBuildFile; productRef = 26C675EB3041B3EB007FE2C0 /* Episodes */; };
 		3C41E2892D605D21EBE6C646 /* Networking in Frameworks */ = {isa = PBXBuildFile; productRef = 27E1394B1ADE841D81911487 /* Networking */; };
 		9251AE4D8DD23ED1CD4AD745 /* Characters in Frameworks */ = {isa = PBXBuildFile; productRef = 8073D94672928FEBD2C76876 /* Characters */; };
 		99CB6D30E09D342F8571BA24 /* DesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = BCA91DA770FDEEC44934280E /* DesignSystem */; };
+		9C8DF7BF6851F75C5411FFD3 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = B5B44D7EBF8304E84F2D54A0 /* Storage */; };
 		D17EA892F16B5565CC0E59EB /* Locations in Frameworks */ = {isa = PBXBuildFile; productRef = 3E0870939F9BDEB97CE3CC94 /* Locations */; };
 /* End PBXBuildFile section */
 
@@ -301,6 +301,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		0718293A4B5C6D7E8F90A1B2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = D4E5F60718293A4B5C6D7E8F /* SwiftLintBuildToolPlugin */;
+		};
 		26DC4F2230406A8E00AA6CF6 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 26DC4F1230406A8C00AA6CF6 /* RickMorty */;
@@ -318,10 +322,6 @@
 		F60718293A4B5C6D7E8F90A1 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			productRef = C3D4E5F60718293A4B5C6D7E /* SwiftLintBuildToolPlugin */;
-		};
-		0718293A4B5C6D7E8F90A1B2 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = D4E5F60718293A4B5C6D7E8F /* SwiftLintBuildToolPlugin */;
 		};
 /* End PBXTargetDependency section */
 
@@ -647,13 +647,13 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../DevTools;
 		};
-		47D4CB09E777FD2B521E7BD8 /* XCLocalSwiftPackageReference "../Storage" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../Storage;
-		};
 		37DBB7676482A9B0EDA3405A /* XCLocalSwiftPackageReference "../Locations" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../Locations;
+		};
+		47D4CB09E777FD2B521E7BD8 /* XCLocalSwiftPackageReference "../Storage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../Storage;
 		};
 		4A1F2C8B60E37D9051AB33C1 /* XCLocalSwiftPackageReference "../Episodes" */ = {
 			isa = XCLocalSwiftPackageReference;
@@ -685,14 +685,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		77123240906A941889D325F5 /* DevTools */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = DevTools;
-		};
-		B5B44D7EBF8304E84F2D54A0 /* Storage */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Storage;
-		};
 		26C675EB3041B3EB007FE2C0 /* Episodes */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Episodes;
@@ -705,18 +697,26 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = Locations;
 		};
+		77123240906A941889D325F5 /* DevTools */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DevTools;
+		};
 		8073D94672928FEBD2C76876 /* Characters */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Characters;
-		};
-		BCA91DA770FDEEC44934280E /* DesignSystem */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = DesignSystem;
 		};
 		B2C3D4E5F60718293A4B5C6D /* SwiftLintBuildToolPlugin */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A1B2C3D4E5F60718293A4B5C /* XCRemoteSwiftPackageReference "SwiftLintPlugins" */;
 			productName = "plugin:SwiftLintBuildToolPlugin";
+		};
+		B5B44D7EBF8304E84F2D54A0 /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Storage;
+		};
+		BCA91DA770FDEEC44934280E /* DesignSystem */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DesignSystem;
 		};
 		C3D4E5F60718293A4B5C6D7E /* SwiftLintBuildToolPlugin */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -55,12 +55,13 @@ public actor ImageLoader {
     /// A class around the `Mutex` rather than the `Mutex` itself: `Mutex` is
     /// non-copyable, and the detached download task needs to capture the thing
     /// it reads the sinks from.
-    private final class LoggerBox: Sendable {
-        struct Loggers: Sendable {
-            var network: any APILogSinkContract
-            var cache: any CacheLogSinkContract
-        }
 
+    private struct Loggers: Sendable {
+        var network: any APILogSinkContract
+        var cache: any CacheLogSinkContract
+    }
+
+    private final class LoggerBox: Sendable {
         private let storage: Mutex<Loggers>
 
         init(network: any APILogSinkContract, cache: any CacheLogSinkContract) {

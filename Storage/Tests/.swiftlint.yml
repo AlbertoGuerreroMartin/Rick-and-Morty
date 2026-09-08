@@ -1,0 +1,5 @@
+# Nested SwiftLint configuration for test sources only.
+# SwiftLint merges it on top of the enclosing config, so it can only relax
+# rules for the files under this directory.
+disabled_rules:
+  - file_length

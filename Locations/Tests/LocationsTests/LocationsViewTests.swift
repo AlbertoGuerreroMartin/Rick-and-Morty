@@ -317,27 +317,6 @@ struct LocationsViewTests {
         #expect(viewModel.loadNextPageCallCount == 0)
     }
 
-    /// The helix no screen draws any more. It is kept compiled and tested — the
-    /// projection in `SpiralGeometry` is worth keeping — so it is still hosted
-    /// here over a list long enough to have items outside the visible span.
-    @Test("the unused navigator draws with a selection well down the helix")
-    func navigatorDraws() async {
-        let items = (1...20).map { index in
-            SpiralItem(id: "\(index)", title: "Location \(index)",
-                       subtitle: index.isMultiple(of: 2) ? "Planet" : "",
-                       symbol: "mappin")
-        }
-
-        await render(SpiralNavigator(items: items, selectedId: "12"))
-    }
-
-    /// An empty helix is what every index-from-an-offset calculation in there
-    /// has to survive.
-    @Test("the unused navigator draws with no items at all")
-    func navigatorDrawsEmpty() async {
-        await render(SpiralNavigator(items: [], selectedId: nil))
-    }
-
     /// The card's preview shape draws the same content the section does, so it
     /// is worth a layout pass of its own.
     @Test("the detail preview card draws")

@@ -85,7 +85,7 @@ struct CharactersGridSectionMapperTests {
             .make(characters: nil),
             .make(characters: [], loadFailed: true),
             .make(characters: [], filter: CharactersFilter(name: "rick", status: .alive)),
-            .make(characters: [.rick, .morty], pagination: .failed(nextPage: 3), filter: CharactersFilter(name: "m")),
+            .make(characters: [.rick, .morty], pagination: .failed(nextPage: 3), filter: CharactersFilter(name: "m"))
         ]
         let listMapper = CharactersListSectionMapper(viewModel: StubCharactersListViewModel())
 
@@ -97,10 +97,11 @@ struct CharactersGridSectionMapperTests {
                 break
             case (.empty(let lhs), .empty(let rhs)):
                 #expect(lhs == rhs)
-            case (.visible(let lc, let lf, let lh), .visible(let gc, let gf, let gh)):
-                #expect(lc == gc)
-                #expect(lf == gf)
-                #expect(lh == gh)
+            case (.visible(let listCharacters, let listFooter, let listHighlight),
+                .visible(let gridCharacter, let gridFooter, let gridHighlight)):
+                #expect(listCharacters == gridCharacter)
+                #expect(listFooter == gridFooter)
+                #expect(listHighlight == gridHighlight)
             default:
                 Issue.record("List drew \(list) while grid drew \(grid)")
             }

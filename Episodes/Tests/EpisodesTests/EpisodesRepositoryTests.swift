@@ -233,8 +233,10 @@ struct EpisodesRepositoryHBOMaxLinksTests {
 
     @Test("a fresh cache entry answers without touching JustWatch")
     func freshCacheSkipsTheNetwork() async throws {
-        let local = FakeEpisodesLocalDataSource(offers: .fresh(offers: .oneEpisode(link: "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444")))
-        let links = FakeHBOMaxLinksRemoteDataSource(result: .success(.oneEpisode(link: "https://play.hbomax.com/video/watch/bbbbbbbb-1111-2222-3333-444444444444")))
+        let hboLinkA = "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444"
+        let hboLinkB = "https://play.hbomax.com/video/watch/bbbbbbbb-1111-2222-3333-444444444444"
+        let local = FakeEpisodesLocalDataSource(offers: .fresh(offers: .oneEpisode(link: hboLinkA)))
+        let links = FakeHBOMaxLinksRemoteDataSource(result: .success(.oneEpisode(link: hboLinkB)))
         let repository = makeRepository(local: local, links: links)
 
         let fetched = try await repository.fetchHBOMaxLinks()
@@ -245,8 +247,10 @@ struct EpisodesRepositoryHBOMaxLinksTests {
 
     @Test("an expired entry is refreshed from JustWatch and written back")
     func expiredCacheRefetchesAndStores() async throws {
-        let local = FakeEpisodesLocalDataSource(offers: .expired(offers: .oneEpisode(link: "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444")))
-        let links = FakeHBOMaxLinksRemoteDataSource(result: .success(.oneEpisode(link: "https://play.hbomax.com/video/watch/bbbbbbbb-1111-2222-3333-444444444444")))
+        let hboLinkA = "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444"
+        let hboLinkB = "https://play.hbomax.com/video/watch/bbbbbbbb-1111-2222-3333-444444444444"
+        let local = FakeEpisodesLocalDataSource(offers: .expired(offers: .oneEpisode(link: hboLinkA)))
+        let links = FakeHBOMaxLinksRemoteDataSource(result: .success(.oneEpisode(link: hboLinkB)))
         let repository = makeRepository(local: local, links: links)
 
         let fetched = try await repository.fetchHBOMaxLinks()
@@ -261,7 +265,8 @@ struct EpisodesRepositoryHBOMaxLinksTests {
     /// last week's buttons on the rows.
     @Test("a failed refresh falls back to the stale entry")
     func staleEntrySurvivesAFailedFetch() async throws {
-        let local = FakeEpisodesLocalDataSource(offers: .expired(offers: .oneEpisode(link: "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444")))
+        let hboLink = "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444"
+        let local = FakeEpisodesLocalDataSource(offers: .expired(offers: .oneEpisode(link: hboLink)))
         let repository = makeRepository(local: local,
                                         links: FakeHBOMaxLinksRemoteDataSource(result: .failure(TestError())))
 
@@ -283,8 +288,9 @@ struct EpisodesRepositoryHBOMaxLinksTests {
 
     @Test("a cache read that throws is a miss, not a failure")
     func cacheReadFailureFallsThroughToTheNetwork() async throws {
+        let hboLink = "https://play.hbomax.com/video/watch/bbbbbbbb-1111-2222-3333-444444444444"
         let local = FakeEpisodesLocalDataSource(readError: TestError())
-        let links = FakeHBOMaxLinksRemoteDataSource(result: .success(.oneEpisode(link: "https://play.hbomax.com/video/watch/bbbbbbbb-1111-2222-3333-444444444444")))
+        let links = FakeHBOMaxLinksRemoteDataSource(result: .success(.oneEpisode(link: hboLink)))
         let repository = makeRepository(local: local, links: links)
 
         #expect(try await repository.fetchHBOMaxLinks().url(season: 1, number: 1) != nil)
@@ -293,8 +299,9 @@ struct EpisodesRepositoryHBOMaxLinksTests {
 
     @Test("a cache write that throws still returns the links")
     func cacheWriteFailureDoesNotFailTheFetch() async throws {
+        let hboLink = "https://play.hbomax.com/video/watch/bbbbbbbb-1111-2222-3333-444444444444"
         let local = FakeEpisodesLocalDataSource(writeError: TestError())
-        let links = FakeHBOMaxLinksRemoteDataSource(result: .success(.oneEpisode(link: "https://play.hbomax.com/video/watch/bbbbbbbb-1111-2222-3333-444444444444")))
+        let links = FakeHBOMaxLinksRemoteDataSource(result: .success(.oneEpisode(link: hboLink)))
         let repository = makeRepository(local: local, links: links)
 
         #expect(try await repository.fetchHBOMaxLinks().url(season: 1, number: 1) != nil)
@@ -302,7 +309,8 @@ struct EpisodesRepositoryHBOMaxLinksTests {
 
     @Test("cancellation is rethrown rather than answered from a stale entry")
     func cancellationIsRethrown() async {
-        let local = FakeEpisodesLocalDataSource(offers: .expired(offers: .oneEpisode(link: "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444")))
+        let hboLink = "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444"
+        let local = FakeEpisodesLocalDataSource(offers: .expired(offers: .oneEpisode(link: hboLink)))
         let repository = makeRepository(local: local,
                                         links: FakeHBOMaxLinksRemoteDataSource(result: .failure(CancellationError())))
 
@@ -316,8 +324,9 @@ struct EpisodesRepositoryHBOMaxLinksTests {
     /// whatever the rules were when it was written.
     @Test("a cached entity is mapped on read, not when it was stored")
     func cachedOffersAreMappedOnRead() async throws {
+        let hboLink = "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444?utm_source=universal_search"
         let local = FakeEpisodesLocalDataSource(offers: .fresh(offers: .oneEpisode(
-            link: "https://play.hbomax.com/video/watch/aaaaaaaa-1111-2222-3333-444444444444?utm_source=universal_search"
+            link: hboLink
         )))
 
         let fetched = try await makeRepository(local: local).fetchHBOMaxLinks()
