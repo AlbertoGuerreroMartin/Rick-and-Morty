@@ -27,10 +27,8 @@ struct CharactersFilterBarRenderModel: Equatable, Sendable {
     static let empty = CharactersFilterBarRenderModel(filter: .empty, activeCount: 0, chips: [])
 }
 
-protocol CharactersFilterBarSectionMapperContract: SectionMapperContract {}
-
 @MainActor
-final class CharactersFilterBarSectionMapper: CharactersFilterBarSectionMapperContract {
+final class CharactersFilterBarSectionMapper: SectionMapperContract {
     typealias ViewModel = CharactersFilterBarSectionViewModelContract
     typealias DataModel = CharactersFilter
     typealias RenderModel = CharactersFilterBarRenderModel

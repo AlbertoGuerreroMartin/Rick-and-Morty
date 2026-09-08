@@ -6,18 +6,24 @@
 //
 
 import Combine
+import Core
 import SwiftUI
 
-/// Everything under the carousel: what the circle at the focus actually is. No view model —
-/// the carousel owns retry and pagination — so this just draws what the mapper produces.
-struct LocationDetailSectionView: View {
+/// Everything under the carousel: what the circle at the focus actually is. Draws only the
+/// render model; the carousel owns retry and pagination.
+struct LocationDetailSectionView: SectionViewContract {
 
-    private let renderModelPublisher: AnyPublisher<LocationDetailRenderModel, Never>
+    /// Held to satisfy `SectionViewContract`; nothing is called on it.
+    let viewModel: any LocationDetailSectionViewModelContract
+
+    let renderModelPublisher: AnyPublisher<LocationDetailRenderModel, Never>
 
     @State var renderModel: LocationDetailRenderModel = .hidden
 
-    init(mapper: LocationDetailSectionMapper) {
-        self.renderModelPublisher = mapper.renderModelPublisher()
+    init(viewModel: any LocationDetailSectionViewModelContract,
+         renderModelPublisher: AnyPublisher<LocationDetailRenderModel, Never>) {
+        self.viewModel = viewModel
+        self.renderModelPublisher = renderModelPublisher
     }
 
     var body: some View {

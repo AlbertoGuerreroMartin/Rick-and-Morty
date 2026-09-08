@@ -6,11 +6,12 @@
 //
 
 import Combine
+import Core
 import DesignSystem
 import SwiftUI
 
 /// The same characters as the list, drawn two to a row as large square images.
-struct CharactersGridSectionView: View {
+struct CharactersGridSectionView: SectionViewContract {
     private static let columnCount = 2
     private static let spacing: CGFloat = 12
     private static let horizontalPadding: CGFloat = 16
@@ -21,7 +22,7 @@ struct CharactersGridSectionView: View {
 
     let viewModel: any CharactersGridSectionViewModelContract
 
-    private let renderModelPublisher: AnyPublisher<CharactersGridRenderModel, Never>
+    let renderModelPublisher: AnyPublisher<CharactersGridRenderModel, Never>
 
     @State var renderModel: CharactersGridRenderModel = .hidden
 
@@ -29,9 +30,9 @@ struct CharactersGridSectionView: View {
     @State private var sectionWidth: CGFloat = 0
 
     init(viewModel: any CharactersGridSectionViewModelContract,
-         mapper: CharactersGridSectionMapper) {
+         renderModelPublisher: AnyPublisher<CharactersGridRenderModel, Never>) {
         self.viewModel = viewModel
-        self.renderModelPublisher = mapper.renderModelPublisher()
+        self.renderModelPublisher = renderModelPublisher
     }
 
     private var cellWidth: CGFloat {

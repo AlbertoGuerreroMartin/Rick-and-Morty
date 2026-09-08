@@ -186,22 +186,26 @@ struct CharactersViewTests {
     /// link outside a stack is a row that does nothing.
     private func renderList(_ viewModel: StubCharactersSectionViewModel) async {
         await render(NavigationStack {
-            CharactersListSectionView(viewModel: viewModel,
-                                      mapper: CharactersListSectionMapper(viewModel: viewModel))
+            CharactersListSectionView(
+                viewModel: viewModel,
+                renderModelPublisher: CharactersListSectionMapper(viewModel: viewModel).renderModelPublisher()
+            )
         })
     }
 
     private func renderGrid(_ viewModel: StubCharactersSectionViewModel) async {
         await render(NavigationStack {
-            CharactersGridSectionView(viewModel: viewModel,
-                                      mapper: CharactersGridSectionMapper(viewModel: viewModel))
+            CharactersGridSectionView(
+                viewModel: viewModel,
+                renderModelPublisher: CharactersGridSectionMapper(viewModel: viewModel).renderModelPublisher()
+            )
         })
     }
 
     private func renderFilterBar(_ viewModel: StubCharactersFilterBarViewsViewModel) async {
         await render(CharactersFilterBarSectionView(
             viewModel: viewModel,
-            mapper: CharactersFilterBarSectionMapper(viewModel: viewModel)
+            renderModelPublisher: CharactersFilterBarSectionMapper(viewModel: viewModel).renderModelPublisher()
         ))
     }
 

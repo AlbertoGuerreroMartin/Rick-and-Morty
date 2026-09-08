@@ -6,14 +6,15 @@
 //
 
 import Combine
+import Core
 import SwiftUI
 
 /// The strip of capsules under the search bar; always visible, as the only entry point to the filter sheet.
-struct CharactersFilterBarSectionView: View {
+struct CharactersFilterBarSectionView: SectionViewContract {
     /// Held as the contract, not observed directly.
     let viewModel: any CharactersFilterBarSectionViewModelContract
 
-    private let renderModelPublisher: AnyPublisher<CharactersFilterBarRenderModel, Never>
+    let renderModelPublisher: AnyPublisher<CharactersFilterBarRenderModel, Never>
 
     @State private var renderModel: CharactersFilterBarRenderModel = .empty
 
@@ -21,9 +22,9 @@ struct CharactersFilterBarSectionView: View {
     @State private var isPresentingFilters = false
 
     init(viewModel: any CharactersFilterBarSectionViewModelContract,
-         mapper: CharactersFilterBarSectionMapper) {
+         renderModelPublisher: AnyPublisher<CharactersFilterBarRenderModel, Never>) {
         self.viewModel = viewModel
-        self.renderModelPublisher = mapper.renderModelPublisher()
+        self.renderModelPublisher = renderModelPublisher
     }
 
     var body: some View {

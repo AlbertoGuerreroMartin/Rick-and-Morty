@@ -24,12 +24,10 @@ enum LocationsCarouselRenderModel: Equatable {
                  footer: LocationsSectionFooter)
 }
 
-protocol LocationsCarouselSectionMapperContract: SectionMapperContract {}
-
 /// Turns what was loaded, what is selected and where pagination stands into the
 /// carousel.
 @MainActor
-final class LocationsCarouselSectionMapper: LocationsCarouselSectionMapperContract {
+final class LocationsCarouselSectionMapper: SectionMapperContract {
     typealias ViewModel = LocationsCarouselSectionViewModelContract
     typealias RenderModel = LocationsCarouselRenderModel
 

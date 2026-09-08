@@ -66,7 +66,10 @@ struct EpisodesScreen<Content: View, Destination: View>: View {
                                        listMapper: EpisodesListSectionMapper(viewModel: viewModel))
         },
         makeSection: { graph in
-            EpisodesListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
+            EpisodesListSectionView(
+                viewModel: graph.viewModel,
+                renderModelPublisher: graph.listMapper.renderModelPublisher()
+            )
         },
         makeDestination: { route in
             switch route {

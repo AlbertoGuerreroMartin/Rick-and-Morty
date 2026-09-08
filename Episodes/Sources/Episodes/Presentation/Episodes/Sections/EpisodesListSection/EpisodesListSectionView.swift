@@ -6,21 +6,22 @@
 //
 
 import Combine
+import Core
 import SwiftUI
 
-struct EpisodesListSectionView: View {
+struct EpisodesListSectionView: SectionViewContract {
 
     /// Not observed: only called for `retryLoad()`. Rows arrive through the mapper into `@State`.
     let viewModel: any EpisodesListSectionViewModelContract
 
-    private let renderModelPublisher: AnyPublisher<EpisodesListRenderModel, Never>
+    let renderModelPublisher: AnyPublisher<EpisodesListRenderModel, Never>
 
     @State var renderModel: EpisodesListRenderModel = .hidden
 
     init(viewModel: any EpisodesListSectionViewModelContract,
-         mapper: EpisodesListSectionMapper) {
+         renderModelPublisher: AnyPublisher<EpisodesListRenderModel, Never>) {
         self.viewModel = viewModel
-        self.renderModelPublisher = mapper.renderModelPublisher()
+        self.renderModelPublisher = renderModelPublisher
     }
 
     var body: some View {

@@ -16,10 +16,8 @@ enum CharacterDetailEpisodesRenderModel: Equatable {
     case visible(episodes: [CharacterDetailEpisodeModel])
 }
 
-protocol CharacterDetailEpisodesSectionMapperContract: SectionMapperContract {}
-
 @MainActor
-final class CharacterDetailEpisodesSectionMapper: CharacterDetailEpisodesSectionMapperContract {
+final class CharacterDetailEpisodesSectionMapper: SectionMapperContract {
     typealias ViewModel = CharacterDetailEpisodesSectionViewModelContract
     typealias RenderModel = CharacterDetailEpisodesRenderModel
 

@@ -6,12 +6,13 @@
 //
 
 import Combine
+import Core
 import DesignSystem
 import SwiftUI
 
 /// The picture, full width and square, with name and status over the bottom; or whatever the
 /// screen has instead while there is nothing to show — a spinner, or the failure and its Retry.
-struct CharacterDetailHeaderSectionView: View {
+struct CharacterDetailHeaderSectionView: SectionViewContract {
     /// Decode width before the section is measured; wide enough to avoid a soft first frame.
     private static let fallbackWidth: CGFloat = 390
 
@@ -20,7 +21,7 @@ struct CharacterDetailHeaderSectionView: View {
 
     let viewModel: any CharacterDetailHeaderSectionViewModelContract
 
-    private let renderModelPublisher: AnyPublisher<CharacterDetailHeaderRenderState, Never>
+    let renderModelPublisher: AnyPublisher<CharacterDetailHeaderRenderState, Never>
 
     @State var renderModel: CharacterDetailHeaderRenderState = .hidden
 
@@ -30,9 +31,9 @@ struct CharacterDetailHeaderSectionView: View {
     @State private var sectionWidth: CGFloat = 0
 
     init(viewModel: any CharacterDetailHeaderSectionViewModelContract,
-         mapper: CharacterDetailHeaderSectionMapper) {
+         renderModelPublisher: AnyPublisher<CharacterDetailHeaderRenderState, Never>) {
         self.viewModel = viewModel
-        self.renderModelPublisher = mapper.renderModelPublisher()
+        self.renderModelPublisher = renderModelPublisher
     }
 
     private var width: CGFloat {

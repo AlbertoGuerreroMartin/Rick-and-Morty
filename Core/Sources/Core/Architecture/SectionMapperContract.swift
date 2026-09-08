@@ -23,10 +23,9 @@ public protocol SectionMapperContract {
 }
 
 public extension SectionMapperContract {
-    func renderModelPublisher<T>() -> AnyPublisher<T, Never> {
+    func renderModelPublisher() -> AnyPublisher<RenderModel, Never> {
         dataPublisher(viewModel)
             .map { self.mapToRenderModel($0) }
-            .compactMap { $0 as? T }
             .receive(on: DispatchQueue.main)
             .eraseToAnyPublisher()
     }

@@ -16,7 +16,10 @@ public enum EpisodesFactory {
         EpisodesScreen(
             makeGraph: { makeGraph(dependencies: dependencies, navigator: navigator) },
             makeSection: { graph in
-                EpisodesListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
+                EpisodesListSectionView(
+                    viewModel: graph.viewModel,
+                    renderModelPublisher: graph.listMapper.renderModelPublisher()
+                )
             },
             // Exhaustive switch: adding an `EpisodesRoute` case is a compile error here.
             makeDestination: { route in

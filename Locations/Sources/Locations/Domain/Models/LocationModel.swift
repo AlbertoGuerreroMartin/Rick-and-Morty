@@ -5,7 +5,7 @@
 //  Created by Alberto Guerrero Martin on 08/09/2026.
 //
 
-import SwiftUI
+import Foundation
 
 /// One location, in domain terms. `id` and `name` are required; `type`/`dimension` are not.
 /// Selection is published by `id`, not index, so a page load can't silently re-point the detail.
@@ -37,14 +37,6 @@ enum LocationResidentStatus: String, Sendable, Hashable, CaseIterable {
         case "alive": self = .alive
         case "dead": self = .dead
         default: self = .unknown
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .alive: .green
-        case .dead: .red
-        case .unknown: .gray
         }
     }
 }

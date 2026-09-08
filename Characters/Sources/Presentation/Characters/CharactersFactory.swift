@@ -18,14 +18,22 @@ public enum CharactersFactory {
             makeSection: { graph, layout in
                 // Above the results, not inside them, so it doesn't scroll away with the rows.
                 VStack(spacing: 0) {
-                    CharactersFilterBarSectionView(viewModel: graph.viewModel,
-                                                   mapper: graph.filterBarMapper)
+                    CharactersFilterBarSectionView(
+                        viewModel: graph.viewModel,
+                        renderModelPublisher: graph.filterBarMapper.renderModelPublisher()
+                    )
                     // Two section types, not one with a mode, so each subscribes to its own mapper.
                     switch layout {
                     case .list:
-                        CharactersListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
+                        CharactersListSectionView(
+                            viewModel: graph.viewModel,
+                            renderModelPublisher: graph.listMapper.renderModelPublisher()
+                        )
                     case .grid:
-                        CharactersGridSectionView(viewModel: graph.viewModel, mapper: graph.gridMapper)
+                        CharactersGridSectionView(
+                            viewModel: graph.viewModel,
+                            renderModelPublisher: graph.gridMapper.renderModelPublisher()
+                        )
                     }
                 }
             },

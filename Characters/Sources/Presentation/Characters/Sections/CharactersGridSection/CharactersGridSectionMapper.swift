@@ -15,11 +15,9 @@ enum CharactersGridRenderModel: Equatable {
     case empty(CharactersSectionEmptyReason)
 }
 
-protocol CharactersGridSectionMapperContract: SectionMapperContract {}
-
 /// Mirrors the list mapper's rules so toggling layouts never disagrees on state.
 @MainActor
-final class CharactersGridSectionMapper: CharactersGridSectionMapperContract {
+final class CharactersGridSectionMapper: SectionMapperContract {
     typealias ViewModel = CharactersGridSectionViewModelContract
     typealias RenderModel = CharactersGridRenderModel
 

@@ -5,7 +5,7 @@
 //  Created by Alberto Guerrero Martin on 03/09/2026.
 //
 
-import SwiftUI
+import Foundation
 
 struct CharacterModel: Sendable, Hashable {
     let id: String
@@ -27,14 +27,6 @@ enum CharacterStatus: String, Sendable, Hashable, CaseIterable {
         case "alive": self = .alive
         case "dead": self = .dead
         default: self = .unknown
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .alive: .green
-        case .dead: .red
-        case .unknown: .gray
         }
     }
 }

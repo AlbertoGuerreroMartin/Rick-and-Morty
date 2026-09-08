@@ -85,12 +85,21 @@ struct CharactersScreen<Content: View, Detail: View>: View {
         },
         makeSection: { graph, layout in
             VStack(spacing: 0) {
-                CharactersFilterBarSectionView(viewModel: graph.viewModel, mapper: graph.filterBarMapper)
+                CharactersFilterBarSectionView(
+                    viewModel: graph.viewModel,
+                    renderModelPublisher: graph.filterBarMapper.renderModelPublisher()
+                )
                 switch layout {
                 case .list:
-                    CharactersListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
+                    CharactersListSectionView(
+                        viewModel: graph.viewModel,
+                        renderModelPublisher: graph.listMapper.renderModelPublisher()
+                    )
                 case .grid:
-                    CharactersGridSectionView(viewModel: graph.viewModel, mapper: graph.gridMapper)
+                    CharactersGridSectionView(
+                        viewModel: graph.viewModel,
+                        renderModelPublisher: graph.gridMapper.renderModelPublisher()
+                    )
                 }
             }
         },

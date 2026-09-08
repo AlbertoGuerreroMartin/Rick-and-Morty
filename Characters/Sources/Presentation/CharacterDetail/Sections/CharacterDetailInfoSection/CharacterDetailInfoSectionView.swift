@@ -6,20 +6,26 @@
 //
 
 import Combine
+import Core
 import SwiftUI
 
 /// The character's facts, as a card that sits *over* the bottom of the picture.
-struct CharacterDetailInfoSectionView: View {
+struct CharacterDetailInfoSectionView: SectionViewContract {
     private static let overlap: CGFloat = 24
     private static let horizontalPadding: CGFloat = 16
     private static let cornerRadius: CGFloat = 20
 
-    private let renderModelPublisher: AnyPublisher<CharacterDetailInfoRenderModel, Never>
+    /// Held to satisfy `SectionViewContract`; this section draws only what the mapper produces.
+    let viewModel: any CharacterDetailInfoSectionViewModelContract
+
+    let renderModelPublisher: AnyPublisher<CharacterDetailInfoRenderModel, Never>
 
     @State var renderModel: CharacterDetailInfoRenderModel = .hidden
 
-    init(mapper: CharacterDetailInfoSectionMapper) {
-        self.renderModelPublisher = mapper.renderModelPublisher()
+    init(viewModel: any CharacterDetailInfoSectionViewModelContract,
+         renderModelPublisher: AnyPublisher<CharacterDetailInfoRenderModel, Never>) {
+        self.viewModel = viewModel
+        self.renderModelPublisher = renderModelPublisher
     }
 
     var body: some View {

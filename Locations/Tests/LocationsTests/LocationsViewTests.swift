@@ -283,9 +283,14 @@ struct LocationsViewTests {
             },
             makeSection: { graph in
                 VStack {
-                    LocationsCarouselSectionView(viewModel: graph.viewModel,
-                                                 mapper: graph.carouselMapper)
-                    LocationDetailSectionView(mapper: graph.detailMapper)
+                    LocationsCarouselSectionView(
+                        viewModel: graph.viewModel,
+                        renderModelPublisher: graph.carouselMapper.renderModelPublisher()
+                    )
+                    LocationDetailSectionView(
+                        viewModel: graph.viewModel,
+                        renderModelPublisher: graph.detailMapper.renderModelPublisher()
+                    )
                 }
             },
             makeDestination: { route in
@@ -343,12 +348,15 @@ struct LocationsViewTests {
     private func renderCarousel(_ viewModel: StubLocationsCarouselViewModel) async {
         await render(LocationsCarouselSectionView(
             viewModel: viewModel,
-            mapper: LocationsCarouselSectionMapper(viewModel: viewModel)
+            renderModelPublisher: LocationsCarouselSectionMapper(viewModel: viewModel).renderModelPublisher()
         ))
     }
 
     private func renderDetail(_ viewModel: StubLocationDetailViewModel) async {
-        await renderRows(LocationDetailSectionView(mapper: LocationDetailSectionMapper(viewModel: viewModel)))
+        await renderRows(LocationDetailSectionView(
+            viewModel: viewModel,
+            renderModelPublisher: LocationDetailSectionMapper(viewModel: viewModel).renderModelPublisher()
+        ))
     }
 
     /// Rows need a `NavigationStack`: residents are `NavigationLink`s, dead outside one.

@@ -25,10 +25,8 @@ enum CharacterDetailHeaderRenderState: Equatable {
     case visible(CharacterDetailHeaderRenderModel)
 }
 
-protocol CharacterDetailHeaderSectionMapperContract: SectionMapperContract {}
-
 @MainActor
-final class CharacterDetailHeaderSectionMapper: CharacterDetailHeaderSectionMapperContract {
+final class CharacterDetailHeaderSectionMapper: SectionMapperContract {
     typealias ViewModel = CharacterDetailHeaderSectionViewModelContract
     typealias RenderModel = CharacterDetailHeaderRenderState
 

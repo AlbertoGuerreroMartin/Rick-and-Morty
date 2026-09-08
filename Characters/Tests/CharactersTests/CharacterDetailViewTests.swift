@@ -147,9 +147,18 @@ struct CharacterDetailViewTests {
                     )
                 },
                 makeSections: { graph in
-                    CharacterDetailHeaderSectionView(viewModel: graph.viewModel, mapper: graph.headerMapper)
-                    CharacterDetailInfoSectionView(mapper: graph.infoMapper)
-                    CharacterDetailEpisodesSectionView(mapper: graph.episodesMapper)
+                    CharacterDetailHeaderSectionView(
+                        viewModel: graph.viewModel,
+                        renderModelPublisher: graph.headerMapper.renderModelPublisher()
+                    )
+                    CharacterDetailInfoSectionView(
+                        viewModel: graph.viewModel,
+                        renderModelPublisher: graph.infoMapper.renderModelPublisher()
+                    )
+                    CharacterDetailEpisodesSectionView(
+                        viewModel: graph.viewModel,
+                        renderModelPublisher: graph.episodesMapper.renderModelPublisher()
+                    )
                 }
             )
         }
@@ -181,8 +190,10 @@ struct CharacterDetailViewTests {
                                 .make(id: "2", name: "Morty Smith")]
 
         await render(NavigationStack {
-            CharactersListSectionView(viewModel: viewModel,
-                                      mapper: CharactersListSectionMapper(viewModel: viewModel))
+            CharactersListSectionView(
+                viewModel: viewModel,
+                renderModelPublisher: CharactersListSectionMapper(viewModel: viewModel).renderModelPublisher()
+            )
         })
     }
 
@@ -194,8 +205,10 @@ struct CharacterDetailViewTests {
                                 .make(id: "3", name: "Summer Smith")]
 
         await render(NavigationStack {
-            CharactersGridSectionView(viewModel: viewModel,
-                                      mapper: CharactersGridSectionMapper(viewModel: viewModel))
+            CharactersGridSectionView(
+                viewModel: viewModel,
+                renderModelPublisher: CharactersGridSectionMapper(viewModel: viewModel).renderModelPublisher()
+            )
         })
     }
 
@@ -210,19 +223,21 @@ struct CharacterDetailViewTests {
     private func renderHeader(_ viewModel: StubCharacterDetailSectionViewModel) async {
         await render(CharacterDetailHeaderSectionView(
             viewModel: viewModel,
-            mapper: CharacterDetailHeaderSectionMapper(viewModel: viewModel)
+            renderModelPublisher: CharacterDetailHeaderSectionMapper(viewModel: viewModel).renderModelPublisher()
         ))
     }
 
     private func renderInfo(_ viewModel: StubCharacterDetailSectionViewModel) async {
         await render(CharacterDetailInfoSectionView(
-            mapper: CharacterDetailInfoSectionMapper(viewModel: viewModel)
+            viewModel: viewModel,
+            renderModelPublisher: CharacterDetailInfoSectionMapper(viewModel: viewModel).renderModelPublisher()
         ))
     }
 
     private func renderEpisodes(_ viewModel: StubCharacterDetailSectionViewModel) async {
         await render(CharacterDetailEpisodesSectionView(
-            mapper: CharacterDetailEpisodesSectionMapper(viewModel: viewModel)
+            viewModel: viewModel,
+            renderModelPublisher: CharacterDetailEpisodesSectionMapper(viewModel: viewModel).renderModelPublisher()
         ))
     }
 

@@ -6,10 +6,11 @@
 //
 
 import Combine
+import Core
 import DesignSystem
 import SwiftUI
 
-struct CharactersListSectionView: View {
+struct CharactersListSectionView: SectionViewContract {
     private static let avatarSize: CGFloat = 56
 
     /// Read from the environment, not `UITraitCollection.current`, which can report scale 0
@@ -23,14 +24,14 @@ struct CharactersListSectionView: View {
 
     let viewModel: any CharactersListSectionViewModelContract
 
-    private let renderModelPublisher: AnyPublisher<CharactersListRenderModel, Never>
+    let renderModelPublisher: AnyPublisher<CharactersListRenderModel, Never>
 
     @State var renderModel: CharactersListRenderModel = .hidden
 
     init(viewModel: any CharactersListSectionViewModelContract,
-         mapper: CharactersListSectionMapper) {
+         renderModelPublisher: AnyPublisher<CharactersListRenderModel, Never>) {
         self.viewModel = viewModel
-        self.renderModelPublisher = mapper.renderModelPublisher()
+        self.renderModelPublisher = renderModelPublisher
     }
 
     var body: some View {

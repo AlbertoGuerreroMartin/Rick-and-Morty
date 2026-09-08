@@ -23,14 +23,12 @@ enum CharacterDetailInfoRenderModel: Equatable {
     case visible(rows: [CharacterDetailInfoRow])
 }
 
-protocol CharacterDetailInfoSectionMapperContract: SectionMapperContract {}
-
 /// Turns a character into the rows of the card that sits over the picture.
 ///
 /// A row the API has nothing for is dropped rather than shown empty. A place's fields join into
 /// one line in API order, skipping gaps. No failure state of its own: the header owns that.
 @MainActor
-final class CharacterDetailInfoSectionMapper: CharacterDetailInfoSectionMapperContract {
+final class CharacterDetailInfoSectionMapper: SectionMapperContract {
     typealias ViewModel = CharacterDetailInfoSectionViewModelContract
     typealias RenderModel = CharacterDetailInfoRenderModel
 

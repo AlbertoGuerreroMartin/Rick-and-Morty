@@ -147,7 +147,10 @@ struct EpisodesViewTests {
                                              viewModel: viewModel,
                                              listMapper: EpisodesListSectionMapper(viewModel: viewModel)) },
             makeSection: { graph in
-                EpisodesListSectionView(viewModel: graph.viewModel, mapper: graph.listMapper)
+                EpisodesListSectionView(
+                    viewModel: graph.viewModel,
+                    renderModelPublisher: graph.listMapper.renderModelPublisher()
+                )
             },
             makeDestination: { route in
                 switch route {
@@ -207,8 +210,10 @@ struct EpisodesViewTests {
 
     private func renderSection(_ viewModel: StubEpisodesListViewModel) async {
         await render(NavigationStack {
-            EpisodesListSectionView(viewModel: viewModel,
-                                    mapper: EpisodesListSectionMapper(viewModel: viewModel))
+            EpisodesListSectionView(
+                viewModel: viewModel,
+                renderModelPublisher: EpisodesListSectionMapper(viewModel: viewModel).renderModelPublisher()
+            )
         })
     }
 

@@ -6,21 +6,26 @@
 //
 
 import Combine
+import Core
 import SwiftUI
 
 /// Every episode the character appears in, under a heading. `LazyVStack`, not `List`: the
 /// whole screen is one `ScrollView`, and a nested `List` would need a fixed height and
 /// scroll independently.
-struct CharacterDetailEpisodesSectionView: View {
+struct CharacterDetailEpisodesSectionView: SectionViewContract {
     private static let horizontalPadding: CGFloat = 16
 
-    private let renderModelPublisher: AnyPublisher<CharacterDetailEpisodesRenderModel, Never>
+    /// Held to satisfy `SectionViewContract`; nothing is called on it. The header owns the Retry.
+    let viewModel: any CharacterDetailEpisodesSectionViewModelContract
+
+    let renderModelPublisher: AnyPublisher<CharacterDetailEpisodesRenderModel, Never>
 
     @State var renderModel: CharacterDetailEpisodesRenderModel = .hidden
 
-    /// No view model: this section has nothing to call. The header owns the Retry.
-    init(mapper: CharacterDetailEpisodesSectionMapper) {
-        self.renderModelPublisher = mapper.renderModelPublisher()
+    init(viewModel: any CharacterDetailEpisodesSectionViewModelContract,
+         renderModelPublisher: AnyPublisher<CharacterDetailEpisodesRenderModel, Never>) {
+        self.viewModel = viewModel
+        self.renderModelPublisher = renderModelPublisher
     }
 
     var body: some View {

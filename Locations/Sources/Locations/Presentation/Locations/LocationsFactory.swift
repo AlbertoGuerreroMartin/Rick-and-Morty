@@ -68,8 +68,14 @@ public enum LocationsFactory {
     @ViewBuilder
     private static func section(_ graph: LocationsScreenGraph) -> some View {
         VStack(spacing: 0) {
-            LocationsCarouselSectionView(viewModel: graph.viewModel, mapper: graph.carouselMapper)
-            LocationDetailSectionView(mapper: graph.detailMapper)
+            LocationsCarouselSectionView(
+                viewModel: graph.viewModel,
+                renderModelPublisher: graph.carouselMapper.renderModelPublisher()
+            )
+            LocationDetailSectionView(
+                viewModel: graph.viewModel,
+                renderModelPublisher: graph.detailMapper.renderModelPublisher()
+            )
         }
     }
 }

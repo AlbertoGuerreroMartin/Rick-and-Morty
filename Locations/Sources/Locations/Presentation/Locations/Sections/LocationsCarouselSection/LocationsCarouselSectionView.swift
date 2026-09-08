@@ -6,13 +6,14 @@
 //
 
 import Combine
+import Core
 import SwiftUI
 
 /// The carousel: one location per snap, always centred (`.scrollTargetLayout()` +
 /// `.viewAligned` + symmetric `safeAreaPadding`), with `.scrollPosition(id:)` naming
 /// whatever settled there. The next page is triggered by the last row item becoming
 /// visible in the lazy `LazyHStack`, not by this section watching the focus.
-struct LocationsCarouselSectionView: View {
+struct LocationsCarouselSectionView: SectionViewContract {
     private static let itemSpacing: CGFloat = 20
 
     /// Used for the edge inset until the section is measured (one frame, on a phone-width screen).
@@ -22,7 +23,7 @@ struct LocationsCarouselSectionView: View {
     /// Not observed: the render pipeline is still publishers -> mapper -> `@State`.
     let viewModel: any LocationsCarouselSectionViewModelContract
 
-    private let renderModelPublisher: AnyPublisher<LocationsCarouselRenderModel, Never>
+    let renderModelPublisher: AnyPublisher<LocationsCarouselRenderModel, Never>
     private let carouselMaxHeight: CGFloat = 200
 
     @State var renderModel: LocationsCarouselRenderModel = .hidden
@@ -36,9 +37,9 @@ struct LocationsCarouselSectionView: View {
     @State private var sectionWidth: CGFloat = 0
 
     init(viewModel: any LocationsCarouselSectionViewModelContract,
-         mapper: LocationsCarouselSectionMapper) {
+         renderModelPublisher: AnyPublisher<LocationsCarouselRenderModel, Never>) {
         self.viewModel = viewModel
-        self.renderModelPublisher = mapper.renderModelPublisher()
+        self.renderModelPublisher = renderModelPublisher
     }
 
     private var edgeInset: CGFloat {

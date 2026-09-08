@@ -60,9 +60,18 @@ struct CharacterDetailScreen<Content: View>: View {
                 )
             },
             makeSections: { graph in
-                CharacterDetailHeaderSectionView(viewModel: graph.viewModel, mapper: graph.headerMapper)
-                CharacterDetailInfoSectionView(mapper: graph.infoMapper)
-                CharacterDetailEpisodesSectionView(mapper: graph.episodesMapper)
+                CharacterDetailHeaderSectionView(
+                    viewModel: graph.viewModel,
+                    renderModelPublisher: graph.headerMapper.renderModelPublisher()
+                )
+                CharacterDetailInfoSectionView(
+                    viewModel: graph.viewModel,
+                    renderModelPublisher: graph.infoMapper.renderModelPublisher()
+                )
+                CharacterDetailEpisodesSectionView(
+                    viewModel: graph.viewModel,
+                    renderModelPublisher: graph.episodesMapper.renderModelPublisher()
+                )
             }
         )
     }
