@@ -2,6 +2,14 @@
 
 The Locations tab: travel through every location on a stepped carousel, read about the one in the centre, and jump to any of its residents.
 
+<table>
+  <tr>
+    <td><img width="585" height="1266" alt="IMG_9756" src="https://github.com/user-attachments/assets/2a06ae08-8de9-43cb-86be-b2f5525e73d6" /></td>
+    <td><img width="585" height="1266" alt="IMG_9757" src="https://github.com/user-attachments/assets/d1e423cb-1704-4496-9b3b-7ab8c0c7d7ad" /></td>
+    <td><img width="585" height="1266" alt="IMG_9758" src="https://github.com/user-attachments/assets/39b259cd-09f5-48c6-ba88-4bef74510d9c" /></td>
+  </tr>
+</table>
+
 ## Features
 
 - **Carousel.** A row of large circles, one per location, that snaps one location at a time to the centre of the screen. Circles grow and brighten as they reach the centre, and tapping one centres it. The carousel design is inspired on the show's "Central Finite Curve" concept.
