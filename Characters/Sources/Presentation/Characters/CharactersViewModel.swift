@@ -9,10 +9,20 @@ import Combine
 import Foundation
 import Networking
 
+/// The whole screen's view of the view model: every section contract plus what the screen itself calls.
 @MainActor
-final class CharactersViewModel: CharactersListSectionViewModelContract,
-                                 CharactersGridSectionViewModelContract,
-                                 CharactersFilterBarSectionViewModelContract {
+protocol CharactersViewModelContract: CharactersListSectionViewModelContract,
+                                      CharactersGridSectionViewModelContract,
+                                      CharactersFilterBarSectionViewModelContract {
+    func loadData() async
+
+    func updateSearchText(_ text: String)
+
+    func reloadFromScratch() async
+}
+
+@MainActor
+final class CharactersViewModel: CharactersViewModelContract {
     var loadingPublisher: AnyPublisher<Bool, Never> {
         $loadingPublished.eraseToAnyPublisher()
     }

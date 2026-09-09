@@ -46,12 +46,12 @@ struct CharactersViewTests {
     }
 
     @Test("the screen's scope starts empty and unfiltered")
-    func scopeStartsEmpty() async {
+    func scopeStartsEmpty() async throws {
         let scope = makeRoot().makeChild()
 
         #expect(scope.resolve(CharactersNavigator.self).path.isEmpty)
 
-        let viewModel = scope.resolve(CharactersViewModel.self)
+        let viewModel = try #require(scope.resolve((any CharactersViewModelContract).self) as? CharactersViewModel)
         #expect(viewModel.charactersPublished == nil)
         #expect(viewModel.paginationPublished == .end)
         #expect(viewModel.filterPublished == .empty)

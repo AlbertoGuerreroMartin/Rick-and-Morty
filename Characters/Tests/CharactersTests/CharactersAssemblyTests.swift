@@ -17,7 +17,7 @@ import Testing
 struct CharactersAssemblyTests {
 
     @Test("a screen scope resolves every registration in its initial state")
-    func aScopeResolvesEverything() {
+    func aScopeResolvesEverything() throws {
         let navigator = CharactersNavigator()
         let root = makeRoot(navigator: navigator)
         let scope = makeDetailScope(root, id: "1")
@@ -31,8 +31,11 @@ struct CharactersAssemblyTests {
         // Passed through, not built here: the scope must hand the screen the object a deep link writes to.
         #expect(scope.resolve(CharactersNavigator.self) === navigator)
         #expect(scope.resolve(CharactersNavigator.self).path.isEmpty)
+        // The screen resolves the contract; it must land on the concrete view model.
+        #expect(scope.resolve((any CharactersViewModelContract).self) is CharactersViewModel)
+        #expect(scope.resolve((any CharacterDetailViewModelContract).self) is CharacterDetailViewModel)
 
-        let viewModel = scope.resolve(CharactersViewModel.self)
+        let viewModel = try #require(scope.resolve((any CharactersViewModelContract).self) as? CharactersViewModel)
         #expect(viewModel.charactersPublished == nil)
         #expect(viewModel.loadingPublished == false)
         #expect(viewModel.filterPublished == .empty)
@@ -53,14 +56,16 @@ struct CharactersAssemblyTests {
         let root = makeRoot()
         let scope = root.makeChild()
 
-        #expect(scope.resolve(CharactersViewModel.self) === scope.resolve(CharactersViewModel.self))
-        #expect(root.makeChild().resolve(CharactersViewModel.self) !== root.makeChild().resolve(CharactersViewModel.self))
+        #expect(scope.resolve((any CharactersViewModelContract).self) as AnyObject
+            === scope.resolve((any CharactersViewModelContract).self) as AnyObject)
+        #expect(root.makeChild().resolve((any CharactersViewModelContract).self) as AnyObject
+            !== root.makeChild().resolve((any CharactersViewModelContract).self) as AnyObject)
     }
 
     @Test("every characters section reads its scope's view model")
     func charactersSectionsShareTheViewModel() {
         let scope = makeRoot().makeChild()
-        let viewModel = scope.resolve(CharactersViewModel.self)
+        let viewModel = scope.resolve((any CharactersViewModelContract).self) as AnyObject
 
         #expect(scope.resolve((any CharactersListSectionViewModelContract).self) as AnyObject === viewModel)
         #expect(scope.resolve((any CharactersGridSectionViewModelContract).self) as AnyObject === viewModel)
@@ -72,10 +77,10 @@ struct CharactersAssemblyTests {
 
     /// A scope that dropped the id would fetch whichever character the server answered for an empty query.
     @Test("the detail scope builds its view model for the route's character")
-    func theDetailScopeCarriesTheRoutesId() {
+    func theDetailScopeCarriesTheRoutesId() throws {
         let scope = makeDetailScope(makeRoot(), id: "42")
 
-        let viewModel = scope.resolve(CharacterDetailViewModel.self)
+        let viewModel = try #require(scope.resolve((any CharacterDetailViewModelContract).self) as? CharacterDetailViewModel)
         #expect(viewModel.id == "42")
         #expect(viewModel.detailPublished == nil)
         #expect(viewModel.loadingPublished == false)
@@ -89,11 +94,13 @@ struct CharactersAssemblyTests {
     }
 
     @Test("two pushed details are two view models")
-    func twoDetailsAreTwoViewModels() {
+    func twoDetailsAreTwoViewModels() throws {
         let root = makeRoot()
 
-        let first = makeDetailScope(root, id: "1").resolve(CharacterDetailViewModel.self)
-        let second = makeDetailScope(root, id: "2").resolve(CharacterDetailViewModel.self)
+        let first = try #require(makeDetailScope(root, id: "1")
+            .resolve((any CharacterDetailViewModelContract).self) as? CharacterDetailViewModel)
+        let second = try #require(makeDetailScope(root, id: "2")
+            .resolve((any CharacterDetailViewModelContract).self) as? CharacterDetailViewModel)
 
         #expect(first !== second)
         #expect(first.id == "1")

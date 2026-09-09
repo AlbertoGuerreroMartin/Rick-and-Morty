@@ -17,7 +17,7 @@ import Testing
 struct EpisodesAssemblyTests {
 
     @Test("a screen scope resolves every registration in its initial state")
-    func aScopeResolvesEverything() {
+    func aScopeResolvesEverything() throws {
         let navigator = EpisodesNavigator()
         let scope = makeRoot(navigator: navigator).makeChild()
 
@@ -30,7 +30,10 @@ struct EpisodesAssemblyTests {
         #expect(scope.resolve(EpisodesNavigator.self) === navigator)
         #expect(scope.resolve(EpisodesNavigator.self).path.isEmpty)
 
-        let viewModel = scope.resolve(EpisodesViewModel.self)
+        // The screen resolves the contract; it must land on the concrete view model.
+        #expect(scope.resolve((any EpisodesViewModelContract).self) is EpisodesViewModel)
+
+        let viewModel = try #require(scope.resolve((any EpisodesViewModelContract).self) as? EpisodesViewModel)
         #expect(viewModel.episodesPublished == nil)
         #expect(viewModel.loadingPublished == false)
         // The section resolves its contract; it must land on the same instance.
@@ -53,8 +56,10 @@ struct EpisodesAssemblyTests {
         let root = makeRoot()
         let scope = root.makeChild()
 
-        #expect(scope.resolve(EpisodesViewModel.self) === scope.resolve(EpisodesViewModel.self))
-        #expect(root.makeChild().resolve(EpisodesViewModel.self) !== root.makeChild().resolve(EpisodesViewModel.self))
+        #expect(scope.resolve((any EpisodesViewModelContract).self) as AnyObject
+            === scope.resolve((any EpisodesViewModelContract).self) as AnyObject)
+        #expect(root.makeChild().resolve((any EpisodesViewModelContract).self) as AnyObject
+            !== root.makeChild().resolve((any EpisodesViewModelContract).self) as AnyObject)
     }
 
     private func makeRoot(navigator: EpisodesNavigator = EpisodesNavigator()) -> DependencyContainer {

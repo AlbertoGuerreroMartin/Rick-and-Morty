@@ -37,12 +37,12 @@ public enum EpisodesAssembly {
             EpisodesUseCase(repository: $0.resolve((any EpisodesRepositoryContract).self))
         }
         root.register(EpisodesNavigator.self) { _ in navigator }
-        root.register(EpisodesViewModel.self, lifetime: .scoped) {
+        root.register((any EpisodesViewModelContract).self, lifetime: .scoped) {
             EpisodesViewModel(episodesUseCase: $0.resolve((any EpisodesUseCaseContract).self))
         }
         // Alias onto the one view model: the section resolves its contract, never the concrete type.
         root.register((any EpisodesListSectionViewModelContract).self, lifetime: .scoped) {
-            $0.resolve(EpisodesViewModel.self)
+            $0.resolve((any EpisodesViewModelContract).self)
         }
         root.register(EpisodesListSectionMapper.self, lifetime: .scoped) {
             EpisodesListSectionMapper(viewModel: $0.resolve((any EpisodesListSectionViewModelContract).self))

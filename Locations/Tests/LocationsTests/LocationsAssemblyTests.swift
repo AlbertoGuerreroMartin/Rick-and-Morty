@@ -17,7 +17,7 @@ import Testing
 struct LocationsAssemblyTests {
 
     @Test("a screen scope resolves every registration in its initial state")
-    func aScopeResolvesEverything() {
+    func aScopeResolvesEverything() throws {
         let scope = makeRoot().makeChild()
 
         // Nothing is built until it is asked for, so every registration is exercised here.
@@ -26,7 +26,10 @@ struct LocationsAssemblyTests {
         #expect(scope.resolve((any LocationsUseCaseContract).self) is LocationsUseCase)
         #expect(scope.resolve((any LocationsRepositoryContract).self) is LocationsRepository)
 
-        let viewModel = scope.resolve(LocationsViewModel.self)
+        // The screen resolves the contract; it must land on the concrete view model.
+        #expect(scope.resolve((any LocationsViewModelContract).self) is LocationsViewModel)
+
+        let viewModel = try #require(scope.resolve((any LocationsViewModelContract).self) as? LocationsViewModel)
         #expect(viewModel.locationsPublished == nil)
         #expect(viewModel.loadingPublished == false)
         #expect(viewModel.loadFailedPublished == false)
@@ -49,14 +52,16 @@ struct LocationsAssemblyTests {
         let root = makeRoot()
         let scope = root.makeChild()
 
-        #expect(scope.resolve(LocationsViewModel.self) === scope.resolve(LocationsViewModel.self))
-        #expect(root.makeChild().resolve(LocationsViewModel.self) !== root.makeChild().resolve(LocationsViewModel.self))
+        #expect(scope.resolve((any LocationsViewModelContract).self) as AnyObject
+            === scope.resolve((any LocationsViewModelContract).self) as AnyObject)
+        #expect(root.makeChild().resolve((any LocationsViewModelContract).self) as AnyObject
+            !== root.makeChild().resolve((any LocationsViewModelContract).self) as AnyObject)
     }
 
     @Test("both sections resolve their scope's view model")
     func bothSectionsShareTheViewModel() {
         let scope = makeRoot().makeChild()
-        let viewModel = scope.resolve(LocationsViewModel.self)
+        let viewModel = scope.resolve((any LocationsViewModelContract).self) as AnyObject
 
         #expect(scope.resolve((any LocationsCarouselSectionViewModelContract).self) as AnyObject === viewModel)
         #expect(scope.resolve((any LocationDetailSectionViewModelContract).self) as AnyObject === viewModel)

@@ -8,8 +8,18 @@
 import Combine
 import Foundation
 
+/// The whole screen's view of the view model: every section contract plus what the screen itself calls.
 @MainActor
-final class EpisodesViewModel: EpisodesListSectionViewModelContract {
+protocol EpisodesViewModelContract: EpisodesListSectionViewModelContract {
+    func loadData() async
+
+    func updateSearchText(_ text: String)
+
+    func reloadFromScratch() async
+}
+
+@MainActor
+final class EpisodesViewModel: EpisodesViewModelContract {
     var loadingPublisher: AnyPublisher<Bool, Never> {
         $loadingPublished.eraseToAnyPublisher()
     }

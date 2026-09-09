@@ -53,18 +53,18 @@ public enum CharactersAssembly {
 
     private static func registerCharacters(in root: DependencyContainer, navigator: CharactersNavigator) {
         root.register(CharactersNavigator.self) { _ in navigator }
-        root.register(CharactersViewModel.self, lifetime: .scoped) {
+        root.register((any CharactersViewModelContract).self, lifetime: .scoped) {
             CharactersViewModel(charactersUseCase: $0.resolve((any CharactersUseCaseContract).self))
         }
         // Aliases onto the one view model, so every section subscribes to the same publishers.
         root.register((any CharactersListSectionViewModelContract).self, lifetime: .scoped) {
-            $0.resolve(CharactersViewModel.self)
+            $0.resolve((any CharactersViewModelContract).self)
         }
         root.register((any CharactersGridSectionViewModelContract).self, lifetime: .scoped) {
-            $0.resolve(CharactersViewModel.self)
+            $0.resolve((any CharactersViewModelContract).self)
         }
         root.register((any CharactersFilterBarSectionViewModelContract).self, lifetime: .scoped) {
-            $0.resolve(CharactersViewModel.self)
+            $0.resolve((any CharactersViewModelContract).self)
         }
         root.register(CharactersListSectionMapper.self, lifetime: .scoped) {
             CharactersListSectionMapper(viewModel: $0.resolve((any CharactersListSectionViewModelContract).self))
@@ -79,19 +79,19 @@ public enum CharactersAssembly {
 
     /// The id comes from `CharacterDetailContext`, which the detail factory registers in the child scope.
     private static func registerCharacterDetail(in root: DependencyContainer) {
-        root.register(CharacterDetailViewModel.self, lifetime: .scoped) {
+        root.register((any CharacterDetailViewModelContract).self, lifetime: .scoped) {
             CharacterDetailViewModel(id: $0.resolve(CharacterDetailContext.self).id,
                                      characterDetailUseCase: $0.resolve((any CharacterDetailUseCaseContract).self))
         }
         // Aliases onto the one view model, so every section subscribes to the same publishers.
         root.register((any CharacterDetailHeaderSectionViewModelContract).self, lifetime: .scoped) {
-            $0.resolve(CharacterDetailViewModel.self)
+            $0.resolve((any CharacterDetailViewModelContract).self)
         }
         root.register((any CharacterDetailInfoSectionViewModelContract).self, lifetime: .scoped) {
-            $0.resolve(CharacterDetailViewModel.self)
+            $0.resolve((any CharacterDetailViewModelContract).self)
         }
         root.register((any CharacterDetailEpisodesSectionViewModelContract).self, lifetime: .scoped) {
-            $0.resolve(CharacterDetailViewModel.self)
+            $0.resolve((any CharacterDetailViewModelContract).self)
         }
         root.register(CharacterDetailHeaderSectionMapper.self, lifetime: .scoped) {
             CharacterDetailHeaderSectionMapper(viewModel: $0.resolve((any CharacterDetailHeaderSectionViewModelContract).self))

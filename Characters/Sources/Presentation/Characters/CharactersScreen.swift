@@ -50,7 +50,7 @@ struct CharactersScreen<Content: View, Detail: View>: View {
                 .onChange(of: searchText) { _, text in
                     // Debounced in the view model, not here: a `.task(id:)` here would be
                     // cancelled by the re-render each keystroke causes.
-                    scope.value.resolve(CharactersViewModel.self).updateSearchText(text)
+                    scope.value.resolve((any CharactersViewModelContract).self).updateSearchText(text)
                 }
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -64,11 +64,11 @@ struct CharactersScreen<Content: View, Detail: View>: View {
                 // A cache clear from the developer tools is announced via `Storage`
                 // notification; the screen answers by reloading from scratch.
                 .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
-                    Task { await scope.value.resolve(CharactersViewModel.self).reloadFromScratch() }
+                    Task { await scope.value.resolve((any CharactersViewModelContract).self).reloadFromScratch() }
                 }
         }
         .task {
-            await scope.value.resolve(CharactersViewModel.self).loadData()
+            await scope.value.resolve((any CharactersViewModelContract).self).loadData()
         }
     }
 }

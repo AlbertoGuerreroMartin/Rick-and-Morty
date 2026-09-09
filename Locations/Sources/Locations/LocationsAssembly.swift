@@ -31,15 +31,15 @@ public enum LocationsAssembly {
             LocationsUseCase(repository: $0.resolve((any LocationsRepositoryContract).self))
         }
         root.register(LocationsNavigator.self) { _ in navigator }
-        root.register(LocationsViewModel.self, lifetime: .scoped) {
+        root.register((any LocationsViewModelContract).self, lifetime: .scoped) {
             LocationsViewModel(locationsUseCase: $0.resolve((any LocationsUseCaseContract).self))
         }
         // Aliases onto the one view model, so both sections subscribe to the same publishers.
         root.register((any LocationsCarouselSectionViewModelContract).self, lifetime: .scoped) {
-            $0.resolve(LocationsViewModel.self)
+            $0.resolve((any LocationsViewModelContract).self)
         }
         root.register((any LocationDetailSectionViewModelContract).self, lifetime: .scoped) {
-            $0.resolve(LocationsViewModel.self)
+            $0.resolve((any LocationsViewModelContract).self)
         }
         root.register(LocationsCarouselSectionMapper.self, lifetime: .scoped) {
             LocationsCarouselSectionMapper(viewModel: $0.resolve((any LocationsCarouselSectionViewModelContract).self))

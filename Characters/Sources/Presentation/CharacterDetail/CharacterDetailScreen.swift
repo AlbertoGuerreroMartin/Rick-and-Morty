@@ -37,12 +37,12 @@ struct CharacterDetailScreen<Content: View>: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            await scope.value.resolve(CharacterDetailViewModel.self).loadData()
+            await scope.value.resolve((any CharacterDetailViewModelContract).self).loadData()
         }
         // A cache clear from the developer tools is announced via `Storage`
         // notification; the screen answers by reloading from scratch.
         .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
-            Task { await scope.value.resolve(CharacterDetailViewModel.self).reloadFromScratch() }
+            Task { await scope.value.resolve((any CharacterDetailViewModelContract).self).reloadFromScratch() }
         }
     }
 }

@@ -279,7 +279,7 @@ struct LocationsViewTests {
             makeScope: {
                 let scope = DependencyContainer()
                 scope.register(LocationsNavigator.self) { _ in LocationsNavigator() }
-                scope.register(LocationsViewModel.self) { _ in viewModel }
+                scope.register((any LocationsViewModelContract).self) { _ in viewModel }
                 scope.register((any LocationsCarouselSectionViewModelContract).self) { _ in viewModel }
                 scope.register((any LocationDetailSectionViewModelContract).self) { _ in viewModel }
                 scope.register(LocationsCarouselSectionMapper.self) { _ in

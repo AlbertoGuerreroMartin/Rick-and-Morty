@@ -8,10 +8,18 @@
 import Combine
 import Foundation
 
+/// The whole screen's view of the view model: every section contract plus what the screen itself calls.
 @MainActor
-final class CharacterDetailViewModel: CharacterDetailHeaderSectionViewModelContract,
-                                      CharacterDetailInfoSectionViewModelContract,
-                                      CharacterDetailEpisodesSectionViewModelContract {
+protocol CharacterDetailViewModelContract: CharacterDetailHeaderSectionViewModelContract,
+                                           CharacterDetailInfoSectionViewModelContract,
+                                           CharacterDetailEpisodesSectionViewModelContract {
+    func loadData() async
+
+    func reloadFromScratch() async
+}
+
+@MainActor
+final class CharacterDetailViewModel: CharacterDetailViewModelContract {
     var loadingPublisher: AnyPublisher<Bool, Never> {
         $loadingPublished.eraseToAnyPublisher()
     }

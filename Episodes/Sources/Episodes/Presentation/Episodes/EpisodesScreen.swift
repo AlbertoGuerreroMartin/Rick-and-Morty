@@ -44,15 +44,15 @@ struct EpisodesScreen<Content: View, Destination: View>: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .onChange(of: searchText) { _, text in
-                    scope.value.resolve(EpisodesViewModel.self).updateSearchText(text)
+                    scope.value.resolve((any EpisodesViewModelContract).self).updateSearchText(text)
                 }
                 // Cache cleared elsewhere (dev tools) triggers a reload.
                 .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
-                    Task { await scope.value.resolve(EpisodesViewModel.self).reloadFromScratch() }
+                    Task { await scope.value.resolve((any EpisodesViewModelContract).self).reloadFromScratch() }
                 }
         }
         .task {
-            await scope.value.resolve(EpisodesViewModel.self).loadData()
+            await scope.value.resolve((any EpisodesViewModelContract).self).loadData()
         }
     }
 }

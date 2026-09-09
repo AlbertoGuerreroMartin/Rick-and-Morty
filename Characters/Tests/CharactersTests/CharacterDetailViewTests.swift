@@ -141,7 +141,7 @@ struct CharacterDetailViewTests {
             CharacterDetailScreen(
                 makeScope: {
                     let scope = DependencyContainer()
-                    scope.register(CharacterDetailViewModel.self) { _ in viewModel }
+                    scope.register((any CharacterDetailViewModelContract).self) { _ in viewModel }
                     scope.register((any CharacterDetailHeaderSectionViewModelContract).self) { _ in viewModel }
                     scope.register((any CharacterDetailInfoSectionViewModelContract).self) { _ in viewModel }
                     scope.register((any CharacterDetailEpisodesSectionViewModelContract).self) { _ in viewModel }

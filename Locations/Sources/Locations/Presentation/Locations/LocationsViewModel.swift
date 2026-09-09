@@ -8,13 +8,21 @@
 import Combine
 import Foundation
 
-/// The screen's state, as five published facts. Conforms to both section contracts since the
+/// The whole screen's view of the view model: every section contract plus what the screen itself calls.
+@MainActor
+protocol LocationsViewModelContract: LocationsCarouselSectionViewModelContract,
+                                     LocationDetailSectionViewModelContract {
+    func loadData() async
+
+    func reloadFromScratch() async
+}
+
+/// The screen's state, as five published facts. Covers both section contracts since the
 /// carousel and detail card share the same locations and selection — a second view model would
 /// risk two selections disagreeing. Selection is a published id, not an index: an index means
 /// something different after every page lands.
 @MainActor
-final class LocationsViewModel: LocationsCarouselSectionViewModelContract,
-                                LocationDetailSectionViewModelContract {
+final class LocationsViewModel: LocationsViewModelContract {
     var loadingPublisher: AnyPublisher<Bool, Never> {
         $loadingPublished.eraseToAnyPublisher()
     }

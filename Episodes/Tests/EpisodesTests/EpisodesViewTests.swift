@@ -147,7 +147,7 @@ struct EpisodesViewTests {
             makeScope: {
                 let scope = DependencyContainer()
                 scope.register(EpisodesNavigator.self) { _ in EpisodesNavigator() }
-                scope.register(EpisodesViewModel.self) { _ in viewModel }
+                scope.register((any EpisodesViewModelContract).self) { _ in viewModel }
                 scope.register((any EpisodesListSectionViewModelContract).self) { _ in viewModel }
                 scope.register(EpisodesListSectionMapper.self) { _ in
                     EpisodesListSectionMapper(viewModel: viewModel)

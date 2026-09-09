@@ -37,11 +37,11 @@ struct LocationsScreen<Content: View, Destination: View>: View {
                 .navigationTitle(Text("Locations", bundle: .module))
                 // Reloads on a cache clear announced via `Storage` (e.g. from developer tools).
                 .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
-                    Task { await scope.value.resolve(LocationsViewModel.self).reloadFromScratch() }
+                    Task { await scope.value.resolve((any LocationsViewModelContract).self).reloadFromScratch() }
                 }
         }
         .task {
-            await scope.value.resolve(LocationsViewModel.self).loadData()
+            await scope.value.resolve((any LocationsViewModelContract).self).loadData()
         }
     }
 }
