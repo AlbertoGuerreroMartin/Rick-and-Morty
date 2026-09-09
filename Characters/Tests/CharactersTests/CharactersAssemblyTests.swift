@@ -7,8 +7,6 @@
 
 import Core
 import Foundation
-import Networking
-import Storage
 import Testing
 @testable import Characters
 
@@ -121,16 +119,4 @@ struct CharactersAssemblyTests {
         scope.register(CharacterDetailContext.self) { _ in CharacterDetailContext(id: id) }
         return scope
     }
-}
-
-/// Stands in for the app container; nothing here reaches the network.
-struct StubCharactersDependencies: CharactersDependencies {
-    let graphQLClient = GraphQLClient(endpoint: URL(string: "https://example.com/graphql")!)
-    let justWatchClient = GraphQLClient(endpoint: URL(string: "https://example.com/justwatch")!)
-    let cacheStore: any CacheStoreContract = CodableCacheStore(
-        diskStore: FileDiskStore(
-            root: FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        )
-    )
 }

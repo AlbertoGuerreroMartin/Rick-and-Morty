@@ -7,8 +7,6 @@
 
 import Core
 import Foundation
-import Networking
-import Storage
 import Testing
 @testable import Locations
 
@@ -94,23 +92,5 @@ struct LocationsAssemblyTests {
                                    dependencies: StubLocationsDependencies(),
                                    navigator: navigator)
         return root
-    }
-}
-
-/// Answers nothing: only used to prove a registration can be replaced.
-private struct StubLocationsRepository: LocationsRepositoryContract {
-    func fetchLocations(page: Int) async throws -> LocationsPage {
-        LocationsPage(locations: [], nextPage: nil)
-    }
-}
-
-/// Stands in for the app container; nothing here reaches the network.
-struct StubLocationsDependencies: LocationsDependencies {
-    let graphQLClient = GraphQLClient(endpoint: URL(string: "https://example.com/graphql")!)
-    let cacheStore: any CacheStoreContract
-
-    init(root: URL = FileManager.default.temporaryDirectory
-        .appendingPathComponent(UUID().uuidString, isDirectory: true)) {
-        cacheStore = CodableCacheStore(diskStore: FileDiskStore(root: root))
     }
 }

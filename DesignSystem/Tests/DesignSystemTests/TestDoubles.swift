@@ -78,7 +78,7 @@ final class SpyImageCacheSink: CacheLogSinkContract, @unchecked Sendable {
 
 /// In-memory ``DiskStoreContract`` with entry metadata set by the test, since real files
 /// written back-to-back share a timestamp and the sweep order depends on it.
-actor FakeDiskStore: DiskStoreContract {
+actor StubDiskStore: DiskStoreContract {
     private struct File {
         var data: Data
         var size: Int

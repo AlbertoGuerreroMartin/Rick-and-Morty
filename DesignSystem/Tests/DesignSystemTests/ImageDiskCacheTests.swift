@@ -54,7 +54,7 @@ struct ImageDiskCacheTests {
     @Test("the size cap sweeps the oldest entries first")
     func sweepRemovesOldestEntries() async throws {
         // Dates set explicitly, not from the filesystem: real writes land in the same millisecond.
-        let disk = FakeDiskStore()
+        let disk = StubDiskStore()
         for index in 0..<10 {
             await disk.seed(
                 fileName: "file-\(index)",
@@ -74,7 +74,7 @@ struct ImageDiskCacheTests {
 
     @Test("a namespace under the cap is left alone")
     func sweepDoesNothingUnderTheCap() async throws {
-        let disk = FakeDiskStore()
+        let disk = StubDiskStore()
         for index in 0..<3 {
             await disk.seed(fileName: "file-\(index)",
                             size: 100,
