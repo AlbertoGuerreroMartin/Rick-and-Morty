@@ -5,52 +5,35 @@
 //  Created by Alberto Guerrero Martin on 07/09/2026.
 //
 
+import Core
+import Storage
 import SwiftUI
 
-/// The detail screen's composition root.
+/// Composes the detail screen from the scope; the registrations live in `CharactersAssembly`.
 @MainActor
 enum CharacterDetailFactory {
-    static func build(dependencies: any CharactersDependencies,
-                      id: String) -> some View {
+    static func build(root: DependencyContainer, id: String) -> some View {
         CharacterDetailScreen(
-            makeGraph: { makeGraph(dependencies: dependencies, id: id) },
-            makeSections: { graph in
+            makeScope: {
+                let scope = root.makeChild()
+                // The route's id as a scope value; the view model factory reads it.
+                scope.register(CharacterDetailContext.self) { _ in CharacterDetailContext(id: id) }
+                return scope
+            },
+            makeSections: { scope in
                 CharacterDetailHeaderSectionView(
-                    viewModel: graph.viewModel,
-                    renderModelPublisher: graph.headerMapper.renderModelPublisher()
+                    viewModel: scope.resolve((any CharacterDetailHeaderSectionViewModelContract).self),
+                    renderModelPublisher: scope.resolve(CharacterDetailHeaderSectionMapper.self).renderModelPublisher()
                 )
                 CharacterDetailInfoSectionView(
-                    viewModel: graph.viewModel,
-                    renderModelPublisher: graph.infoMapper.renderModelPublisher()
+                    viewModel: scope.resolve((any CharacterDetailInfoSectionViewModelContract).self),
+                    renderModelPublisher: scope.resolve(CharacterDetailInfoSectionMapper.self).renderModelPublisher()
                 )
                 CharacterDetailEpisodesSectionView(
-                    viewModel: graph.viewModel,
-                    renderModelPublisher: graph.episodesMapper.renderModelPublisher()
+                    viewModel: scope.resolve((any CharacterDetailEpisodesSectionViewModelContract).self),
+                    renderModelPublisher: scope.resolve(CharacterDetailEpisodesSectionMapper.self).renderModelPublisher()
                 )
             }
-        )
-    }
-
-    static func makeGraph(dependencies: any CharactersDependencies,
-                          id: String) -> CharacterDetailScreenGraph {
-        let entityMapper = CharacterEntityMapper()
-        let detailMapper = CharacterDetailEntityMapper()
-        let remoteDataSource = CharactersRemoteDataSource(client: dependencies.graphQLClient)
-        let linksRemoteDataSource = HBOMaxLinksRemoteDataSource(client: dependencies.justWatchClient)
-        let localDataSource = CharactersLocalDataSource(cacheStore: dependencies.cacheStore)
-        let repository = CharactersRepository(remoteDataSource: remoteDataSource,
-                                              hboMaxLinksRemoteDataSource: linksRemoteDataSource,
-                                              localDataSource: localDataSource,
-                                              mapper: entityMapper,
-                                              detailMapper: detailMapper,
-                                              linksMapper: HBOMaxLinksMapper())
-        let useCase = CharacterDetailUseCase(repository: repository)
-        let viewModel = CharacterDetailViewModel(id: id, characterDetailUseCase: useCase)
-        return CharacterDetailScreenGraph(
-            viewModel: viewModel,
-            headerMapper: CharacterDetailHeaderSectionMapper(viewModel: viewModel),
-            infoMapper: CharacterDetailInfoSectionMapper(viewModel: viewModel),
-            episodesMapper: CharacterDetailEpisodesSectionMapper(viewModel: viewModel)
         )
     }
 }

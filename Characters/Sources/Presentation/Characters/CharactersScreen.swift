@@ -1,12 +1,13 @@
 import Core
+import Networking
 import Storage
 import SwiftUI
 
 struct CharactersScreen<Content: View, Detail: View>: View {
     // `Owned`, not a directly-observed `@StateObject`: the view model must not
     // trigger this body on every `@Published` write, only the sections should.
-    @StateObject private var graph: Owned<CharactersScreenGraph>
-    private let makeSection: (CharactersScreenGraph, CharactersLayout) -> Content
+    @StateObject private var scope: Owned<DependencyContainer>
+    private let makeSection: (DependencyContainer, CharactersLayout) -> Content
 
     /// Builds the pushed character detail for a character id, so a test or preview can
     /// push a stub detail without a container.
@@ -20,10 +21,10 @@ struct CharactersScreen<Content: View, Detail: View>: View {
     /// resetting the toggle is cheaper than a `UserDefaults` key to own and test.
     @State private var layout: CharactersLayout = .list
 
-    init(makeGraph: @escaping () -> CharactersScreenGraph,
-         makeSection: @escaping (CharactersScreenGraph, CharactersLayout) -> Content,
+    init(makeScope: @escaping () -> DependencyContainer,
+         makeSection: @escaping (DependencyContainer, CharactersLayout) -> Content,
          makeDetail: @escaping (String) -> Detail) {
-        _graph = StateObject(wrappedValue: Owned(makeGraph))
+        _scope = StateObject(wrappedValue: Owned(makeScope))
         self.makeSection = makeSection
         self.makeDetail = makeDetail
     }
@@ -31,8 +32,8 @@ struct CharactersScreen<Content: View, Detail: View>: View {
     var body: some View {
         // Bound to the navigator's `path` (via `Bindable`) rather than a local `@State`:
         // taps and deep links both write into the same array, one source of truth.
-        NavigationStack(path: Bindable(graph.value.navigator).path) {
-            makeSection(graph.value, layout)
+        NavigationStack(path: Bindable(scope.value.resolve(CharactersNavigator.self)).path) {
+            makeSection(scope.value, layout)
                 .navigationDestination(for: CharactersRoute.self) { route in
                     switch route {
                     case .detail(let id):
@@ -49,7 +50,7 @@ struct CharactersScreen<Content: View, Detail: View>: View {
                 .onChange(of: searchText) { _, text in
                     // Debounced in the view model, not here: a `.task(id:)` here would be
                     // cancelled by the re-render each keystroke causes.
-                    graph.value.viewModel.updateSearchText(text)
+                    scope.value.resolve(CharactersViewModel.self).updateSearchText(text)
                 }
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -63,42 +64,42 @@ struct CharactersScreen<Content: View, Detail: View>: View {
                 // A cache clear from the developer tools is announced via `Storage`
                 // notification; the screen answers by reloading from scratch.
                 .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
-                    Task { await graph.value.viewModel.reloadFromScratch() }
+                    Task { await scope.value.resolve(CharactersViewModel.self).reloadFromScratch() }
                 }
         }
         .task {
-            await graph.value.viewModel.loadData()
+            await scope.value.resolve(CharactersViewModel.self).loadData()
         }
     }
 }
 
 #Preview {
     CharactersScreen(
-        makeGraph: {
-            let useCase = CharactersUseCase(repository: PreviewCharactersRepository())
-            let viewModel = CharactersViewModel(charactersUseCase: useCase)
-            return CharactersScreenGraph(navigator: CharactersNavigator(),
-                                         viewModel: viewModel,
-                                         listMapper: CharactersListSectionMapper(viewModel: viewModel),
-                                         gridMapper: CharactersGridSectionMapper(viewModel: viewModel),
-                                         filterBarMapper: CharactersFilterBarSectionMapper(viewModel: viewModel))
+        makeScope: {
+            let root = DependencyContainer()
+            CharactersAssembly.register(in: root,
+                                        dependencies: PreviewCharactersDependencies(),
+                                        navigator: CharactersNavigator())
+            // Last wins: the real wiring, cut off at the repository so nothing reaches the network.
+            root.register((any CharactersRepositoryContract).self) { _ in PreviewCharactersRepository() }
+            return root.makeChild()
         },
-        makeSection: { graph, layout in
+        makeSection: { scope, layout in
             VStack(spacing: 0) {
                 CharactersFilterBarSectionView(
-                    viewModel: graph.viewModel,
-                    renderModelPublisher: graph.filterBarMapper.renderModelPublisher()
+                    viewModel: scope.resolve((any CharactersFilterBarSectionViewModelContract).self),
+                    renderModelPublisher: scope.resolve(CharactersFilterBarSectionMapper.self).renderModelPublisher()
                 )
                 switch layout {
                 case .list:
                     CharactersListSectionView(
-                        viewModel: graph.viewModel,
-                        renderModelPublisher: graph.listMapper.renderModelPublisher()
+                        viewModel: scope.resolve((any CharactersListSectionViewModelContract).self),
+                        renderModelPublisher: scope.resolve(CharactersListSectionMapper.self).renderModelPublisher()
                     )
                 case .grid:
                     CharactersGridSectionView(
-                        viewModel: graph.viewModel,
-                        renderModelPublisher: graph.gridMapper.renderModelPublisher()
+                        viewModel: scope.resolve((any CharactersGridSectionViewModelContract).self),
+                        renderModelPublisher: scope.resolve(CharactersGridSectionMapper.self).renderModelPublisher()
                     )
                 }
             }
@@ -108,6 +109,22 @@ struct CharactersScreen<Content: View, Detail: View>: View {
             Text("Character \(id)")
         }
     )
+}
+
+/// Feeds `CharactersAssembly` in the preview; every registration that would use these is overridden.
+private struct PreviewCharactersDependencies: CharactersDependencies {
+    let graphQLClient = GraphQLClient(endpoint: URL(string: "https://example.com/graphql")!)
+    let justWatchClient = GraphQLClient(endpoint: URL(string: "https://example.com/justwatch")!)
+    let cacheStore: any CacheStoreContract = PreviewCacheStore()
+}
+
+/// Stores nothing: the preview never reaches the cache, but the wiring still asks for a store.
+private struct PreviewCacheStore: CacheStoreContract {
+    func entry<Value: Codable & Sendable>(for key: CacheKey, as type: Value.Type) async throws -> CacheEntry<Value>? { nil }
+    func store<Value: Codable & Sendable>(_ value: Value, for key: CacheKey, lifetime: TimeInterval) async throws {}
+    func remove(_ key: CacheKey) async throws {}
+    func removeAll(in namespace: String) async throws {}
+    func removeExpired() async throws {}
 }
 
 /// Stands in for the repository, skipping the cache, network and mapper. Serves three pages

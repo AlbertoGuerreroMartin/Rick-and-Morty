@@ -7,18 +7,19 @@
 
 import Core
 import Foundation
+import Networking
 import Storage
 import SwiftUI
 
 struct CharacterDetailScreen<Content: View>: View {
     // `Owned`, not a directly-observed `@StateObject`: the view model must not
     // trigger this body on every `@Published` write, only the sections should.
-    @StateObject private var graph: Owned<CharacterDetailScreenGraph>
-    private let makeSections: (CharacterDetailScreenGraph) -> Content
+    @StateObject private var scope: Owned<DependencyContainer>
+    private let makeSections: (DependencyContainer) -> Content
 
-    init(makeGraph: @escaping () -> CharacterDetailScreenGraph,
-         @ViewBuilder makeSections: @escaping (CharacterDetailScreenGraph) -> Content) {
-        _graph = StateObject(wrappedValue: Owned(makeGraph))
+    init(makeScope: @escaping () -> DependencyContainer,
+         @ViewBuilder makeSections: @escaping (DependencyContainer) -> Content) {
+        _scope = StateObject(wrappedValue: Owned(makeScope))
         self.makeSections = makeSections
     }
 
@@ -28,7 +29,7 @@ struct CharacterDetailScreen<Content: View>: View {
             // `spacing: 0`: the info card is pulled up over the header with negative
             // padding, and a stack spacing would fight it.
             VStack(spacing: 0) {
-                makeSections(graph.value)
+                makeSections(scope.value)
             }
         }
         // The picture runs under the navigation bar, so its background is hidden.
@@ -36,12 +37,12 @@ struct CharacterDetailScreen<Content: View>: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            await graph.value.viewModel.loadData()
+            await scope.value.resolve(CharacterDetailViewModel.self).loadData()
         }
         // A cache clear from the developer tools is announced via `Storage`
         // notification; the screen answers by reloading from scratch.
         .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
-            Task { await graph.value.viewModel.reloadFromScratch() }
+            Task { await scope.value.resolve(CharacterDetailViewModel.self).reloadFromScratch() }
         }
     }
 }
@@ -49,28 +50,29 @@ struct CharacterDetailScreen<Content: View>: View {
 #Preview {
     NavigationStack {
         CharacterDetailScreen(
-            makeGraph: {
-                let useCase = CharacterDetailUseCase(repository: PreviewCharacterDetailRepository())
-                let viewModel = CharacterDetailViewModel(id: "1", characterDetailUseCase: useCase)
-                return CharacterDetailScreenGraph(
-                    viewModel: viewModel,
-                    headerMapper: CharacterDetailHeaderSectionMapper(viewModel: viewModel),
-                    infoMapper: CharacterDetailInfoSectionMapper(viewModel: viewModel),
-                    episodesMapper: CharacterDetailEpisodesSectionMapper(viewModel: viewModel)
-                )
+            makeScope: {
+                let root = DependencyContainer()
+                CharactersAssembly.register(in: root,
+                                            dependencies: PreviewCharactersDependencies(),
+                                            navigator: CharactersNavigator())
+                // Last wins: the real wiring, cut off at the repository so nothing reaches the network.
+                root.register((any CharactersRepositoryContract).self) { _ in PreviewCharacterDetailRepository() }
+                let scope = root.makeChild()
+                scope.register(CharacterDetailContext.self) { _ in CharacterDetailContext(id: "1") }
+                return scope
             },
-            makeSections: { graph in
+            makeSections: { scope in
                 CharacterDetailHeaderSectionView(
-                    viewModel: graph.viewModel,
-                    renderModelPublisher: graph.headerMapper.renderModelPublisher()
+                    viewModel: scope.resolve((any CharacterDetailHeaderSectionViewModelContract).self),
+                    renderModelPublisher: scope.resolve(CharacterDetailHeaderSectionMapper.self).renderModelPublisher()
                 )
                 CharacterDetailInfoSectionView(
-                    viewModel: graph.viewModel,
-                    renderModelPublisher: graph.infoMapper.renderModelPublisher()
+                    viewModel: scope.resolve((any CharacterDetailInfoSectionViewModelContract).self),
+                    renderModelPublisher: scope.resolve(CharacterDetailInfoSectionMapper.self).renderModelPublisher()
                 )
                 CharacterDetailEpisodesSectionView(
-                    viewModel: graph.viewModel,
-                    renderModelPublisher: graph.episodesMapper.renderModelPublisher()
+                    viewModel: scope.resolve((any CharacterDetailEpisodesSectionViewModelContract).self),
+                    renderModelPublisher: scope.resolve(CharacterDetailEpisodesSectionMapper.self).renderModelPublisher()
                 )
             }
         )
@@ -118,4 +120,20 @@ private struct PreviewCharacterDetailRepository: CharactersRepositoryContract {
         }
         return HBOMaxLinks(urls: urls)
     }
+}
+
+/// Feeds `CharactersAssembly` in the preview; every registration that would use these is overridden.
+private struct PreviewCharactersDependencies: CharactersDependencies {
+    let graphQLClient = GraphQLClient(endpoint: URL(string: "https://example.com/graphql")!)
+    let justWatchClient = GraphQLClient(endpoint: URL(string: "https://example.com/justwatch")!)
+    let cacheStore: any CacheStoreContract = PreviewCacheStore()
+}
+
+/// Stores nothing: the preview never reaches the cache, but the wiring still asks for a store.
+private struct PreviewCacheStore: CacheStoreContract {
+    func entry<Value: Codable & Sendable>(for key: CacheKey, as type: Value.Type) async throws -> CacheEntry<Value>? { nil }
+    func store<Value: Codable & Sendable>(_ value: Value, for key: CacheKey, lifetime: TimeInterval) async throws {}
+    func remove(_ key: CacheKey) async throws {}
+    func removeAll(in namespace: String) async throws {}
+    func removeExpired() async throws {}
 }

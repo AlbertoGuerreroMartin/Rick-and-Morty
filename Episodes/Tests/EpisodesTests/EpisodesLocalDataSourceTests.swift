@@ -5,6 +5,7 @@
 //  Created by Alberto Guerrero Martin on 07/09/2026.
 //
 
+import Core
 import Foundation
 import Networking
 import Storage
@@ -72,14 +73,18 @@ struct EpisodesLocalDataSourceTests {
     }
 
     @Test("purging through the factory empties the feature's cache")
+    @MainActor
     func purgeCacheEmptiesTheFeature() async throws {
         let directory = TemporaryDirectory()
         defer { directory.remove() }
-        let dependencies = PurgeTestEpisodesDependencies(root: directory.url)
-        let dataSource = EpisodesLocalDataSource(cacheStore: dependencies.cacheStore)
+        let root = DependencyContainer()
+        EpisodesAssembly.register(in: root,
+                                  dependencies: PurgeTestEpisodesDependencies(root: directory.url),
+                                  navigator: EpisodesNavigator())
+        let dataSource = root.resolve((any EpisodesLocalDataSourceContract).self)
         try await dataSource.store(.make(codes: ["S01E01"]), for: EpisodesQuery(page: 1))
 
-        try await EpisodesFactory.purgeCache(dependencies: dependencies)
+        try await EpisodesFactory.purgeCache(root: root)
 
         #expect(try await dataSource.episodesPage(for: EpisodesQuery(page: 1)) == nil)
     }

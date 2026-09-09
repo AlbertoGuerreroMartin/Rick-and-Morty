@@ -5,6 +5,7 @@
 //  Created by Alberto Guerrero Martin on 07/09/2026.
 //
 
+import Core
 import Networking
 import Storage
 import SwiftUI
@@ -138,18 +139,25 @@ struct EpisodesViewTests {
         await render(EpisodesEmptyStateView(reason: .failed, onRetry: {}))
     }
 
-    @Test("the screen draws and loads through its graph")
+    @Test("the screen draws and loads through its scope")
     func screenDraws() async {
         let useCase = StubViewsEpisodesUseCase()
         let viewModel = EpisodesViewModel(episodesUseCase: useCase)
         let screen = EpisodesScreen(
-            makeGraph: { EpisodesScreenGraph(navigator: EpisodesNavigator(),
-                                             viewModel: viewModel,
-                                             listMapper: EpisodesListSectionMapper(viewModel: viewModel)) },
-            makeSection: { graph in
+            makeScope: {
+                let scope = DependencyContainer()
+                scope.register(EpisodesNavigator.self) { _ in EpisodesNavigator() }
+                scope.register(EpisodesViewModel.self) { _ in viewModel }
+                scope.register((any EpisodesListSectionViewModelContract).self) { _ in viewModel }
+                scope.register(EpisodesListSectionMapper.self) { _ in
+                    EpisodesListSectionMapper(viewModel: viewModel)
+                }
+                return scope
+            },
+            makeSection: { scope in
                 EpisodesListSectionView(
-                    viewModel: graph.viewModel,
-                    renderModelPublisher: graph.listMapper.renderModelPublisher()
+                    viewModel: scope.resolve((any EpisodesListSectionViewModelContract).self),
+                    renderModelPublisher: scope.resolve(EpisodesListSectionMapper.self).renderModelPublisher()
                 )
             },
             makeDestination: { route in
@@ -169,44 +177,37 @@ struct EpisodesViewTests {
         #expect(viewModel.episodesPublished?.map(\.name) == ["Pilot"])
     }
 
-    @Test("the factory builds a working graph and a drawable screen")
-    func factoryBuildsTheGraph() async {
-        let dependencies = StubEpisodesDependencies()
-        let navigator = EpisodesNavigator()
-
-        let graph = EpisodesFactory.makeGraph(dependencies: dependencies, navigator: navigator)
-        // Passed through, not rebuilt: the graph must hand the screen this exact instance.
-        #expect(graph.navigator === navigator)
-        #expect(graph.navigator.path.isEmpty)
-        #expect(graph.viewModel.episodesPublished == nil)
-        #expect(graph.viewModel.loadingPublished == false)
-
-        await render(EpisodesFactory.build(dependencies: dependencies,
-                                           navigator: navigator,
-                                           external: StubExternalDestinations()))
+    @Test("the factory builds a drawable screen")
+    func factoryBuildsADrawableScreen() async {
+        await render(EpisodesFactory.build(root: makeRoot(), external: StubExternalDestinations()))
     }
 
     @Test("showing a character pushes it onto the screen's path")
     func showingACharacterPushesIt() async {
-        let dependencies = StubEpisodesDependencies()
         let navigator = EpisodesNavigator()
+        let root = makeRoot(navigator: navigator)
         let external = StubExternalDestinations()
 
-        await render(EpisodesFactory.build(dependencies: dependencies,
-                                           navigator: navigator,
-                                           external: external))
+        await render(EpisodesFactory.build(root: root, external: external))
 
         navigator.showCharacter(id: "42")
         #expect(navigator.path == [.character(id: "42")])
 
-        await render(EpisodesFactory.build(dependencies: dependencies,
-                                           navigator: navigator,
-                                           external: external))
+        await render(EpisodesFactory.build(root: root, external: external))
 
         #expect(external.requestedIds.contains("42"))
     }
 
     // MARK: - Hosting
+
+    /// The real wiring, so a rendered screen resolves the same graph the app does.
+    private func makeRoot(navigator: EpisodesNavigator = EpisodesNavigator()) -> DependencyContainer {
+        let root = DependencyContainer()
+        EpisodesAssembly.register(in: root,
+                                  dependencies: StubEpisodesDependencies(),
+                                  navigator: navigator)
+        return root
+    }
 
     private func renderSection(_ viewModel: StubEpisodesListViewModel) async {
         await render(NavigationStack {
@@ -253,17 +254,6 @@ private extension Array where Element == EpisodeCharacterModel {
                                   image: URL(string: "https://example.com/\(index).jpeg")!)
         }
     }
-}
-
-private struct StubEpisodesDependencies: EpisodesDependencies {
-    let graphQLClient = GraphQLClient(endpoint: URL(string: "https://example.com/graphql")!)
-    let justWatchClient = GraphQLClient(endpoint: URL(string: "https://example.com/justwatch")!)
-    let cacheStore: any CacheStoreContract = CodableCacheStore(
-        diskStore: FileDiskStore(
-            root: FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        )
-    )
 }
 
 @MainActor

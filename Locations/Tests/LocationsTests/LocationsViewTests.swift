@@ -5,6 +5,7 @@
 //  Created by Alberto Guerrero Martin on 08/09/2026.
 //
 
+import Core
 import Networking
 import Storage
 import SwiftUI
@@ -270,26 +271,34 @@ struct LocationsViewTests {
 
     // MARK: - The screen
 
-    @Test("the screen draws and loads through its graph")
+    @Test("the screen draws and loads through its scope")
     func screenDraws() async {
         let useCase = StubLocationsUseCase(pages: [1: .success(.page(1, nextPage: 2))])
         let viewModel = LocationsViewModel(locationsUseCase: useCase)
         let screen = LocationsScreen(
-            makeGraph: {
-                LocationsScreenGraph(navigator: LocationsNavigator(),
-                                     viewModel: viewModel,
-                                     carouselMapper: LocationsCarouselSectionMapper(viewModel: viewModel),
-                                     detailMapper: LocationDetailSectionMapper(viewModel: viewModel))
+            makeScope: {
+                let scope = DependencyContainer()
+                scope.register(LocationsNavigator.self) { _ in LocationsNavigator() }
+                scope.register(LocationsViewModel.self) { _ in viewModel }
+                scope.register((any LocationsCarouselSectionViewModelContract).self) { _ in viewModel }
+                scope.register((any LocationDetailSectionViewModelContract).self) { _ in viewModel }
+                scope.register(LocationsCarouselSectionMapper.self) { _ in
+                    LocationsCarouselSectionMapper(viewModel: viewModel)
+                }
+                scope.register(LocationDetailSectionMapper.self) { _ in
+                    LocationDetailSectionMapper(viewModel: viewModel)
+                }
+                return scope
             },
-            makeSection: { graph in
+            makeSection: { scope in
                 VStack {
                     LocationsCarouselSectionView(
-                        viewModel: graph.viewModel,
-                        renderModelPublisher: graph.carouselMapper.renderModelPublisher()
+                        viewModel: scope.resolve((any LocationsCarouselSectionViewModelContract).self),
+                        renderModelPublisher: scope.resolve(LocationsCarouselSectionMapper.self).renderModelPublisher()
                     )
                     LocationDetailSectionView(
-                        viewModel: graph.viewModel,
-                        renderModelPublisher: graph.detailMapper.renderModelPublisher()
+                        viewModel: scope.resolve((any LocationDetailSectionViewModelContract).self),
+                        renderModelPublisher: scope.resolve(LocationDetailSectionMapper.self).renderModelPublisher()
                     )
                 }
             },
@@ -311,39 +320,37 @@ struct LocationsViewTests {
         #expect(viewModel.selectedLocationIdPublished == "1-0")
     }
 
-    @Test("the factory's screen draws both sections stacked")
-    func factoryScreenDraws() async {
-        await render(LocationsFactory.previewScreen(repository: StubViewsLocationsRepository()))
-    }
-
     @Test("the feature's public entry point draws")
     func factoryBuildDraws() async {
-        await render(LocationsFactory.build(dependencies: StubLocationsDependencies(),
-                                            navigator: LocationsNavigator(),
-                                            external: StubExternalDestinations()))
+        await render(LocationsFactory.build(root: makeRoot(), external: StubExternalDestinations()))
     }
 
     @Test("showing a character pushes it onto the screen's path")
     func showingACharacterPushesIt() async {
-        let dependencies = StubLocationsDependencies()
         let navigator = LocationsNavigator()
+        let root = makeRoot(navigator: navigator)
         let external = StubExternalDestinations()
 
-        await render(LocationsFactory.build(dependencies: dependencies,
-                                            navigator: navigator,
-                                            external: external))
+        await render(LocationsFactory.build(root: root, external: external))
 
         navigator.showCharacter(id: "42")
         #expect(navigator.path == [.character(id: "42")])
 
-        await render(LocationsFactory.build(dependencies: dependencies,
-                                            navigator: navigator,
-                                            external: external))
+        await render(LocationsFactory.build(root: root, external: external))
 
         #expect(external.requestedIds.contains("42"))
     }
 
     // MARK: - Hosting
+
+    /// The real wiring, so a rendered screen resolves the same graph the app does.
+    private func makeRoot(navigator: LocationsNavigator = LocationsNavigator()) -> DependencyContainer {
+        let root = DependencyContainer()
+        LocationsAssembly.register(in: root,
+                                   dependencies: StubLocationsDependencies(),
+                                   navigator: navigator)
+        return root
+    }
 
     private func renderCarousel(_ viewModel: StubLocationsCarouselViewModel) async {
         await render(LocationsCarouselSectionView(
@@ -434,16 +441,6 @@ private final class StubExternalDestinations: LocationsExternalDestinations {
     func characterDetail(id: String) -> some View {
         requestedIds.append(id)
         return Text(id)
-    }
-}
-
-private struct StubViewsLocationsRepository: LocationsRepositoryContract {
-    func fetchLocations(page: Int) async throws -> LocationsPage {
-        LocationsPage(locations: (1...5).map { index in
-            LocationModel.make(id: "\(page)-\(index)",
-                               name: "Location \(page)-\(index)",
-                               residents: .crowd)
-        }, nextPage: page < 3 ? page + 1 : nil)
     }
 }
 

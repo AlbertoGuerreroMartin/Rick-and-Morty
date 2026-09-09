@@ -6,6 +6,7 @@
 //
 
 import Characters
+import Core
 import DesignSystem
 import Episodes
 import Foundation
@@ -17,8 +18,8 @@ import Storage
 import DevTools
 #endif
 
-/// The app's composition root. Wires long-lived infrastructure and satisfies every feature's
-/// `*Dependencies` protocol; screen-scoped objects are built per screen instead, by each feature.
+/// The app's composition root. Wires long-lived infrastructure, satisfies every feature's
+/// `*Dependencies` protocol, and owns the root container each feature's assembly registers into.
 struct AppContainer: Sendable {
     /// Every API request/response log; console sink attached only in debug builds.
     let apiLogStore: APILogStore
@@ -39,6 +40,9 @@ struct AppContainer: Sendable {
     let episodesNavigator = EpisodesNavigator()
     let locationsNavigator = LocationsNavigator()
 
+    /// Every feature's registrations, made once here; each screen resolves from a child of this.
+    let root: DependencyContainer
+
     /// Main-actor: the navigators above are main-actor classes.
     @MainActor
     init() {
@@ -58,6 +62,11 @@ struct AppContainer: Sendable {
         // `ImageLoader.shared` is a pre-existing static, so it's configured rather than constructed.
         // Synchronous so the first images (requested as soon as the first screen appears) are logged.
         ImageLoader.shared.setLoggers(network: apiLogStore, cache: cacheLogStore)
+        // Last: the assemblies read `self` as their dependencies, so every property must be set.
+        root = DependencyContainer()
+        CharactersAssembly.register(in: root, dependencies: self, navigator: charactersNavigator)
+        EpisodesAssembly.register(in: root, dependencies: self, navigator: episodesNavigator)
+        LocationsAssembly.register(in: root, dependencies: self, navigator: locationsNavigator)
     }
 
     /// Drops expired cache entries. Detached and low-priority: reads already handle expiry
@@ -82,9 +91,9 @@ extension AppContainer {
     var devToolsCaches: [DevToolsCache] {
         [
             .images(),
-            DevToolsCache(name: "Characters") { try await CharactersFactory.purgeCache(dependencies: self) },
-            DevToolsCache(name: "Episodes") { try await EpisodesFactory.purgeCache(dependencies: self) },
-            DevToolsCache(name: "Locations") { try await LocationsFactory.purgeCache(dependencies: self) }
+            DevToolsCache(name: "Characters") { try await CharactersFactory.purgeCache(root: root) },
+            DevToolsCache(name: "Episodes") { try await EpisodesFactory.purgeCache(root: root) },
+            DevToolsCache(name: "Locations") { try await LocationsFactory.purgeCache(root: root) }
         ]
     }
 }

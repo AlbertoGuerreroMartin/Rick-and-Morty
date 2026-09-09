@@ -5,18 +5,18 @@
 //  Created by Alberto Guerrero Martin on 08/09/2026.
 //
 
+import Core
 import SwiftUI
 
 @MainActor
 public enum LocationsFactory {
-    /// Returns a screen description, not a built graph: the closures are invoked once per
+    /// Returns a screen description, not a built scope: the closures are invoked once per
     /// screen identity, so a parent re-evaluating its body doesn't rebuild the view model.
-    public static func build(dependencies: any LocationsDependencies,
-                             navigator: LocationsNavigator,
+    public static func build(root: DependencyContainer,
                              external: some LocationsExternalDestinations) -> some View {
         LocationsScreen(
-            makeGraph: { makeGraph(dependencies: dependencies, navigator: navigator) },
-            makeSection: { graph in section(graph) },
+            makeScope: { root.makeChild() },
+            makeSection: { scope in section(scope) },
             // Exhaustive switch: adding a `LocationsRoute` case is a compile error here.
             makeDestination: { route in
                 switch route {
@@ -28,54 +28,24 @@ public enum LocationsFactory {
     }
 
     /// On the factory, not exposed as a data source: the cache namespace stays private to this module.
-    public static func purgeCache(dependencies: any LocationsDependencies) async throws {
-        try await LocationsLocalDataSource(cacheStore: dependencies.cacheStore).removeAll()
-    }
-
-    static func makeGraph(dependencies: any LocationsDependencies,
-                          navigator: LocationsNavigator) -> LocationsScreenGraph {
-        let remoteDataSource = LocationsRemoteDataSource(client: dependencies.graphQLClient)
-        let localDataSource = LocationsLocalDataSource(cacheStore: dependencies.cacheStore)
-        let repository = LocationsRepository(remoteDataSource: remoteDataSource,
-                                             localDataSource: localDataSource,
-                                             mapper: LocationEntityMapper())
-        return makeGraph(repository: repository, navigator: navigator)
-    }
-
-    /// Split out so a preview or test can substitute the repository without restating the wiring above it.
-    static func makeGraph(repository: LocationsRepositoryContract,
-                          navigator: LocationsNavigator) -> LocationsScreenGraph {
-        let useCase = LocationsUseCase(repository: repository)
-        let viewModel = LocationsViewModel(locationsUseCase: useCase)
-        return LocationsScreenGraph(navigator: navigator,
-                                    viewModel: viewModel,
-                                    carouselMapper: LocationsCarouselSectionMapper(viewModel: viewModel),
-                                    detailMapper: LocationDetailSectionMapper(viewModel: viewModel))
-    }
-
-    static func previewScreen(repository: LocationsRepositoryContract) -> some View {
-        LocationsScreen(makeGraph: { makeGraph(repository: repository, navigator: LocationsNavigator()) },
-                        makeSection: { graph in section(graph) },
-                        makeDestination: { route in
-                            switch route {
-                            case .character(let id):
-                                Text("Character \(id)")
-                            }
-                        })
+    /// No screen scope: the data source is the only collaborator a purge needs.
+    public static func purgeCache(root: DependencyContainer) async throws {
+        try await root.resolve((any LocationsLocalDataSourceContract).self).removeAll()
     }
 
     /// Carousel has an intrinsic height; the detail card takes the remaining space.
     @ViewBuilder
-    private static func section(_ graph: LocationsScreenGraph) -> some View {
+    private static func section(_ scope: DependencyContainer) -> some View {
         VStack(spacing: 0) {
             LocationsCarouselSectionView(
-                viewModel: graph.viewModel,
-                renderModelPublisher: graph.carouselMapper.renderModelPublisher()
+                viewModel: scope.resolve((any LocationsCarouselSectionViewModelContract).self),
+                renderModelPublisher: scope.resolve(LocationsCarouselSectionMapper.self).renderModelPublisher()
             )
             LocationDetailSectionView(
-                viewModel: graph.viewModel,
-                renderModelPublisher: graph.detailMapper.renderModelPublisher()
+                viewModel: scope.resolve((any LocationDetailSectionViewModelContract).self),
+                renderModelPublisher: scope.resolve(LocationDetailSectionMapper.self).renderModelPublisher()
             )
         }
     }
 }
+

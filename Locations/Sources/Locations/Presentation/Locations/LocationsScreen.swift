@@ -7,46 +7,88 @@
 
 import Core
 import Foundation
+import Networking
 import Storage
 import SwiftUI
 
 struct LocationsScreen<Content: View, Destination: View>: View {
-    // `Owned`, not the view model directly in `@StateObject`: keeps the graph alive without
+    // `Owned`, not the view model directly in `@StateObject`: keeps the scope alive without
     // observing it, so a `@Published` write re-renders only the sections, not this body.
-    @StateObject private var graph: Owned<LocationsScreenGraph>
-    private let makeSection: (LocationsScreenGraph) -> Content
+    @StateObject private var scope: Owned<DependencyContainer>
+    private let makeSection: (DependencyContainer) -> Content
 
     /// Generic, not erased: the destination is a screen from another package; see `LocationsExternalDestinations`.
     private let makeDestination: (LocationsRoute) -> Destination
 
-    init(makeGraph: @escaping () -> LocationsScreenGraph,
-         makeSection: @escaping (LocationsScreenGraph) -> Content,
+    init(makeScope: @escaping () -> DependencyContainer,
+         makeSection: @escaping (DependencyContainer) -> Content,
          @ViewBuilder makeDestination: @escaping (LocationsRoute) -> Destination) {
-        _graph = StateObject(wrappedValue: Owned(makeGraph))
+        _scope = StateObject(wrappedValue: Owned(makeScope))
         self.makeSection = makeSection
         self.makeDestination = makeDestination
     }
 
     var body: some View {
         // Bound to the navigator's path so a tap and a programmatic push land in the same array.
-        NavigationStack(path: Bindable(graph.value.navigator).path) {
-            makeSection(graph.value)
+        NavigationStack(path: Bindable(scope.value.resolve(LocationsNavigator.self)).path) {
+            makeSection(scope.value)
                 // Declared once for the whole stack: every row pushes the same route case.
                 .navigationDestination(for: LocationsRoute.self) { makeDestination($0) }
                 .navigationTitle(Text("Locations", bundle: .module))
                 // Reloads on a cache clear announced via `Storage` (e.g. from developer tools).
                 .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
-                    Task { await graph.value.viewModel.reloadFromScratch() }
+                    Task { await scope.value.resolve(LocationsViewModel.self).reloadFromScratch() }
                 }
         }
         .task {
-            await graph.value.viewModel.loadData()
+            await scope.value.resolve(LocationsViewModel.self).loadData()
         }
     }
 }
 
 #Preview {
-    LocationsFactory.previewScreen(repository: PreviewLocationsRepository())
+    let root = DependencyContainer()
+    LocationsAssembly.register(in: root,
+                               dependencies: PreviewLocationsDependencies(),
+                               navigator: LocationsNavigator())
+    // Last wins: the real wiring, cut off at the repository so nothing reaches the network.
+    root.register((any LocationsRepositoryContract).self) { _ in PreviewLocationsRepository() }
+    return LocationsScreen(
+        makeScope: { root.makeChild() },
+        makeSection: { scope in
+            VStack(spacing: 0) {
+                LocationsCarouselSectionView(
+                    viewModel: scope.resolve((any LocationsCarouselSectionViewModelContract).self),
+                    renderModelPublisher: scope.resolve(LocationsCarouselSectionMapper.self).renderModelPublisher()
+                )
+                LocationDetailSectionView(
+                    viewModel: scope.resolve((any LocationDetailSectionViewModelContract).self),
+                    renderModelPublisher: scope.resolve(LocationDetailSectionMapper.self).renderModelPublisher()
+                )
+            }
+        },
+        makeDestination: { route in
+            switch route {
+            case .character(let id):
+                Text("Character \(id)")
+            }
+        }
+    )
+}
+
+/// Feeds `LocationsAssembly` in the preview; every registration that would use these is overridden.
+private struct PreviewLocationsDependencies: LocationsDependencies {
+    let graphQLClient = GraphQLClient(endpoint: URL(string: "https://example.com/graphql")!)
+    let cacheStore: any CacheStoreContract = PreviewCacheStore()
+}
+
+/// Stores nothing: the preview never reaches the cache, but the wiring still asks for a store.
+private struct PreviewCacheStore: CacheStoreContract {
+    func entry<Value: Codable & Sendable>(for key: CacheKey, as type: Value.Type) async throws -> CacheEntry<Value>? { nil }
+    func store<Value: Codable & Sendable>(_ value: Value, for key: CacheKey, lifetime: TimeInterval) async throws {}
+    func remove(_ key: CacheKey) async throws {}
+    func removeAll(in namespace: String) async throws {}
+    func removeExpired() async throws {}
 }
 
 /// Stubbed at the repository seam so the preview skips cache, network and mapper.

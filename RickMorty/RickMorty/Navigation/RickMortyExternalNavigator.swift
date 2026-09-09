@@ -31,6 +31,6 @@ extension RickMortyExternalNavigator: EpisodesExternalDestinations, LocationsExt
     /// screen alone (no `NavigationStack`) so it inherits the host's back button. One opaque
     /// return satisfies both protocols' `CharacterDetail` associated types.
     func characterDetail(id: String) -> some View {
-        CharactersFactory.buildCharacterDetail(dependencies: container, id: id)
+        CharactersFactory.buildCharacterDetail(root: container.root, id: id)
     }
 }

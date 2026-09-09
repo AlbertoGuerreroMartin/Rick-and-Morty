@@ -5,20 +5,22 @@
 //  Created by Alberto Guerrero Martin on 07/09/2026.
 //
 
+import Core
+import Storage
 import SwiftUI
 
 @MainActor
 public enum EpisodesFactory {
-    /// Closures below are invoked once per screen identity; see `EpisodesScreen`.
-    public static func build(dependencies: any EpisodesDependencies,
-                             navigator: EpisodesNavigator,
+    /// Closures below are invoked once per screen identity; see `EpisodesScreen`. The root already
+    /// carries every registration; see `EpisodesAssembly`.
+    public static func build(root: DependencyContainer,
                              external: some EpisodesExternalDestinations) -> some View {
         EpisodesScreen(
-            makeGraph: { makeGraph(dependencies: dependencies, navigator: navigator) },
-            makeSection: { graph in
+            makeScope: { root.makeChild() },
+            makeSection: { scope in
                 EpisodesListSectionView(
-                    viewModel: graph.viewModel,
-                    renderModelPublisher: graph.listMapper.renderModelPublisher()
+                    viewModel: scope.resolve((any EpisodesListSectionViewModelContract).self),
+                    renderModelPublisher: scope.resolve(EpisodesListSectionMapper.self).renderModelPublisher()
                 )
             },
             // Exhaustive switch: adding an `EpisodesRoute` case is a compile error here.
@@ -32,24 +34,8 @@ public enum EpisodesFactory {
     }
 
     /// On the factory, not a data source, so the cache namespace stays private to this feature.
-    public static func purgeCache(dependencies: any EpisodesDependencies) async throws {
-        try await EpisodesLocalDataSource(cacheStore: dependencies.cacheStore).removeAll()
-    }
-
-    static func makeGraph(dependencies: any EpisodesDependencies,
-                          navigator: EpisodesNavigator) -> EpisodesScreenGraph {
-        let entityMapper = EpisodeEntityMapper()
-        let remoteDataSource = EpisodesRemoteDataSource(client: dependencies.graphQLClient)
-        let linksRemoteDataSource = HBOMaxLinksRemoteDataSource(client: dependencies.justWatchClient)
-        let localDataSource = EpisodesLocalDataSource(cacheStore: dependencies.cacheStore)
-        let repository = EpisodesRepository(remoteDataSource: remoteDataSource,
-                                            hboMaxLinksRemoteDataSource: linksRemoteDataSource,
-                                            localDataSource: localDataSource,
-                                            mapper: entityMapper,
-                                            linksMapper: HBOMaxLinksMapper())
-        let useCase = EpisodesUseCase(repository: repository)
-        let viewModel = EpisodesViewModel(episodesUseCase: useCase)
-        let listMapper = EpisodesListSectionMapper(viewModel: viewModel)
-        return EpisodesScreenGraph(navigator: navigator, viewModel: viewModel, listMapper: listMapper)
+    /// No screen scope: the data source is the only collaborator a purge needs.
+    public static func purgeCache(root: DependencyContainer) async throws {
+        try await root.resolve((any EpisodesLocalDataSourceContract).self).removeAll()
     }
 }

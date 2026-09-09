@@ -6,6 +6,7 @@
 //
 
 import Combine
+import Core
 import Foundation
 import SwiftUI
 import Testing
@@ -20,42 +21,40 @@ struct CharactersViewTests {
 
     @Test("the screen draws through its factory")
     func screenDrawsThroughTheFactory() async {
-        await render(CharactersFactory.build(dependencies: StubCharactersDependencies(),
-                                             navigator: CharactersNavigator()))
+        await render(CharactersFactory.build(root: makeRoot()))
     }
 
     @Test("the detail draws as a view pushed by someone else's stack")
     func detailDrawsInAForeignStack() async {
         await render(NavigationStack {
-            CharactersFactory.buildCharacterDetail(dependencies: StubCharactersDependencies(),
-                                                   id: "1")
+            CharactersFactory.buildCharacterDetail(root: makeRoot(), id: "1")
         })
     }
 
     @Test("showing a character puts its route on the screen's path")
     func showingACharacterPushesIt() async {
         let navigator = CharactersNavigator()
+        let root = makeRoot(navigator: navigator)
 
-        await render(CharactersFactory.build(dependencies: StubCharactersDependencies(),
-                                             navigator: navigator))
+        await render(CharactersFactory.build(root: root))
 
         navigator.showCharacter(id: "42")
         #expect(navigator.path == [.detail(id: "42")])
 
         // Re-render to confirm the pushed route resolves to an actual destination.
-        await render(CharactersFactory.build(dependencies: StubCharactersDependencies(),
-                                             navigator: navigator))
+        await render(CharactersFactory.build(root: root))
     }
 
-    @Test("the screen's graph starts empty and unfiltered")
-    func graphStartsEmpty() async {
-        let graph = CharactersFactory.makeGraph(dependencies: StubCharactersDependencies(),
-                                                navigator: CharactersNavigator())
+    @Test("the screen's scope starts empty and unfiltered")
+    func scopeStartsEmpty() async {
+        let scope = makeRoot().makeChild()
 
-        #expect(graph.navigator.path.isEmpty)
-        #expect(graph.viewModel.charactersPublished == nil)
-        #expect(graph.viewModel.paginationPublished == .end)
-        #expect(graph.viewModel.filterPublished == .empty)
+        #expect(scope.resolve(CharactersNavigator.self).path.isEmpty)
+
+        let viewModel = scope.resolve(CharactersViewModel.self)
+        #expect(viewModel.charactersPublished == nil)
+        #expect(viewModel.paginationPublished == .end)
+        #expect(viewModel.filterPublished == .empty)
     }
 
     // MARK: - The chip bar and the filter sheet
@@ -181,6 +180,15 @@ struct CharactersViewTests {
     }
 
     // MARK: - Hosting
+
+    /// The real wiring, so a rendered screen resolves the same graph the app does.
+    private func makeRoot(navigator: CharactersNavigator = CharactersNavigator()) -> DependencyContainer {
+        let root = DependencyContainer()
+        CharactersAssembly.register(in: root,
+                                    dependencies: StubCharactersDependencies(),
+                                    navigator: navigator)
+        return root
+    }
 
     /// Hosted inside a `NavigationStack`: their rows are `NavigationLink`s now, and a
     /// link outside a stack is a row that does nothing.

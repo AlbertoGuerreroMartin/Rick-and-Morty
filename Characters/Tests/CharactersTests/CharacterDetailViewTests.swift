@@ -6,6 +6,7 @@
 //
 
 import Combine
+import Core
 import Foundation
 import SwiftUI
 import Testing
@@ -132,32 +133,41 @@ struct CharacterDetailViewTests {
 
     // MARK: - The screen
 
-    @Test("the screen draws and loads through its graph")
+    @Test("the screen draws and loads through its scope")
     func screenDraws() async {
         let useCase = StubCharacterDetailUseCase(result: .success(.make(name: "Rick Sanchez")))
         let viewModel = CharacterDetailViewModel(id: "1", characterDetailUseCase: useCase)
         let screen = NavigationStack {
             CharacterDetailScreen(
-                makeGraph: {
-                    CharacterDetailScreenGraph(
-                        viewModel: viewModel,
-                        headerMapper: CharacterDetailHeaderSectionMapper(viewModel: viewModel),
-                        infoMapper: CharacterDetailInfoSectionMapper(viewModel: viewModel),
-                        episodesMapper: CharacterDetailEpisodesSectionMapper(viewModel: viewModel)
-                    )
+                makeScope: {
+                    let scope = DependencyContainer()
+                    scope.register(CharacterDetailViewModel.self) { _ in viewModel }
+                    scope.register((any CharacterDetailHeaderSectionViewModelContract).self) { _ in viewModel }
+                    scope.register((any CharacterDetailInfoSectionViewModelContract).self) { _ in viewModel }
+                    scope.register((any CharacterDetailEpisodesSectionViewModelContract).self) { _ in viewModel }
+                    scope.register(CharacterDetailHeaderSectionMapper.self) { _ in
+                        CharacterDetailHeaderSectionMapper(viewModel: viewModel)
+                    }
+                    scope.register(CharacterDetailInfoSectionMapper.self) { _ in
+                        CharacterDetailInfoSectionMapper(viewModel: viewModel)
+                    }
+                    scope.register(CharacterDetailEpisodesSectionMapper.self) { _ in
+                        CharacterDetailEpisodesSectionMapper(viewModel: viewModel)
+                    }
+                    return scope
                 },
-                makeSections: { graph in
+                makeSections: { scope in
                     CharacterDetailHeaderSectionView(
-                        viewModel: graph.viewModel,
-                        renderModelPublisher: graph.headerMapper.renderModelPublisher()
+                        viewModel: scope.resolve((any CharacterDetailHeaderSectionViewModelContract).self),
+                        renderModelPublisher: scope.resolve(CharacterDetailHeaderSectionMapper.self).renderModelPublisher()
                     )
                     CharacterDetailInfoSectionView(
-                        viewModel: graph.viewModel,
-                        renderModelPublisher: graph.infoMapper.renderModelPublisher()
+                        viewModel: scope.resolve((any CharacterDetailInfoSectionViewModelContract).self),
+                        renderModelPublisher: scope.resolve(CharacterDetailInfoSectionMapper.self).renderModelPublisher()
                     )
                     CharacterDetailEpisodesSectionView(
-                        viewModel: graph.viewModel,
-                        renderModelPublisher: graph.episodesMapper.renderModelPublisher()
+                        viewModel: scope.resolve((any CharacterDetailEpisodesSectionViewModelContract).self),
+                        renderModelPublisher: scope.resolve(CharacterDetailEpisodesSectionMapper.self).renderModelPublisher()
                     )
                 }
             )
@@ -174,10 +184,13 @@ struct CharacterDetailViewTests {
 
     @Test("the detail factory builds a drawable screen")
     func factoryBuildsADrawableScreen() async {
-        let dependencies = StubCharactersDependencies()
+        let root = DependencyContainer()
+        CharactersAssembly.register(in: root,
+                                    dependencies: StubCharactersDependencies(),
+                                    navigator: CharactersNavigator())
 
         await render(NavigationStack {
-            CharacterDetailFactory.build(dependencies: dependencies, id: "1")
+            CharacterDetailFactory.build(root: root, id: "1")
         })
     }
 

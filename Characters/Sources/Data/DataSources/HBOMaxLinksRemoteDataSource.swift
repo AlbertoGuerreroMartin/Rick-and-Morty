@@ -18,7 +18,7 @@ final class HBOMaxLinksRemoteDataSource: HBOMaxLinksRemoteDataSourceContract {
     private let client: GraphQLClient
 
     /// - Parameter client: must point at JustWatch, not rickandmortyapi; wired only in
-    ///   `CharacterDetailFactory.makeGraph`.
+    ///   the feature's assembly.
     init(client: GraphQLClient) {
         self.client = client
     }

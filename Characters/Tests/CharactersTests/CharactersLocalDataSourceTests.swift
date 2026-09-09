@@ -5,6 +5,7 @@
 //  Created by Alberto Guerrero Martin on 04/09/2026.
 //
 
+import Core
 import Foundation
 import Networking
 import Storage
@@ -184,15 +185,19 @@ struct CharactersLocalDataSourceTests {
     }
 
     @Test("purging through the factory empties the feature's cache")
+    @MainActor
     func purgeCacheEmptiesTheFeature() async throws {
         let directory = TemporaryDirectory()
         defer { directory.remove() }
-        let dependencies = PurgeTestCharactersDependencies(root: directory.url)
-        let dataSource = CharactersLocalDataSource(cacheStore: dependencies.cacheStore)
+        let root = DependencyContainer()
+        CharactersAssembly.register(in: root,
+                                    dependencies: PurgeTestCharactersDependencies(root: directory.url),
+                                    navigator: CharactersNavigator())
+        let dataSource = root.resolve((any CharactersLocalDataSourceContract).self)
         let query = CharactersQuery(page: 1)
         try await dataSource.store(.make(names: ["Rick Sanchez"], next: nil), for: query)
 
-        try await CharactersFactory.purgeCache(dependencies: dependencies)
+        try await CharactersFactory.purgeCache(root: root)
 
         #expect(try await dataSource.charactersPage(for: query) == nil)
     }

@@ -37,22 +37,17 @@ struct RickMortyApp: App {
     private var tabs: some View {
         let tabs = TabView {
             Tab("Characters", systemImage: "person") {
-                // Navigator comes from the container, not the factory: a deep link must
+                // The navigator is registered by the assembly, not built here: a deep link must
                 // reach it before the screen exists.
-                CharactersFactory.build(dependencies: container,
-                                        navigator: container.charactersNavigator)
+                CharactersFactory.build(root: container.root)
             }
 
             Tab("Episodes", systemImage: "list.bullet") {
-                EpisodesFactory.build(dependencies: container,
-                                      navigator: container.episodesNavigator,
-                                      external: externalNavigator)
+                EpisodesFactory.build(root: container.root, external: externalNavigator)
             }
 
             Tab("Locations", systemImage: "mappin") {
-                LocationsFactory.build(dependencies: container,
-                                       navigator: container.locationsNavigator,
-                                       external: externalNavigator)
+                LocationsFactory.build(root: container.root, external: externalNavigator)
             }
         }
 
