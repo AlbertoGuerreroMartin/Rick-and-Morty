@@ -2,6 +2,14 @@
 
 The Episodes tab: the whole catalogue grouped by season, searchable as you type, with the cast of each episode and a shortcut to watch it on HBO Max.
 
+<table>
+  <tr>
+    <td><img width="585" height="1266" alt="IMG_9753" src="https://github.com/user-attachments/assets/957a654a-320e-4d0d-bb6e-e693cf248c13" /></td>
+    <td><img width="585" height="1266" alt="IMG_9754" src="https://github.com/user-attachments/assets/60d65d01-b590-4e26-ae5f-3e4bfedaeb5c" /></td>
+    <td><img width="585" height="1266" alt="IMG_9755" src="https://github.com/user-attachments/assets/f10ea2c5-d76d-46a3-9c53-e7687e2e48f2" /></td>
+  </tr>
+</table>
+
 
 ## Features
 
