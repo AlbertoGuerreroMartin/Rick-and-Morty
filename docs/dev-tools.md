@@ -2,6 +2,15 @@
 
 The `DevTools` package is a debug-only sheet for clearing caches and inspecting requests. It depends on `Networking`, `Storage` and `DesignSystem`. The app links it in every configuration but imports it only under `#if DEBUG`, which is why the shake override below is conditional too.
 
+<table>
+  <tr>
+    <td><img width="585" height="1266" alt="IMG_9760" src="https://github.com/user-attachments/assets/d926b8a3-b60f-4751-879d-3a92f08d2678" /></td>
+    <td><img width="585" height="1266" alt="IMG_9761" src="https://github.com/user-attachments/assets/77c4e5e8-352b-43ac-a8aa-97e939844788" /></td>
+    <td><img width="585" height="1266" alt="IMG_9762" src="https://github.com/user-attachments/assets/0bedebfd-1c5a-49a0-9c07-3ae62b6b0850" /></td>
+    <td><img width="585" height="1266" alt="IMG_9763" src="https://github.com/user-attachments/assets/f4fcb3cf-901b-45f8-a996-916952720f0a" /></td>
+  </tr>
+</table>
+
 ## It skips the architecture on purpose
 
 - No `*Contract` protocols, no section mappers, no use cases. The screen is a `List` over an array of closures plus two `@Observable` models. Those layers exist so features can grow without becoming untestable; a tool that never ships does not need them.
