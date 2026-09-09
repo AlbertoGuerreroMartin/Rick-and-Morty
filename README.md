@@ -2,6 +2,16 @@
 
 A SwiftUI iOS app that browses the characters, episodes and locations of the *Rick and Morty* series through the public GraphQL API at https://rickandmortyapi.com.
 
+<table>
+  <tr>
+    <td><img width="585" height="1266" alt="IMG_9746" src="https://github.com/user-attachments/assets/9d08fa95-f588-456f-b9d8-960ec0232ca8" /></td>
+    <td><img width="585" height="1266" alt="IMG_9747" src="https://github.com/user-attachments/assets/e1de46d2-4423-4360-8cf5-bb94b6d3c477" /></td>
+    <td><img width="585" height="1266" alt="IMG_9748" src="https://github.com/user-attachments/assets/e91f893c-6f43-4de9-90ac-7b72ca1097ba" /></td>
+  </tr>
+</table>
+
+
+
 ## Platform decisions
 
 - **Minimum supported version: iOS 18.6.** Loses very few devices and unlocks the APIs the app is built on: the SwiftUI navigation and `@Observable` APIs, the `Tab` builder, and `Mutex` from the Synchronization module.
@@ -56,3 +66,4 @@ Listed below are the most important topics that were excluded due to time constr
 - **Real usage of DesignSystem package**: now it only contains the image loading and cache layer, but it was meant to serve as a UI kit for the whole app, holding its common, reusable UI components. An extraction of these UI components to this package is pending.
 - **Improve Dynamic Type larger sizes support**: the app behaves properly with the basic sizes variations of Dynamic Type, but with the larger ones struggles to render a correct UI. This could be improved adjusting the design of the screens.
 - **Add snapshot and end-to-end UI tests**: the package view tests render every screen state on a hosted window and assert the logic wired through it, but there are no snapshot tests, and the app's XCUITest bundle is still the Xcode template.
+- **Configure CI**: add GitHub actions to run tests before merging PR, use fastlane to publish signed versions to TestFlight, etc. This topic hasn't been considered since this app is not currently intended to reach the AppStore, but adding CI would be a significant improvement.
