@@ -19,7 +19,7 @@ struct CharactersScreen<Content: View, Detail: View>: View {
 
     /// Which of the two results sections is on screen. Not persisted: a relaunch
     /// resetting the toggle is cheaper than a `UserDefaults` key to own and test.
-    @State private var layout: CharactersLayout = .list
+    @State private var layout: CharactersLayout = .grid
 
     init(makeScope: @escaping () -> DependencyContainer,
          makeSection: @escaping (DependencyContainer, CharactersLayout) -> Content,
