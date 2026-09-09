@@ -28,20 +28,28 @@ struct LocationsScreen<Content: View, Destination: View>: View {
         self.makeDestination = makeDestination
     }
 
+    private var viewModel: any LocationsViewModelContract {
+        scope.value.resolve((any LocationsViewModelContract).self)
+    }
+
+    private var navigator: LocationsNavigator {
+        scope.value.resolve(LocationsNavigator.self)
+    }
+
     var body: some View {
         // Bound to the navigator's path so a tap and a programmatic push land in the same array.
-        NavigationStack(path: Bindable(scope.value.resolve(LocationsNavigator.self)).path) {
+        NavigationStack(path: Bindable(navigator).path) {
             makeSection(scope.value)
                 // Declared once for the whole stack: every row pushes the same route case.
                 .navigationDestination(for: LocationsRoute.self) { makeDestination($0) }
                 .navigationTitle(Text("Locations", bundle: .module))
                 // Reloads on a cache clear announced via `Storage` (e.g. from developer tools).
                 .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
-                    Task { await scope.value.resolve((any LocationsViewModelContract).self).reloadFromScratch() }
+                    Task { await viewModel.reloadFromScratch() }
                 }
         }
         .task {
-            await scope.value.resolve((any LocationsViewModelContract).self).loadData()
+            await viewModel.loadData()
         }
     }
 }

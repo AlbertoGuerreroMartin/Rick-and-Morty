@@ -23,6 +23,10 @@ struct CharacterDetailScreen<Content: View>: View {
         self.makeSections = makeSections
     }
 
+    private var viewModel: any CharacterDetailViewModelContract {
+        scope.value.resolve((any CharacterDetailViewModelContract).self)
+    }
+
     var body: some View {
         // No `NavigationStack` of its own: this screen is pushed into the Characters stack.
         ScrollView {
@@ -37,12 +41,12 @@ struct CharacterDetailScreen<Content: View>: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            await scope.value.resolve((any CharacterDetailViewModelContract).self).loadData()
+            await viewModel.loadData()
         }
         // A cache clear from the developer tools is announced via `Storage`
         // notification; the screen answers by reloading from scratch.
         .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
-            Task { await scope.value.resolve((any CharacterDetailViewModelContract).self).reloadFromScratch() }
+            Task { await viewModel.reloadFromScratch() }
         }
     }
 }

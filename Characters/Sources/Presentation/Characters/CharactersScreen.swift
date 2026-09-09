@@ -29,10 +29,18 @@ struct CharactersScreen<Content: View, Detail: View>: View {
         self.makeDetail = makeDetail
     }
 
+    private var viewModel: any CharactersViewModelContract {
+        scope.value.resolve((any CharactersViewModelContract).self)
+    }
+
+    private var navigator: CharactersNavigator {
+        scope.value.resolve(CharactersNavigator.self)
+    }
+
     var body: some View {
         // Bound to the navigator's `path` (via `Bindable`) rather than a local `@State`:
         // taps and deep links both write into the same array, one source of truth.
-        NavigationStack(path: Bindable(scope.value.resolve(CharactersNavigator.self)).path) {
+        NavigationStack(path: Bindable(navigator).path) {
             makeSection(scope.value, layout)
                 .navigationDestination(for: CharactersRoute.self) { route in
                     switch route {
@@ -50,7 +58,7 @@ struct CharactersScreen<Content: View, Detail: View>: View {
                 .onChange(of: searchText) { _, text in
                     // Debounced in the view model, not here: a `.task(id:)` here would be
                     // cancelled by the re-render each keystroke causes.
-                    scope.value.resolve((any CharactersViewModelContract).self).updateSearchText(text)
+                    viewModel.updateSearchText(text)
                 }
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -64,11 +72,11 @@ struct CharactersScreen<Content: View, Detail: View>: View {
                 // A cache clear from the developer tools is announced via `Storage`
                 // notification; the screen answers by reloading from scratch.
                 .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
-                    Task { await scope.value.resolve((any CharactersViewModelContract).self).reloadFromScratch() }
+                    Task { await viewModel.reloadFromScratch() }
                 }
         }
         .task {
-            await scope.value.resolve((any CharactersViewModelContract).self).loadData()
+            await viewModel.loadData()
         }
     }
 }

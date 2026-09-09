@@ -30,9 +30,17 @@ struct EpisodesScreen<Content: View, Destination: View>: View {
         self.makeDestination = makeDestination
     }
 
+    private var viewModel: any EpisodesViewModelContract {
+        scope.value.resolve((any EpisodesViewModelContract).self)
+    }
+
+    private var navigator: EpisodesNavigator {
+        scope.value.resolve(EpisodesNavigator.self)
+    }
+
     var body: some View {
         // Bound to the navigator's path so a tap and a programmatic push land in the same array.
-        NavigationStack(path: Bindable(scope.value.resolve(EpisodesNavigator.self)).path) {
+        NavigationStack(path: Bindable(navigator).path) {
             makeSection(scope.value)
                 // Declared once for the whole stack: every row pushes the same route case.
                 .navigationDestination(for: EpisodesRoute.self) { makeDestination($0) }
@@ -44,15 +52,15 @@ struct EpisodesScreen<Content: View, Destination: View>: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .onChange(of: searchText) { _, text in
-                    scope.value.resolve((any EpisodesViewModelContract).self).updateSearchText(text)
+                    viewModel.updateSearchText(text)
                 }
                 // Cache cleared elsewhere (dev tools) triggers a reload.
                 .onReceive(NotificationCenter.default.publisher(for: .cacheDidClear)) { _ in
-                    Task { await scope.value.resolve((any EpisodesViewModelContract).self).reloadFromScratch() }
+                    Task { await viewModel.reloadFromScratch() }
                 }
         }
         .task {
-            await scope.value.resolve((any EpisodesViewModelContract).self).loadData()
+            await viewModel.loadData()
         }
     }
 }
