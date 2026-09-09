@@ -21,12 +21,6 @@ identifier_name:
     # Entity properties deliberately mirror the API's snake_case field names,
     # because the property name doubles as the GraphQL selection and coding key.
     - air_date
-    # Short mathematical names in geometry code (SpiralNavigator).
-    - x
-    - y
-    - t
-    - a
-    - b
 
 line_length:
   warning: 150
