@@ -96,18 +96,18 @@ struct CharactersScreen<Content: View, Detail: View>: View {
             VStack(spacing: 0) {
                 CharactersFilterBarSectionView(
                     viewModel: scope.resolve((any CharactersFilterBarSectionViewModelContract).self),
-                    renderModelPublisher: scope.resolve(CharactersFilterBarSectionMapper.self).renderModelPublisher()
+                    renderModelPublisher: scope.resolve((any CharactersFilterBarSectionMapperContract).self).renderModelPublisher()
                 )
                 switch layout {
                 case .list:
                     CharactersListSectionView(
                         viewModel: scope.resolve((any CharactersListSectionViewModelContract).self),
-                        renderModelPublisher: scope.resolve(CharactersListSectionMapper.self).renderModelPublisher()
+                        renderModelPublisher: scope.resolve((any CharactersListSectionMapperContract).self).renderModelPublisher()
                     )
                 case .grid:
                     CharactersGridSectionView(
                         viewModel: scope.resolve((any CharactersGridSectionViewModelContract).self),
-                        renderModelPublisher: scope.resolve(CharactersGridSectionMapper.self).renderModelPublisher()
+                        renderModelPublisher: scope.resolve((any CharactersGridSectionMapperContract).self).renderModelPublisher()
                     )
                 }
             }

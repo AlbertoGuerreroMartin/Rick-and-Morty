@@ -44,7 +44,7 @@ public enum EpisodesAssembly {
         root.register((any EpisodesListSectionViewModelContract).self, lifetime: .scoped) {
             $0.resolve((any EpisodesViewModelContract).self)
         }
-        root.register(EpisodesListSectionMapper.self, lifetime: .scoped) {
+        root.register((any EpisodesListSectionMapperContract).self, lifetime: .scoped) {
             EpisodesListSectionMapper(viewModel: $0.resolve((any EpisodesListSectionViewModelContract).self))
         }
     }

@@ -30,12 +30,18 @@ enum LocationDetailRenderModel: Equatable {
     case visible(LocationDetailContent)
 }
 
+/// What screens and tests resolve; `DataModel` is left to the mapper.
+@MainActor
+protocol LocationDetailSectionMapperContract: SectionMapperContract
+    where ViewModel == any LocationDetailSectionViewModelContract,
+          RenderModel == LocationDetailRenderModel {}
+
 /// Resolves the selected id against the loaded locations and turns the answer into the card.
 /// Resolved here, not stored as a `LocationModel`, so a reload can't leave the card describing
 /// a location the carousel no longer has. A row with no value is omitted; the API's own literal
 /// `"unknown"` is kept as a real value, distinct from no record at all.
 @MainActor
-final class LocationDetailSectionMapper: SectionMapperContract {
+final class LocationDetailSectionMapper: LocationDetailSectionMapperContract {
     typealias ViewModel = LocationDetailSectionViewModelContract
     typealias RenderModel = LocationDetailRenderModel
 

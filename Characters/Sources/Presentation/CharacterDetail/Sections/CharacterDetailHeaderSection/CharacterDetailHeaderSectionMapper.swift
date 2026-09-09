@@ -25,8 +25,14 @@ enum CharacterDetailHeaderRenderState: Equatable {
     case visible(CharacterDetailHeaderRenderModel)
 }
 
+/// What screens and tests resolve; `DataModel` is left to the mapper.
 @MainActor
-final class CharacterDetailHeaderSectionMapper: SectionMapperContract {
+protocol CharacterDetailHeaderSectionMapperContract: SectionMapperContract
+    where ViewModel == any CharacterDetailHeaderSectionViewModelContract,
+          RenderModel == CharacterDetailHeaderRenderState {}
+
+@MainActor
+final class CharacterDetailHeaderSectionMapper: CharacterDetailHeaderSectionMapperContract {
     typealias ViewModel = CharacterDetailHeaderSectionViewModelContract
     typealias RenderModel = CharacterDetailHeaderRenderState
 

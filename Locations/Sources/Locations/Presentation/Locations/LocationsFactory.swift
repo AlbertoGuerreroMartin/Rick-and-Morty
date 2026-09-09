@@ -39,11 +39,11 @@ public enum LocationsFactory {
         VStack(spacing: 0) {
             LocationsCarouselSectionView(
                 viewModel: scope.resolve((any LocationsCarouselSectionViewModelContract).self),
-                renderModelPublisher: scope.resolve(LocationsCarouselSectionMapper.self).renderModelPublisher()
+                renderModelPublisher: scope.resolve((any LocationsCarouselSectionMapperContract).self).renderModelPublisher()
             )
             LocationDetailSectionView(
                 viewModel: scope.resolve((any LocationDetailSectionViewModelContract).self),
-                renderModelPublisher: scope.resolve(LocationDetailSectionMapper.self).renderModelPublisher()
+                renderModelPublisher: scope.resolve((any LocationDetailSectionMapperContract).self).renderModelPublisher()
             )
         }
     }

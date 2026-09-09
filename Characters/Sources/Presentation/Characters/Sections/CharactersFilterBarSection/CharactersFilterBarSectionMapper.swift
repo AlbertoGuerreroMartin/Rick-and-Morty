@@ -27,8 +27,14 @@ struct CharactersFilterBarRenderModel: Equatable, Sendable {
     static let empty = CharactersFilterBarRenderModel(filter: .empty, activeCount: 0, chips: [])
 }
 
+/// What screens and tests resolve; `DataModel` is left to the mapper.
 @MainActor
-final class CharactersFilterBarSectionMapper: SectionMapperContract {
+protocol CharactersFilterBarSectionMapperContract: SectionMapperContract
+    where ViewModel == any CharactersFilterBarSectionViewModelContract,
+          RenderModel == CharactersFilterBarRenderModel {}
+
+@MainActor
+final class CharactersFilterBarSectionMapper: CharactersFilterBarSectionMapperContract {
     typealias ViewModel = CharactersFilterBarSectionViewModelContract
     typealias DataModel = CharactersFilter
     typealias RenderModel = CharactersFilterBarRenderModel

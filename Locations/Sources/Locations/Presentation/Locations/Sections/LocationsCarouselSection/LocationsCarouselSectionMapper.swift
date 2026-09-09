@@ -24,10 +24,16 @@ enum LocationsCarouselRenderModel: Equatable {
                  footer: LocationsSectionFooter)
 }
 
+/// What screens and tests resolve; `DataModel` is left to the mapper.
+@MainActor
+protocol LocationsCarouselSectionMapperContract: SectionMapperContract
+    where ViewModel == any LocationsCarouselSectionViewModelContract,
+          RenderModel == LocationsCarouselRenderModel {}
+
 /// Turns what was loaded, what is selected and where pagination stands into the
 /// carousel.
 @MainActor
-final class LocationsCarouselSectionMapper: SectionMapperContract {
+final class LocationsCarouselSectionMapper: LocationsCarouselSectionMapperContract {
     typealias ViewModel = LocationsCarouselSectionViewModelContract
     typealias RenderModel = LocationsCarouselRenderModel
 

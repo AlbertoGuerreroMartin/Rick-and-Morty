@@ -65,8 +65,8 @@ struct LocationsAssemblyTests {
 
         #expect(scope.resolve((any LocationsCarouselSectionViewModelContract).self) as AnyObject === viewModel)
         #expect(scope.resolve((any LocationDetailSectionViewModelContract).self) as AnyObject === viewModel)
-        #expect(scope.resolve(LocationsCarouselSectionMapper.self).viewModel as AnyObject === viewModel)
-        #expect(scope.resolve(LocationDetailSectionMapper.self).viewModel as AnyObject === viewModel)
+        #expect(scope.resolve((any LocationsCarouselSectionMapperContract).self).viewModel as AnyObject === viewModel)
+        #expect(scope.resolve((any LocationDetailSectionMapperContract).self).viewModel as AnyObject === viewModel)
     }
 
     @Test("the scope carries the navigator the assembly was handed")

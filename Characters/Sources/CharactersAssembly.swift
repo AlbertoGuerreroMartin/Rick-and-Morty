@@ -66,13 +66,13 @@ public enum CharactersAssembly {
         root.register((any CharactersFilterBarSectionViewModelContract).self, lifetime: .scoped) {
             $0.resolve((any CharactersViewModelContract).self)
         }
-        root.register(CharactersListSectionMapper.self, lifetime: .scoped) {
+        root.register((any CharactersListSectionMapperContract).self, lifetime: .scoped) {
             CharactersListSectionMapper(viewModel: $0.resolve((any CharactersListSectionViewModelContract).self))
         }
-        root.register(CharactersGridSectionMapper.self, lifetime: .scoped) {
+        root.register((any CharactersGridSectionMapperContract).self, lifetime: .scoped) {
             CharactersGridSectionMapper(viewModel: $0.resolve((any CharactersGridSectionViewModelContract).self))
         }
-        root.register(CharactersFilterBarSectionMapper.self, lifetime: .scoped) {
+        root.register((any CharactersFilterBarSectionMapperContract).self, lifetime: .scoped) {
             CharactersFilterBarSectionMapper(viewModel: $0.resolve((any CharactersFilterBarSectionViewModelContract).self))
         }
     }
@@ -93,13 +93,13 @@ public enum CharactersAssembly {
         root.register((any CharacterDetailEpisodesSectionViewModelContract).self, lifetime: .scoped) {
             $0.resolve((any CharacterDetailViewModelContract).self)
         }
-        root.register(CharacterDetailHeaderSectionMapper.self, lifetime: .scoped) {
+        root.register((any CharacterDetailHeaderSectionMapperContract).self, lifetime: .scoped) {
             CharacterDetailHeaderSectionMapper(viewModel: $0.resolve((any CharacterDetailHeaderSectionViewModelContract).self))
         }
-        root.register(CharacterDetailInfoSectionMapper.self, lifetime: .scoped) {
+        root.register((any CharacterDetailInfoSectionMapperContract).self, lifetime: .scoped) {
             CharacterDetailInfoSectionMapper(viewModel: $0.resolve((any CharacterDetailInfoSectionViewModelContract).self))
         }
-        root.register(CharacterDetailEpisodesSectionMapper.self, lifetime: .scoped) {
+        root.register((any CharacterDetailEpisodesSectionMapperContract).self, lifetime: .scoped) {
             CharacterDetailEpisodesSectionMapper(viewModel: $0.resolve((any CharacterDetailEpisodesSectionViewModelContract).self))
         }
     }

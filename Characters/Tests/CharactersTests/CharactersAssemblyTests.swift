@@ -70,9 +70,9 @@ struct CharactersAssemblyTests {
         #expect(scope.resolve((any CharactersListSectionViewModelContract).self) as AnyObject === viewModel)
         #expect(scope.resolve((any CharactersGridSectionViewModelContract).self) as AnyObject === viewModel)
         #expect(scope.resolve((any CharactersFilterBarSectionViewModelContract).self) as AnyObject === viewModel)
-        #expect(scope.resolve(CharactersListSectionMapper.self).viewModel as AnyObject === viewModel)
-        #expect(scope.resolve(CharactersGridSectionMapper.self).viewModel as AnyObject === viewModel)
-        #expect(scope.resolve(CharactersFilterBarSectionMapper.self).viewModel as AnyObject === viewModel)
+        #expect(scope.resolve((any CharactersListSectionMapperContract).self).viewModel as AnyObject === viewModel)
+        #expect(scope.resolve((any CharactersGridSectionMapperContract).self).viewModel as AnyObject === viewModel)
+        #expect(scope.resolve((any CharactersFilterBarSectionMapperContract).self).viewModel as AnyObject === viewModel)
     }
 
     /// A scope that dropped the id would fetch whichever character the server answered for an empty query.
@@ -88,9 +88,9 @@ struct CharactersAssemblyTests {
         #expect(scope.resolve((any CharacterDetailHeaderSectionViewModelContract).self) as AnyObject === viewModel)
         #expect(scope.resolve((any CharacterDetailInfoSectionViewModelContract).self) as AnyObject === viewModel)
         #expect(scope.resolve((any CharacterDetailEpisodesSectionViewModelContract).self) as AnyObject === viewModel)
-        #expect(scope.resolve(CharacterDetailHeaderSectionMapper.self).viewModel as AnyObject === viewModel)
-        #expect(scope.resolve(CharacterDetailInfoSectionMapper.self).viewModel as AnyObject === viewModel)
-        #expect(scope.resolve(CharacterDetailEpisodesSectionMapper.self).viewModel as AnyObject === viewModel)
+        #expect(scope.resolve((any CharacterDetailHeaderSectionMapperContract).self).viewModel as AnyObject === viewModel)
+        #expect(scope.resolve((any CharacterDetailInfoSectionMapperContract).self).viewModel as AnyObject === viewModel)
+        #expect(scope.resolve((any CharacterDetailEpisodesSectionMapperContract).self).viewModel as AnyObject === viewModel)
     }
 
     @Test("two pushed details are two view models")

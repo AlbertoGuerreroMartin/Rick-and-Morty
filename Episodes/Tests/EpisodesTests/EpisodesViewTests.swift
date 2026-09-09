@@ -21,58 +21,43 @@ struct EpisodesViewTests {
 
     @Test("the section draws the spinner while loading")
     func sectionDrawsWhileLoading() async {
-        let viewModel = StubEpisodesListViewModel()
-        viewModel.isLoading = true
-
-        await renderSection(viewModel)
+        await renderSection(.hidden)
     }
 
     @Test("the section draws a failed load")
     func sectionDrawsAFailedLoad() async {
-        let viewModel = StubEpisodesListViewModel()
-        viewModel.episodes = []
-        viewModel.loadFailed = true
-
-        await renderSection(viewModel)
+        await renderSection(.empty(.failed))
     }
 
     @Test("the section draws an empty catalogue")
     func sectionDrawsAnEmptyCatalogue() async {
-        let viewModel = StubEpisodesListViewModel()
-        viewModel.episodes = []
-
-        await renderSection(viewModel)
+        await renderSection(.empty(.noMatches(query: nil)))
     }
 
     @Test("the section draws a search that matched nothing")
     func sectionDrawsNoMatches() async {
-        let viewModel = StubEpisodesListViewModel()
-        viewModel.episodes = [.make(name: "Pilot", season: 1, number: 1)]
-        viewModel.searchQuery = EpisodesSearchQuery(text: "squanch")
-
-        await renderSection(viewModel)
+        await renderSection(.empty(.noMatches(query: "squanch")))
     }
 
     @Test("the section draws grouped seasons")
     func sectionDrawsSeasons() async {
-        let viewModel = StubEpisodesListViewModel()
-        viewModel.episodes = [
-            .make(name: "Pilot", season: 1, number: 1, characters: .cast,
-                  hboMaxURL: URL(string: "https://play.hbomax.com/video/watch/1")),
-            .make(name: "Lawnmower Dog", season: 1, number: 2),
-            .make(name: "A Rickle in Time", season: 2, number: 1, characters: .cast)
-        ]
-
-        await renderSection(viewModel)
+        await renderSection(.visible(seasons: [
+            EpisodesSeasonRenderModel(season: 1, title: "Season 1", episodes: [
+                .make(name: "Pilot", season: 1, number: 1, characters: .cast,
+                      hboMaxURL: URL(string: "https://play.hbomax.com/video/watch/1")),
+                .make(name: "Lawnmower Dog", season: 1, number: 2)
+            ]),
+            EpisodesSeasonRenderModel(season: 2, title: "Season 2", episodes: [
+                .make(name: "A Rickle in Time", season: 2, number: 1, characters: .cast)
+            ])
+        ]))
     }
 
     @Test("the failed empty state retries through the view model")
     func retryReachesTheViewModel() async {
         let viewModel = StubEpisodesListViewModel()
-        viewModel.episodes = []
-        viewModel.loadFailed = true
 
-        await renderSection(viewModel)
+        await renderSection(.empty(.failed), viewModel: viewModel)
 
         // Driven directly rather than by tapping the button, whose identity SwiftUI doesn't promise.
         viewModel.retryLoad()
@@ -149,15 +134,15 @@ struct EpisodesViewTests {
                 scope.register(EpisodesNavigator.self) { _ in EpisodesNavigator() }
                 scope.register((any EpisodesViewModelContract).self) { _ in viewModel }
                 scope.register((any EpisodesListSectionViewModelContract).self) { _ in viewModel }
-                scope.register(EpisodesListSectionMapper.self) { _ in
-                    EpisodesListSectionMapper(viewModel: viewModel)
+                scope.register((any EpisodesListSectionMapperContract).self) { _ in
+                    StubEpisodesListSectionMapper(viewModel: viewModel, renderModel: .hidden)
                 }
                 return scope
             },
             makeSection: { scope in
                 EpisodesListSectionView(
                     viewModel: scope.resolve((any EpisodesListSectionViewModelContract).self),
-                    renderModelPublisher: scope.resolve(EpisodesListSectionMapper.self).renderModelPublisher()
+                    renderModelPublisher: scope.resolve((any EpisodesListSectionMapperContract).self).renderModelPublisher()
                 )
             },
             makeDestination: { route in
@@ -209,11 +194,13 @@ struct EpisodesViewTests {
         return root
     }
 
-    private func renderSection(_ viewModel: StubEpisodesListViewModel) async {
+    private func renderSection(_ renderModel: EpisodesListRenderModel,
+                               viewModel: StubEpisodesListViewModel = StubEpisodesListViewModel()) async {
         await render(NavigationStack {
             EpisodesListSectionView(
                 viewModel: viewModel,
-                renderModelPublisher: EpisodesListSectionMapper(viewModel: viewModel).renderModelPublisher()
+                renderModelPublisher: StubEpisodesListSectionMapper(viewModel: viewModel,
+                                                                    renderModel: renderModel).renderModelPublisher()
             )
         })
     }

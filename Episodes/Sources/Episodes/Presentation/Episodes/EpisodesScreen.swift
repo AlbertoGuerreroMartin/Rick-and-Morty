@@ -79,7 +79,7 @@ struct EpisodesScreen<Content: View, Destination: View>: View {
         makeSection: { scope in
             EpisodesListSectionView(
                 viewModel: scope.resolve((any EpisodesListSectionViewModelContract).self),
-                renderModelPublisher: scope.resolve(EpisodesListSectionMapper.self).renderModelPublisher()
+                renderModelPublisher: scope.resolve((any EpisodesListSectionMapperContract).self).renderModelPublisher()
             )
         },
         makeDestination: { route in

@@ -41,10 +41,10 @@ public enum LocationsAssembly {
         root.register((any LocationDetailSectionViewModelContract).self, lifetime: .scoped) {
             $0.resolve((any LocationsViewModelContract).self)
         }
-        root.register(LocationsCarouselSectionMapper.self, lifetime: .scoped) {
+        root.register((any LocationsCarouselSectionMapperContract).self, lifetime: .scoped) {
             LocationsCarouselSectionMapper(viewModel: $0.resolve((any LocationsCarouselSectionViewModelContract).self))
         }
-        root.register(LocationDetailSectionMapper.self, lifetime: .scoped) {
+        root.register((any LocationDetailSectionMapperContract).self, lifetime: .scoped) {
             LocationDetailSectionMapper(viewModel: $0.resolve((any LocationDetailSectionViewModelContract).self))
         }
     }

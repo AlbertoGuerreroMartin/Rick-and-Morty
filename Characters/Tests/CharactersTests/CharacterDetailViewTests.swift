@@ -22,44 +22,31 @@ struct CharacterDetailViewTests {
 
     @Test("the header draws the spinner while loading")
     func headerDrawsWhileLoading() async {
-        let viewModel = StubCharacterDetailSectionViewModel()
-        viewModel.isLoading = true
-
-        await renderHeader(viewModel)
+        await renderHeader(.hidden)
     }
 
     @Test("the header draws a failed load")
     func headerDrawsAFailedLoad() async {
-        let viewModel = StubCharacterDetailSectionViewModel()
-        viewModel.loadFailed = true
-
-        await renderHeader(viewModel)
+        await renderHeader(.failed)
     }
 
     @Test("the header draws the character over the picture")
     func headerDrawsTheCharacter() async {
-        let viewModel = StubCharacterDetailSectionViewModel()
-        viewModel.detail = .make(name: "Rick Sanchez", status: .alive, species: "Human")
-
-        await renderHeader(viewModel)
+        await renderHeader(.visible(.make(name: "Rick Sanchez", status: .alive, species: "Human")))
     }
 
     @Test("the header draws a long name and a dead character")
     func headerDrawsAnAwkwardCharacter() async {
-        let viewModel = StubCharacterDetailSectionViewModel()
-        viewModel.detail = .make(name: "Abradolf Lincler of the Citadel of Ricks, Dimension C-137",
-                                 status: .dead,
-                                 species: "Unknown")
-
-        await renderHeader(viewModel)
+        await renderHeader(.visible(.make(name: "Abradolf Lincler of the Citadel of Ricks, Dimension C-137",
+                                          status: .dead,
+                                          species: "Unknown")))
     }
 
     @Test("the failed header retries through the view model")
     func retryReachesTheViewModel() async {
         let viewModel = StubCharacterDetailSectionViewModel()
-        viewModel.loadFailed = true
 
-        await renderHeader(viewModel)
+        await renderHeader(.failed, viewModel: viewModel)
 
         viewModel.retryLoad()
 
@@ -70,52 +57,51 @@ struct CharacterDetailViewTests {
 
     @Test("the info card draws nothing before a character lands")
     func infoCardDrawsHidden() async {
-        await renderInfo(StubCharacterDetailSectionViewModel())
+        await renderInfo(.hidden)
     }
 
     @Test("the info card draws every row")
     func infoCardDrawsTheRows() async {
-        let viewModel = StubCharacterDetailSectionViewModel()
-        viewModel.detail = .make(type: "Parasite")
-
-        await renderInfo(viewModel)
+        await renderInfo(.visible(rows: [
+            CharacterDetailInfoRow(label: "Status", value: "Alive"),
+            CharacterDetailInfoRow(label: "Species", value: "Human"),
+            CharacterDetailInfoRow(label: "Type", value: "Parasite"),
+            CharacterDetailInfoRow(label: "Gender", value: "Male"),
+            CharacterDetailInfoRow(label: "Origin", value: "Earth (C-137) · Planet · Dimension C-137"),
+            CharacterDetailInfoRow(label: "Location", value: "Citadel of Ricks · Space station · unknown")
+        ]))
     }
 
     @Test("the info card draws a character the API knows little about")
     func infoCardDrawsASparseCharacter() async {
-        let viewModel = StubCharacterDetailSectionViewModel()
-        viewModel.detail = .make(type: nil, origin: nil, location: nil)
-
-        await renderInfo(viewModel)
+        await renderInfo(.visible(rows: [
+            CharacterDetailInfoRow(label: "Status", value: "Alive"),
+            CharacterDetailInfoRow(label: "Species", value: "Human"),
+            CharacterDetailInfoRow(label: "Gender", value: "Male")
+        ]))
     }
 
     // MARK: - The episodes
 
     @Test("the episodes section draws nothing before a character lands")
     func episodesDrawHidden() async {
-        await renderEpisodes(StubCharacterDetailSectionViewModel())
+        await renderEpisodes(.hidden)
     }
 
     @Test("the episodes section draws a character with no episodes")
     func episodesDrawEmpty() async {
-        let viewModel = StubCharacterDetailSectionViewModel()
-        viewModel.detail = .make(episodes: [])
-
-        await renderEpisodes(viewModel)
+        await renderEpisodes(.empty)
     }
 
     @Test("the episodes section draws linked and unlinked rows side by side")
     func episodesDrawTheList() async {
-        let viewModel = StubCharacterDetailSectionViewModel()
-        viewModel.detail = .make(episodes: [
+        await renderEpisodes(.visible(episodes: [
             .make(name: "Pilot", season: 1, number: 1,
                   hboMaxURL: URL(string: "https://play.hbomax.com/video/watch/1")),
             .make(name: "Lawnmower Dog", season: 1, number: 2),
             .make(name: "A Rickle in Time", season: 2, number: 1,
                   hboMaxURL: URL(string: "https://play.hbomax.com/video/watch/2"))
-        ])
-
-        await renderEpisodes(viewModel)
+        ]))
     }
 
     @Test("a row with a link draws its button")
@@ -145,29 +131,32 @@ struct CharacterDetailViewTests {
                     scope.register((any CharacterDetailHeaderSectionViewModelContract).self) { _ in viewModel }
                     scope.register((any CharacterDetailInfoSectionViewModelContract).self) { _ in viewModel }
                     scope.register((any CharacterDetailEpisodesSectionViewModelContract).self) { _ in viewModel }
-                    scope.register(CharacterDetailHeaderSectionMapper.self) { _ in
-                        CharacterDetailHeaderSectionMapper(viewModel: viewModel)
+                    scope.register((any CharacterDetailHeaderSectionMapperContract).self) { _ in
+                        StubCharacterDetailHeaderSectionMapper(
+                            viewModel: viewModel,
+                            renderModel: .visible(.make(name: "Rick Sanchez", status: .alive, species: "Human"))
+                        )
                     }
-                    scope.register(CharacterDetailInfoSectionMapper.self) { _ in
-                        CharacterDetailInfoSectionMapper(viewModel: viewModel)
+                    scope.register((any CharacterDetailInfoSectionMapperContract).self) { _ in
+                        StubCharacterDetailInfoSectionMapper(viewModel: viewModel, renderModel: .hidden)
                     }
-                    scope.register(CharacterDetailEpisodesSectionMapper.self) { _ in
-                        CharacterDetailEpisodesSectionMapper(viewModel: viewModel)
+                    scope.register((any CharacterDetailEpisodesSectionMapperContract).self) { _ in
+                        StubCharacterDetailEpisodesSectionMapper(viewModel: viewModel, renderModel: .empty)
                     }
                     return scope
                 },
                 makeSections: { scope in
                     CharacterDetailHeaderSectionView(
                         viewModel: scope.resolve((any CharacterDetailHeaderSectionViewModelContract).self),
-                        renderModelPublisher: scope.resolve(CharacterDetailHeaderSectionMapper.self).renderModelPublisher()
+                        renderModelPublisher: scope.resolve((any CharacterDetailHeaderSectionMapperContract).self).renderModelPublisher()
                     )
                     CharacterDetailInfoSectionView(
                         viewModel: scope.resolve((any CharacterDetailInfoSectionViewModelContract).self),
-                        renderModelPublisher: scope.resolve(CharacterDetailInfoSectionMapper.self).renderModelPublisher()
+                        renderModelPublisher: scope.resolve((any CharacterDetailInfoSectionMapperContract).self).renderModelPublisher()
                     )
                     CharacterDetailEpisodesSectionView(
                         viewModel: scope.resolve((any CharacterDetailEpisodesSectionViewModelContract).self),
-                        renderModelPublisher: scope.resolve(CharacterDetailEpisodesSectionMapper.self).renderModelPublisher()
+                        renderModelPublisher: scope.resolve((any CharacterDetailEpisodesSectionMapperContract).self).renderModelPublisher()
                     )
                 }
             )
@@ -199,29 +188,33 @@ struct CharacterDetailViewTests {
     @Test("the list section still draws with its rows as links")
     func listSectionDrawsWithLinks() async {
         let viewModel = StubCharactersSectionViewModel()
-        viewModel.characters = [.make(id: "1", name: "Rick Sanchez"),
-                                .make(id: "2", name: "Morty Smith")]
+        let mapper = StubCharactersListSectionMapper(
+            viewModel: viewModel,
+            renderModel: .visible(characters: [.make(id: "1", name: "Rick Sanchez"),
+                                               .make(id: "2", name: "Morty Smith")],
+                                  footer: .none,
+                                  highlight: nil)
+        )
 
         await render(NavigationStack {
-            CharactersListSectionView(
-                viewModel: viewModel,
-                renderModelPublisher: CharactersListSectionMapper(viewModel: viewModel).renderModelPublisher()
-            )
+            CharactersListSectionView(viewModel: viewModel, renderModelPublisher: mapper.renderModelPublisher())
         })
     }
 
     @Test("the grid section still draws with its cells as links")
     func gridSectionDrawsWithLinks() async {
         let viewModel = StubCharactersSectionViewModel()
-        viewModel.characters = [.make(id: "1", name: "Rick Sanchez"),
-                                .make(id: "2", name: "Morty Smith"),
-                                .make(id: "3", name: "Summer Smith")]
+        let mapper = StubCharactersGridSectionMapper(
+            viewModel: viewModel,
+            renderModel: .visible(characters: [.make(id: "1", name: "Rick Sanchez"),
+                                               .make(id: "2", name: "Morty Smith"),
+                                               .make(id: "3", name: "Summer Smith")],
+                                  footer: .none,
+                                  highlight: nil)
+        )
 
         await render(NavigationStack {
-            CharactersGridSectionView(
-                viewModel: viewModel,
-                renderModelPublisher: CharactersGridSectionMapper(viewModel: viewModel).renderModelPublisher()
-            )
+            CharactersGridSectionView(viewModel: viewModel, renderModelPublisher: mapper.renderModelPublisher())
         })
     }
 
@@ -233,24 +226,30 @@ struct CharacterDetailViewTests {
 
     // MARK: - Hosting
 
-    private func renderHeader(_ viewModel: StubCharacterDetailSectionViewModel) async {
+    private func renderHeader(_ renderModel: CharacterDetailHeaderRenderState,
+                              viewModel: StubCharacterDetailSectionViewModel = StubCharacterDetailSectionViewModel()) async {
         await render(CharacterDetailHeaderSectionView(
             viewModel: viewModel,
-            renderModelPublisher: CharacterDetailHeaderSectionMapper(viewModel: viewModel).renderModelPublisher()
+            renderModelPublisher: StubCharacterDetailHeaderSectionMapper(viewModel: viewModel,
+                                                                         renderModel: renderModel).renderModelPublisher()
         ))
     }
 
-    private func renderInfo(_ viewModel: StubCharacterDetailSectionViewModel) async {
+    private func renderInfo(_ renderModel: CharacterDetailInfoRenderModel) async {
+        let viewModel = StubCharacterDetailSectionViewModel()
         await render(CharacterDetailInfoSectionView(
             viewModel: viewModel,
-            renderModelPublisher: CharacterDetailInfoSectionMapper(viewModel: viewModel).renderModelPublisher()
+            renderModelPublisher: StubCharacterDetailInfoSectionMapper(viewModel: viewModel,
+                                                                       renderModel: renderModel).renderModelPublisher()
         ))
     }
 
-    private func renderEpisodes(_ viewModel: StubCharacterDetailSectionViewModel) async {
+    private func renderEpisodes(_ renderModel: CharacterDetailEpisodesRenderModel) async {
+        let viewModel = StubCharacterDetailSectionViewModel()
         await render(CharacterDetailEpisodesSectionView(
             viewModel: viewModel,
-            renderModelPublisher: CharacterDetailEpisodesSectionMapper(viewModel: viewModel).renderModelPublisher()
+            renderModelPublisher: StubCharacterDetailEpisodesSectionMapper(viewModel: viewModel,
+                                                                           renderModel: renderModel).renderModelPublisher()
         ))
     }
 
@@ -277,6 +276,16 @@ struct CharacterDetailViewTests {
 }
 
 // MARK: - Test doubles
+
+private extension CharacterDetailHeaderRenderModel {
+    static func make(name: String, status: CharacterStatus, species: String) -> CharacterDetailHeaderRenderModel {
+        let detail = CharacterDetailModel.make(name: name, status: status, species: species)
+        return CharacterDetailHeaderRenderModel(name: detail.name,
+                                                image: detail.image,
+                                                status: detail.status,
+                                                species: detail.species)
+    }
+}
 
 @MainActor
 final class StubCharactersSectionViewModel: CharactersListSectionViewModelContract,

@@ -38,7 +38,7 @@ struct EpisodesAssemblyTests {
         #expect(viewModel.loadingPublished == false)
         // The section resolves its contract; it must land on the same instance.
         #expect(scope.resolve((any EpisodesListSectionViewModelContract).self) as AnyObject === viewModel)
-        #expect(scope.resolve(EpisodesListSectionMapper.self).viewModel as AnyObject === viewModel)
+        #expect(scope.resolve((any EpisodesListSectionMapperContract).self).viewModel as AnyObject === viewModel)
     }
 
     @Test("the data layer is shared by every screen scope")

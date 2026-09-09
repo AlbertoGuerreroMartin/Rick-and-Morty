@@ -13,8 +13,8 @@ import Testing
 import UIKit
 @testable import Locations
 
-/// Sections are driven through the real pipeline (stub view model, real mapper, `.onReceive`),
-/// not by writing a render model into `@State` directly, so the subscription wiring is checked too.
+/// Sections are driven through a stub mapper publishing the render model the test hands it, not by
+/// writing it into `@State` directly, so the `.onReceive` subscription wiring is checked too.
 @Suite("Locations views")
 @MainActor
 struct LocationsViewTests {
@@ -23,46 +23,27 @@ struct LocationsViewTests {
 
     @Test("the carousel draws the spinner while loading")
     func carouselDrawsWhileLoading() async {
-        let viewModel = StubLocationsCarouselViewModel()
-        viewModel.isLoading = true
-
-        await renderCarousel(viewModel)
+        await renderCarousel(.hidden)
     }
 
     @Test("the carousel draws a failed load")
     func carouselDrawsAFailedLoad() async {
-        let viewModel = StubLocationsCarouselViewModel()
-        viewModel.locations = []
-        viewModel.loadFailed = true
-
-        await renderCarousel(viewModel)
+        await renderCarousel(.empty(.failed))
     }
 
     @Test("the carousel draws an empty catalogue")
     func carouselDrawsAnEmptyCatalogue() async {
-        let viewModel = StubLocationsCarouselViewModel()
-        viewModel.locations = []
-
-        await renderCarousel(viewModel)
+        await renderCarousel(.empty(.noLocations))
     }
 
     @Test("the carousel draws a full row with a selection")
     func carouselDrawsAFullRow() async {
-        let viewModel = StubLocationsCarouselViewModel()
-        viewModel.locations = .catalogue
-        viewModel.selectedId = "5"
-        viewModel.pagination = .idle(nextPage: 2)
-
-        await renderCarousel(viewModel)
+        await renderCarousel(.visible(items: .catalogue, selectedId: "5", footer: .loadMore))
     }
 
     @Test("the carousel draws a single item")
     func carouselDrawsASingleItem() async {
-        let viewModel = StubLocationsCarouselViewModel()
-        viewModel.locations = [.make(id: "1", name: "Earth (C-137)")]
-        viewModel.selectedId = "1"
-
-        await renderCarousel(viewModel)
+        await renderCarousel(.visible(items: [.make(id: "1", title: "Earth (C-137)")], selectedId: "1", footer: .none))
     }
 
     @Test("a long name stays inside the circle")
@@ -87,35 +68,23 @@ struct LocationsViewTests {
 
     @Test("the carousel draws a location with a very long name")
     func carouselDrawsALongName() async {
-        let viewModel = StubLocationsCarouselViewModel()
-        viewModel.locations = [.make(id: "1",
-                                     name: "Interdimensional Cable Broadcasting Station",
-                                     type: nil)]
-        viewModel.selectedId = "1"
-
-        await renderCarousel(viewModel)
+        await renderCarousel(.visible(items: [.make(id: "1", title: "Interdimensional Cable Broadcasting Station")],
+                                      selectedId: "1",
+                                      footer: .none))
     }
 
     @Test("the carousel draws each footer state")
     func carouselDrawsEveryFooter() async {
-        for pagination in [LocationsPaginationState.idle(nextPage: 2), .loading,
-                           .failed(nextPage: 2), .end] {
-            let viewModel = StubLocationsCarouselViewModel()
-            viewModel.locations = .catalogue
-            viewModel.selectedId = "1"
-            viewModel.pagination = pagination
-
-            await renderCarousel(viewModel)
+        for footer in [LocationsSectionFooter.loadMore, .loading, .retry, .none] {
+            await renderCarousel(.visible(items: .catalogue, selectedId: "1", footer: footer))
         }
     }
 
     @Test("the failed empty state retries through the view model")
     func retryReachesTheViewModel() async {
         let viewModel = StubLocationsCarouselViewModel()
-        viewModel.locations = []
-        viewModel.loadFailed = true
 
-        await renderCarousel(viewModel)
+        await renderCarousel(.empty(.failed), viewModel: viewModel)
 
         // Driven directly rather than by tapping the ContentUnavailableView action.
         viewModel.retryLoad()
@@ -126,9 +95,8 @@ struct LocationsViewTests {
     @Test("the carousel reports its focus once items arrive")
     func theCarouselAnnouncesItsFocus() async {
         let viewModel = StubLocationsCarouselViewModel()
-        viewModel.locations = .catalogue
 
-        await renderCarousel(viewModel)
+        await renderCarousel(.visible(items: .catalogue, selectedId: nil, footer: .none), viewModel: viewModel)
 
         #expect(viewModel.selectedIds.first == "1")
     }
@@ -136,10 +104,8 @@ struct LocationsViewTests {
     @Test("the carousel follows a selection it did not make")
     func theCarouselFollowsTheSelection() async {
         let viewModel = StubLocationsCarouselViewModel()
-        viewModel.locations = .catalogue
-        viewModel.selectedId = "5"
 
-        await renderCarousel(viewModel)
+        await renderCarousel(.visible(items: .catalogue, selectedId: "5", footer: .none), viewModel: viewModel)
 
         #expect(viewModel.selectedIds == ["5"])
     }
@@ -148,41 +114,38 @@ struct LocationsViewTests {
 
     @Test("the detail draws nothing when nothing is selected")
     func detailDrawsHidden() async {
-        let viewModel = StubLocationDetailViewModel()
-        viewModel.locations = [.make(id: "1")]
-
-        await renderDetail(viewModel)
+        await renderDetail(.hidden)
     }
 
     @Test("the detail draws a location with everything")
     func detailDrawsAFullLocation() async {
-        let viewModel = StubLocationDetailViewModel()
-        viewModel.locations = [.make(id: "1",
-                                     name: "Earth (C-137)",
-                                     type: "Planet",
-                                     dimension: "Dimension C-137",
-                                     residents: .crowd)]
-        viewModel.selectedId = "1"
-
-        await renderDetail(viewModel)
+        await renderDetail(.visible(LocationDetailContent(
+            name: "Earth (C-137)",
+            rows: [LocationDetailInfoRow(label: "Type", value: "Planet"),
+                   LocationDetailInfoRow(label: "Dimension", value: "Dimension C-137")],
+            residents: .crowd,
+            residentsDescription: "6 residents"
+        )))
     }
 
     @Test("the detail draws a location with no residents")
     func detailDrawsAnEmptyLocation() async {
-        let viewModel = StubLocationDetailViewModel()
-        viewModel.locations = [.make(id: "1", name: "Worldender's lair", residents: [])]
-        viewModel.selectedId = "1"
-
-        await renderDetail(viewModel)
+        await renderDetail(.visible(LocationDetailContent(
+            name: "Worldender's lair",
+            rows: [LocationDetailInfoRow(label: "Type", value: "Planet")],
+            residents: [],
+            residentsDescription: "0 residents"
+        )))
     }
 
     @Test("the detail draws a location with no rows")
     func detailDrawsARowlessLocation() async {
-        let viewModel = StubLocationDetailViewModel()
-        viewModel.locations = [.make(id: "1", type: nil, dimension: nil, residents: .crowd)]
-        viewModel.selectedId = "1"
-
-        await renderDetail(viewModel)
+        await renderDetail(.visible(LocationDetailContent(
+            name: "Earth (C-137)",
+            rows: [],
+            residents: .crowd,
+            residentsDescription: "6 residents"
+        )))
     }
 
     // MARK: - Leaves
@@ -238,11 +201,9 @@ struct LocationsViewTests {
     @Test("a short page asks for the next one without a scroll")
     func aShortPageLoadsTheNextOne() async {
         let viewModel = StubLocationsCarouselViewModel()
-        viewModel.locations = [.make(id: "1", name: "Earth (C-137)")]
-        viewModel.selectedId = "1"
-        viewModel.pagination = .idle(nextPage: 2)
 
-        await renderCarousel(viewModel)
+        await renderCarousel(.visible(items: [.make(id: "1", title: "Earth (C-137)")], selectedId: "1", footer: .loadMore),
+                             viewModel: viewModel)
 
         #expect(viewModel.loadNextPageCallCount >= 1)
     }
@@ -250,11 +211,9 @@ struct LocationsViewTests {
     @Test("the end of the list asks for nothing")
     func theEndAsksForNothing() async {
         let viewModel = StubLocationsCarouselViewModel()
-        viewModel.locations = [.make(id: "1", name: "Earth (C-137)")]
-        viewModel.selectedId = "1"
-        viewModel.pagination = .end
 
-        await renderCarousel(viewModel)
+        await renderCarousel(.visible(items: [.make(id: "1", title: "Earth (C-137)")], selectedId: "1", footer: .none),
+                             viewModel: viewModel)
 
         #expect(viewModel.loadNextPageCallCount == 0)
     }
@@ -282,11 +241,11 @@ struct LocationsViewTests {
                 scope.register((any LocationsViewModelContract).self) { _ in viewModel }
                 scope.register((any LocationsCarouselSectionViewModelContract).self) { _ in viewModel }
                 scope.register((any LocationDetailSectionViewModelContract).self) { _ in viewModel }
-                scope.register(LocationsCarouselSectionMapper.self) { _ in
-                    LocationsCarouselSectionMapper(viewModel: viewModel)
+                scope.register((any LocationsCarouselSectionMapperContract).self) { _ in
+                    StubLocationsCarouselSectionMapper(viewModel: viewModel, renderModel: .hidden)
                 }
-                scope.register(LocationDetailSectionMapper.self) { _ in
-                    LocationDetailSectionMapper(viewModel: viewModel)
+                scope.register((any LocationDetailSectionMapperContract).self) { _ in
+                    StubLocationDetailSectionMapper(viewModel: viewModel, renderModel: .hidden)
                 }
                 return scope
             },
@@ -294,11 +253,11 @@ struct LocationsViewTests {
                 VStack {
                     LocationsCarouselSectionView(
                         viewModel: scope.resolve((any LocationsCarouselSectionViewModelContract).self),
-                        renderModelPublisher: scope.resolve(LocationsCarouselSectionMapper.self).renderModelPublisher()
+                        renderModelPublisher: scope.resolve((any LocationsCarouselSectionMapperContract).self).renderModelPublisher()
                     )
                     LocationDetailSectionView(
                         viewModel: scope.resolve((any LocationDetailSectionViewModelContract).self),
-                        renderModelPublisher: scope.resolve(LocationDetailSectionMapper.self).renderModelPublisher()
+                        renderModelPublisher: scope.resolve((any LocationDetailSectionMapperContract).self).renderModelPublisher()
                     )
                 }
             },
@@ -352,17 +311,21 @@ struct LocationsViewTests {
         return root
     }
 
-    private func renderCarousel(_ viewModel: StubLocationsCarouselViewModel) async {
+    private func renderCarousel(_ renderModel: LocationsCarouselRenderModel,
+                                viewModel: StubLocationsCarouselViewModel = StubLocationsCarouselViewModel()) async {
         await render(LocationsCarouselSectionView(
             viewModel: viewModel,
-            renderModelPublisher: LocationsCarouselSectionMapper(viewModel: viewModel).renderModelPublisher()
+            renderModelPublisher: StubLocationsCarouselSectionMapper(viewModel: viewModel,
+                                                                     renderModel: renderModel).renderModelPublisher()
         ))
     }
 
-    private func renderDetail(_ viewModel: StubLocationDetailViewModel) async {
+    private func renderDetail(_ renderModel: LocationDetailRenderModel) async {
+        let viewModel = StubLocationDetailViewModel()
         await renderRows(LocationDetailSectionView(
             viewModel: viewModel,
-            renderModelPublisher: LocationDetailSectionMapper(viewModel: viewModel).renderModelPublisher()
+            renderModelPublisher: StubLocationDetailSectionMapper(viewModel: viewModel,
+                                                                  renderModel: renderModel).renderModelPublisher()
         ))
     }
 
@@ -422,15 +385,16 @@ struct LocationsViewTests {
     }
 }
 
-private extension Array where Element == LocationModel {
+private extension Array where Element == LocationsCarouselItemRenderModel {
     /// More than fit on screen at once, so the carousel actually scrolls.
-    static var catalogue: [LocationModel] {
-        (1...12).map { index in
-            LocationModel.make(id: "\(index)",
-                               name: "Location \(index)",
-                               type: index.isMultiple(of: 3) ? nil : "Planet",
-                               dimension: "Dimension C-\(index)")
-        }
+    static var catalogue: [LocationsCarouselItemRenderModel] {
+        (1...12).map { index in .make(id: "\(index)", title: "Location \(index)") }
+    }
+}
+
+private extension LocationsCarouselItemRenderModel {
+    static func make(id: String, title: String) -> LocationsCarouselItemRenderModel {
+        LocationsCarouselItemRenderModel(id: id, title: title)
     }
 }
 

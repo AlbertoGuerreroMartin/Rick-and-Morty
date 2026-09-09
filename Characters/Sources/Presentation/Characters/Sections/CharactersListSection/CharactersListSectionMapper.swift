@@ -16,8 +16,14 @@ enum CharactersListRenderModel: Equatable {
     case empty(CharactersSectionEmptyReason)
 }
 
+/// What screens and tests resolve; `DataModel` is left to the mapper.
 @MainActor
-final class CharactersListSectionMapper: SectionMapperContract {
+protocol CharactersListSectionMapperContract: SectionMapperContract
+    where ViewModel == any CharactersListSectionViewModelContract,
+          RenderModel == CharactersListRenderModel {}
+
+@MainActor
+final class CharactersListSectionMapper: CharactersListSectionMapperContract {
     typealias ViewModel = CharactersListSectionViewModelContract
     typealias RenderModel = CharactersListRenderModel
 

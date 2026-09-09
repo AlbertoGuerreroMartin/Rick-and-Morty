@@ -20,7 +20,7 @@ public enum EpisodesFactory {
             makeSection: { scope in
                 EpisodesListSectionView(
                     viewModel: scope.resolve((any EpisodesListSectionViewModelContract).self),
-                    renderModelPublisher: scope.resolve(EpisodesListSectionMapper.self).renderModelPublisher()
+                    renderModelPublisher: scope.resolve((any EpisodesListSectionMapperContract).self).renderModelPublisher()
                 )
             },
             // Exhaustive switch: adding an `EpisodesRoute` case is a compile error here.

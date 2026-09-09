@@ -68,15 +68,15 @@ struct CharacterDetailScreen<Content: View>: View {
             makeSections: { scope in
                 CharacterDetailHeaderSectionView(
                     viewModel: scope.resolve((any CharacterDetailHeaderSectionViewModelContract).self),
-                    renderModelPublisher: scope.resolve(CharacterDetailHeaderSectionMapper.self).renderModelPublisher()
+                    renderModelPublisher: scope.resolve((any CharacterDetailHeaderSectionMapperContract).self).renderModelPublisher()
                 )
                 CharacterDetailInfoSectionView(
                     viewModel: scope.resolve((any CharacterDetailInfoSectionViewModelContract).self),
-                    renderModelPublisher: scope.resolve(CharacterDetailInfoSectionMapper.self).renderModelPublisher()
+                    renderModelPublisher: scope.resolve((any CharacterDetailInfoSectionMapperContract).self).renderModelPublisher()
                 )
                 CharacterDetailEpisodesSectionView(
                     viewModel: scope.resolve((any CharacterDetailEpisodesSectionViewModelContract).self),
-                    renderModelPublisher: scope.resolve(CharacterDetailEpisodesSectionMapper.self).renderModelPublisher()
+                    renderModelPublisher: scope.resolve((any CharacterDetailEpisodesSectionMapperContract).self).renderModelPublisher()
                 )
             }
         )

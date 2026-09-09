@@ -15,9 +15,15 @@ enum CharactersGridRenderModel: Equatable {
     case empty(CharactersSectionEmptyReason)
 }
 
+/// What screens and tests resolve; `DataModel` is left to the mapper.
+@MainActor
+protocol CharactersGridSectionMapperContract: SectionMapperContract
+    where ViewModel == any CharactersGridSectionViewModelContract,
+          RenderModel == CharactersGridRenderModel {}
+
 /// Mirrors the list mapper's rules so toggling layouts never disagrees on state.
 @MainActor
-final class CharactersGridSectionMapper: SectionMapperContract {
+final class CharactersGridSectionMapper: CharactersGridSectionMapperContract {
     typealias ViewModel = CharactersGridSectionViewModelContract
     typealias RenderModel = CharactersGridRenderModel
 

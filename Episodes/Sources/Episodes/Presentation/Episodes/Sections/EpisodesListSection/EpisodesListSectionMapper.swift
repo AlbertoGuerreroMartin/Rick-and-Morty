@@ -24,9 +24,15 @@ struct EpisodesSeasonRenderModel: Equatable, Identifiable {
     var id: Int { season }
 }
 
+/// What screens and tests resolve; `DataModel` is left to the mapper.
+@MainActor
+protocol EpisodesListSectionMapperContract: SectionMapperContract
+    where ViewModel == any EpisodesListSectionViewModelContract,
+          RenderModel == EpisodesListRenderModel {}
+
 /// Search is applied here, not the view model, so filtering/grouping/ordering stay one pure pass.
 @MainActor
-final class EpisodesListSectionMapper: SectionMapperContract {
+final class EpisodesListSectionMapper: EpisodesListSectionMapperContract {
     typealias ViewModel = EpisodesListSectionViewModelContract
     typealias RenderModel = EpisodesListRenderModel
 

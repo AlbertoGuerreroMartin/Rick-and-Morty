@@ -61,19 +61,25 @@ struct CharactersViewTests {
 
     @Test("the chip bar draws with no filters at all")
     func chipBarDrawsEmpty() async {
-        await renderFilterBar(StubCharactersFilterBarViewsViewModel())
+        await renderFilterBar(.empty)
     }
 
     @Test("the chip bar draws a chip per active field")
     func chipBarDrawsItsChips() async {
-        let viewModel = StubCharactersFilterBarViewsViewModel()
-        viewModel.filter = CharactersFilter(name: "rick",
-                                            status: .alive,
-                                            species: "Human",
-                                            type: "Parasite",
-                                            gender: .male)
+        let filter = CharactersFilter(name: "rick",
+                                      status: .alive,
+                                      species: "Human",
+                                      type: "Parasite",
+                                      gender: .male)
 
-        await renderFilterBar(viewModel)
+        await renderFilterBar(CharactersFilterBarRenderModel(
+            filter: filter,
+            activeCount: 4,
+            chips: [CharactersFilterChip(field: .status, title: "Alive"),
+                    CharactersFilterChip(field: .species, title: "Human"),
+                    CharactersFilterChip(field: .type, title: "Type: Parasite"),
+                    CharactersFilterChip(field: .gender, title: "Male")]
+        ))
     }
 
     @Test("the filter sheet draws, empty and populated")
@@ -118,65 +124,37 @@ struct CharactersViewTests {
 
     @Test("the list section draws the spinner while loading")
     func listDrawsWhileLoading() async {
-        let viewModel = StubCharactersSectionViewModel()
-        viewModel.isLoading = true
-
-        await renderList(viewModel)
+        await renderList(.hidden)
     }
 
     @Test("the list section draws a search that matched nothing")
     func listDrawsNoMatches() async {
-        let viewModel = StubCharactersSectionViewModel()
-        viewModel.characters = []
-        viewModel.filter = CharactersFilter(name: "squanch", status: .alive)
-
-        await renderList(viewModel)
+        await renderList(.empty(.noMatches(summary: "“squanch” with Alive", canClearFilters: true)))
     }
 
     @Test("the list section draws a failed load")
     func listDrawsAFailure() async {
-        let viewModel = StubCharactersSectionViewModel()
-        viewModel.characters = []
-        viewModel.loadFailed = true
-
-        await renderList(viewModel)
+        await renderList(.empty(.failed))
     }
 
     @Test("the list section draws rows with a highlight and a footer")
     func listDrawsRows() async {
-        let viewModel = StubCharactersSectionViewModel()
-        viewModel.characters = [.rick, .morty]
-        viewModel.filter = CharactersFilter(name: "rick")
-        viewModel.pagination = .idle(nextPage: 2)
-
-        await renderList(viewModel)
+        await renderList(.visible(characters: [.rick, .morty], footer: .loadMore, highlight: "rick"))
     }
 
     @Test("the grid section draws the spinner while loading")
     func gridDrawsWhileLoading() async {
-        let viewModel = StubCharactersSectionViewModel()
-        viewModel.isLoading = true
-
-        await renderGrid(viewModel)
+        await renderGrid(.hidden)
     }
 
     @Test("the grid section draws a failed load")
     func gridDrawsAFailure() async {
-        let viewModel = StubCharactersSectionViewModel()
-        viewModel.characters = []
-        viewModel.loadFailed = true
-
-        await renderGrid(viewModel)
+        await renderGrid(.empty(.failed))
     }
 
     @Test("the grid section draws cells with a highlight and a footer")
     func gridDrawsCells() async {
-        let viewModel = StubCharactersSectionViewModel()
-        viewModel.characters = [.rick, .morty]
-        viewModel.filter = CharactersFilter(name: "morty")
-        viewModel.pagination = .failed(nextPage: 2)
-
-        await renderGrid(viewModel)
+        await renderGrid(.visible(characters: [.rick, .morty], footer: .retry, highlight: "morty"))
     }
 
     // MARK: - Hosting
@@ -192,28 +170,34 @@ struct CharactersViewTests {
 
     /// Hosted inside a `NavigationStack`: their rows are `NavigationLink`s now, and a
     /// link outside a stack is a row that does nothing.
-    private func renderList(_ viewModel: StubCharactersSectionViewModel) async {
+    private func renderList(_ renderModel: CharactersListRenderModel) async {
+        let viewModel = StubCharactersSectionViewModel()
         await render(NavigationStack {
             CharactersListSectionView(
                 viewModel: viewModel,
-                renderModelPublisher: CharactersListSectionMapper(viewModel: viewModel).renderModelPublisher()
+                renderModelPublisher: StubCharactersListSectionMapper(viewModel: viewModel,
+                                                                      renderModel: renderModel).renderModelPublisher()
             )
         })
     }
 
-    private func renderGrid(_ viewModel: StubCharactersSectionViewModel) async {
+    private func renderGrid(_ renderModel: CharactersGridRenderModel) async {
+        let viewModel = StubCharactersSectionViewModel()
         await render(NavigationStack {
             CharactersGridSectionView(
                 viewModel: viewModel,
-                renderModelPublisher: CharactersGridSectionMapper(viewModel: viewModel).renderModelPublisher()
+                renderModelPublisher: StubCharactersGridSectionMapper(viewModel: viewModel,
+                                                                      renderModel: renderModel).renderModelPublisher()
             )
         })
     }
 
-    private func renderFilterBar(_ viewModel: StubCharactersFilterBarViewsViewModel) async {
+    private func renderFilterBar(_ renderModel: CharactersFilterBarRenderModel) async {
+        let viewModel = StubCharactersFilterBarViewsViewModel()
         await render(CharactersFilterBarSectionView(
             viewModel: viewModel,
-            renderModelPublisher: CharactersFilterBarSectionMapper(viewModel: viewModel).renderModelPublisher()
+            renderModelPublisher: StubCharactersFilterBarSectionMapper(viewModel: viewModel,
+                                                                       renderModel: renderModel).renderModelPublisher()
         ))
     }
 
